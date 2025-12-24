@@ -1,0 +1,30 @@
+# Acheron Bioelectric Memory Chip - Python Dependencies
+
+# Core Simulation (BETSE alternative - we'll build our own optimized version)
+numpy>=1.24.0
+scipy>=1.10.0
+matplotlib>=3.7.0
+
+# Data handling and analysis
+pandas>=2.0.0
+h5py>=3.8.0
+
+# Visualization
+seaborn>=0.12.0
+plotly>=5.14.0
+
+# Optogenetic controller (future)
+opencv-python>=4.7.0
+pyserial>=3.5  # For DMD hardware interface
+
+# Machine learning (pattern optimization)
+scikit-learn>=1.2.0
+torch>=2.0.0  # For neural network-based pattern optimization
+
+# Documentation
+jupyter>=1.0.0
+nbconvert>=7.0.0
+
+# Testing
+pytest>=7.3.0
+pytest-cov>=4.0.0
