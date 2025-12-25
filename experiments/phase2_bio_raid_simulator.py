@@ -596,10 +596,11 @@ class BioRAIDController:
 
         # 2) PROACTIVE REBUILD: Replace SICK tiles before they fail
         # CRITICAL: Skip CLEAN_LOCKED tiles (stabilization window)
+        # CLEAN_LOCKED tiles are IMMUNE to proactive rebuild unless integrity < 60% (which triggers FAILED state instead)
         sick_tiles = [t for t in self.tiles
                      if t.state == TileState.SICK
                      and t.binary_data
-                     and t.state != TileState.CLEAN_LOCKED]  # Don't replace recently regenerated tiles
+                     and t.state != TileState.CLEAN_LOCKED]  # Redundant check for safety
 
         if sick_tiles:
             # Rebuild throttling for proactive rebuilds only
@@ -609,13 +610,17 @@ class BioRAIDController:
 
             # Filter out tiles that were recently attempted (prevent spam)
             # REBUILD COOLDOWN: 14 days unless integrity <60% (emergency)
-            # Also filter out CLEAN_LOCKED tiles (even if they degrade to SICK during lock)
+            # CLEAN_LOCKED tiles: ABSOLUTELY IMMUNE to proactive rebuild (even at low integrity)
             eligible_tiles = []
             for t in sick_tiles:
-                # Skip CLEAN_LOCKED tiles (stabilization window)
+                # ABSOLUTE IMMUNITY: Never proactively rebuild CLEAN_LOCKED tiles
+                # They are in stabilization window - let them stabilize or fail naturally
+                if t.state == TileState.CLEAN_LOCKED:
+                    continue
                 if t.clean_locked_until_day >= self.uptime_days:
                     continue
                 # EMERGENCY: If integrity <60%, bypass cooldown (impending failure)
+                # BUT: CLEAN_LOCKED tiles should transition to FAILED instead (not SICK)
                 if t.integrity < 0.60:
                     eligible_tiles.append(t)
                 # NORMAL: Require 14-day cooldown for proactive rebuilds
@@ -1259,30 +1264,37 @@ class BioRAIDController:
                 )
 
             # Separate LIVE vs PENDING vs OFFLINE counts
+            # CRITICAL: Categories must be mutually exclusive (no overlaps!)
+            # Priority order: FAILED/STERILE -> REGENERATING/SICK/CLEAN_LOCKED -> ACTIVE
             tiles = [self.tiles[tid] for tid in tile_ids]
 
-            # LIVE = ACTIVE and readable (integrity >= 60%)
-            live = [t for t in tiles
-                   if t.state == TileState.ACTIVE
-                   and t.integrity >= 0.60]
+            live = []
+            pending = []
+            offline = []
 
-            # PENDING = SICK, CLEAN_LOCKED, REGENERATING (readable but degraded)
-            pending = [t for t in tiles
-                      if t.state in [TileState.SICK, TileState.CLEAN_LOCKED, TileState.REGENERATING]]
+            for t in tiles:
+                # Priority 1: FAILED or STERILE = always offline
+                if t.state in [TileState.FAILED, TileState.STERILE]:
+                    offline.append(t)
+                # Priority 2: REGENERATING, CLEAN_LOCKED, SICK = always pending
+                elif t.state in [TileState.REGENERATING, TileState.CLEAN_LOCKED, TileState.SICK]:
+                    pending.append(t)
+                # Priority 3: ACTIVE with healthy integrity = live
+                elif t.state == TileState.ACTIVE and t.integrity >= 0.60:
+                    live.append(t)
+                # Catchall: ACTIVE with low integrity = offline
+                else:
+                    offline.append(t)
 
-            # OFFLINE = FAILED, STERILE (unreadable)
-            offline = [t for t in tiles
-                      if t.state in [TileState.FAILED, TileState.STERILE]
-                      or t.integrity < 0.60]
-
-            # Check for overlap (same tile in multiple categories - impossible!)
+            # Verify no overlaps (sanity check - should be impossible with new logic)
             live_ids = set(t.id for t in live)
             pending_ids = set(t.id for t in pending)
             offline_ids = set(t.id for t in offline)
 
             overlap = (live_ids & pending_ids) | (live_ids & offline_ids) | (pending_ids & offline_ids)
             if overlap:
-                print(f"⚠️  WARNING: Chunk {chunk_idx} has overlapping replica states: {overlap}")
+                print(f"⚠️  CRITICAL BUG: Chunk {chunk_idx} has overlapping replica states: {overlap}")
+                print(f"    This should be impossible with mutually exclusive categorization!")
 
             # Sanity check: total should be 3
             if len(live) + len(pending) + len(offline) != 3:
@@ -1395,7 +1407,7 @@ class BioRAIDController:
             print(f"⚠️  Error calculating logical errors: {e}")
             return -1
 
-    def _calculate_replica_errors(self) -> tuple:
+    def _calculate_replica_errors(self) -> dict:
         """
         Calculate replica bit errors: total disagreements vs GOLDEN ANCHOR.
 
@@ -1403,10 +1415,16 @@ class BioRAIDController:
         Uses golden anchor as reference (not majority voting between replicas).
 
         Returns:
-            (active_only_errors, offline_count) - only ACTIVE tiles for convergence metric
+            dict with:
+            - live_only_errors: disagreements from LIVE replicas only
+            - pending_count: count of PENDING replicas (SICK/CLEAN_LOCKED/REGENERATING)
+            - offline_count: count of OFFLINE replicas (FAILED/STERILE/unreadable)
+            - live_replica_distribution: {0: X, 1: Y, 2: Z, 3: W} chunks by live count
         """
-        active_only_disagreements = 0
-        pending_or_offline_count = 0  # Count of non-ACTIVE replicas (pending + offline)
+        live_only_disagreements = 0
+        pending_count = 0
+        offline_count = 0
+        live_replica_distribution = {0: 0, 1: 0, 2: 0, 3: 0}  # Track chunks by live replica count
 
         readable_threshold = 0.60  # Minimum integrity to be readable
 
@@ -1419,29 +1437,50 @@ class BioRAIDController:
             if not golden_truth:
                 continue  # Skip chunks without anchor
 
-            # Count offline/pending replicas
-            # PENDING = SICK, CLEAN_LOCKED, REGENERATING (readable but not fully healthy)
-            # OFFLINE = FAILED, STERILE, or unreadable (integrity < 60%)
+            # Categorize replicas using same logic as validation
+            # CRITICAL: Must be mutually exclusive
+            live_replicas = []
+            pending_replicas = []
+            offline_replicas = []
+
             for tile in replicas:
-                # If ACTIVE and readable, skip (it's live)
-                if tile.state == TileState.ACTIVE and tile.integrity >= readable_threshold:
-                    continue
-                # Everything else is offline or pending
-                pending_or_offline_count += 1
+                # Priority 1: FAILED or STERILE = always offline
+                if tile.state in [TileState.FAILED, TileState.STERILE]:
+                    offline_replicas.append(tile)
+                # Priority 2: REGENERATING, CLEAN_LOCKED, SICK = always pending
+                elif tile.state in [TileState.REGENERATING, TileState.CLEAN_LOCKED, TileState.SICK]:
+                    pending_replicas.append(tile)
+                # Priority 3: ACTIVE with healthy integrity = live
+                elif tile.state == TileState.ACTIVE and tile.integrity >= readable_threshold:
+                    live_replicas.append(tile)
+                # Catchall: ACTIVE with low integrity = offline
+                else:
+                    offline_replicas.append(tile)
 
-            # Get ACTIVE replicas ONLY (not SICK, not REGENERATING)
-            active_only = [t for t in replicas
-                          if t.state == TileState.ACTIVE
-                          and t.integrity >= readable_threshold
-                          and t.binary_data]
+            # Update counts
+            pending_count += len(pending_replicas)
+            offline_count += len(offline_replicas)
 
-            # Count disagreements vs GOLDEN ANCHOR (only from ACTIVE tiles)
-            for tile in active_only:
-                for i in range(min(len(tile.binary_data), len(golden_truth))):
-                    if tile.binary_data[i] != golden_truth[i]:
-                        active_only_disagreements += 1
+            # Track live replica distribution
+            live_count = len(live_replicas)
+            if live_count in live_replica_distribution:
+                live_replica_distribution[live_count] += 1
 
-        return (active_only_disagreements, pending_or_offline_count)
+            # Count disagreements vs GOLDEN ANCHOR (only from LIVE tiles)
+            # Only compute if we have >= 2 live replicas (user requirement)
+            if live_count >= 2:
+                for tile in live_replicas:
+                    if tile.binary_data:
+                        for i in range(min(len(tile.binary_data), len(golden_truth))):
+                            if tile.binary_data[i] != golden_truth[i]:
+                                live_only_disagreements += 1
+
+        return {
+            'live_only_errors': live_only_disagreements,
+            'pending_count': pending_count,
+            'offline_count': offline_count,
+            'live_replica_distribution': live_replica_distribution
+        }
 
     def _get_state_snapshot(self) -> dict:
         """Get current system state for history."""
@@ -1703,21 +1742,29 @@ def run_phase2_simulation(duration_days=365):
             else:
                 print(f"  ⚠️  Logical errors: calculation failed")
 
-            # Replica bit errors (convergence metric - ACTIVE tiles only)
-            replica_errors_active, pending_or_offline_count = controller._calculate_replica_errors()
+            # Replica bit errors (convergence metric - LIVE tiles only)
+            replica_metrics = controller._calculate_replica_errors()
+            live_only_errors = replica_metrics['live_only_errors']
+            pending_count = replica_metrics['pending_count']
+            offline_count = replica_metrics['offline_count']
+            live_dist = replica_metrics['live_replica_distribution']
 
-            # Count total ACTIVE tiles with data
-            active_tile_count = sum(1 for t in controller.tiles
-                                   if t.state == TileState.ACTIVE and t.binary_data)
-            total_active_bits = len(test_data) * active_tile_count // (controller.n_active // controller.replication_factor) if active_tile_count > 0 else 0
+            # Count total LIVE tiles with data (for error rate calculation)
+            live_tile_count = sum(1 for t in controller.tiles
+                                 if t.state == TileState.ACTIVE
+                                 and t.integrity >= 0.60
+                                 and t.binary_data)
+            total_live_bits = len(test_data) * live_tile_count // (controller.n_active // controller.replication_factor) if live_tile_count > 0 else 0
 
-            replica_error_rate = (replica_errors_active / total_active_bits * 100) if total_active_bits > 0 and replica_errors_active > 0 else 0
+            replica_error_rate = (live_only_errors / total_live_bits * 100) if total_live_bits > 0 and live_only_errors > 0 else 0
             if replica_error_rate < 5:
-                print(f"  ✓ Replica bit errors (ACTIVE only): {replica_errors_active} ({replica_error_rate:.2f}%) - GOOD")
+                print(f"  ✓ Replica bit errors (LIVE only): {live_only_errors} ({replica_error_rate:.2f}%) - GOOD")
             else:
-                print(f"  ⚠️  Replica bit errors (ACTIVE only): {replica_errors_active} ({replica_error_rate:.2f}%) - HIGH")
+                print(f"  ⚠️  Replica bit errors (LIVE only): {live_only_errors} ({replica_error_rate:.2f}%) - HIGH")
 
-            print(f"  📊 Pending/offline replicas: {pending_or_offline_count} (SICK/CLEAN_LOCKED/REGENERATING/unreadable)")
+            print(f"  📊 Pending replicas: {pending_count} (SICK/CLEAN_LOCKED/REGENERATING)")
+            print(f"  📊 Offline replicas: {offline_count} (FAILED/STERILE/unreadable)")
+            print(f"  📊 Live replica distribution: {live_dist[0]} chunks with 0, {live_dist[1]} with 1, {live_dist[2]} with 2, {live_dist[3]} with 3")
             print(f"  📊 Convergence: {'YES' if replica_error_rate < 5 else 'NO'}")
 
             # Scrub effectiveness
@@ -1780,26 +1827,34 @@ def run_phase2_simulation(duration_days=365):
     else:
         print(f"  ⚠️  Logical error calculation failed")
 
-    # Replica bit errors (convergence metric - ACTIVE tiles only)
-    replica_errors_active, pending_or_offline_count = controller._calculate_replica_errors()
+    # Replica bit errors (convergence metric - LIVE tiles only)
+    replica_metrics = controller._calculate_replica_errors()
+    live_only_errors = replica_metrics['live_only_errors']
+    pending_count = replica_metrics['pending_count']
+    offline_count = replica_metrics['offline_count']
+    live_dist = replica_metrics['live_replica_distribution']
 
-    # Count total ACTIVE tiles with data
-    active_tile_count = sum(1 for t in controller.tiles
-                           if t.state == TileState.ACTIVE and t.binary_data)
-    total_active_bits = len(test_data) * active_tile_count // (controller.n_active // controller.replication_factor) if active_tile_count > 0 else 0
+    # Count total LIVE tiles with data (for error rate calculation)
+    live_tile_count = sum(1 for t in controller.tiles
+                         if t.state == TileState.ACTIVE
+                         and t.integrity >= 0.60
+                         and t.binary_data)
+    total_live_bits = len(test_data) * live_tile_count // (controller.n_active // controller.replication_factor) if live_tile_count > 0 else 0
 
-    replica_error_rate = (replica_errors_active / total_active_bits * 100) if total_active_bits > 0 and replica_errors_active > 0 else 0
+    replica_error_rate = (live_only_errors / total_live_bits * 100) if total_live_bits > 0 and live_only_errors > 0 else 0
 
     if replica_error_rate == 0:
-        print(f"  ✓✓ REPLICA BIT ERRORS (ACTIVE only): 0 (0.0%) - PERFECT CONVERGENCE ✓✓")
+        print(f"  ✓✓ REPLICA BIT ERRORS (LIVE only): 0 (0.0%) - PERFECT CONVERGENCE ✓✓")
     elif replica_error_rate < 5:
-        print(f"  ✓ REPLICA BIT ERRORS (ACTIVE only): {replica_errors_active} ({replica_error_rate:.2f}%) - GOOD")
+        print(f"  ✓ REPLICA BIT ERRORS (LIVE only): {live_only_errors} ({replica_error_rate:.2f}%) - GOOD")
         print(f"     Goal was <5% - achieved!")
     else:
-        print(f"  ⚠️  REPLICA BIT ERRORS (ACTIVE only): {replica_errors_active} ({replica_error_rate:.2f}%) - HIGH")
+        print(f"  ⚠️  REPLICA BIT ERRORS (LIVE only): {live_only_errors} ({replica_error_rate:.2f}%) - HIGH")
         print(f"     Goal was <5% - needs improvement")
 
-    print(f"  📊 Pending/offline replicas: {pending_or_offline_count} (SICK/CLEAN_LOCKED/REGENERATING/unreadable)")
+    print(f"  📊 Pending replicas: {pending_count} (SICK/CLEAN_LOCKED/REGENERATING)")
+    print(f"  📊 Offline replicas: {offline_count} (FAILED/STERILE/unreadable)")
+    print(f"  📊 Live replica distribution: {live_dist[0]} chunks with 0, {live_dist[1]} with 1, {live_dist[2]} with 2, {live_dist[3]} with 3")
 
     # Scrub effectiveness
     print(f"\nSCRUBBING EFFECTIVENESS:")
