@@ -241,14 +241,20 @@ class BioRAIDController:
             if tile.state in [TileState.ACTIVE, TileState.SICK]:
                 tile.age += 1
 
-                # OPTIMIZED: Gentler degradation with ECC in place
-                # Natural degradation (0.05% per day - ECC handles small errors)
-                tile.integrity *= 0.9995
+                # REALISTIC DEGRADATION: 0.3% per day (reaches 80% in ~70 days)
+                # This ensures we see actual rebuilds in 90-day simulations
+                tile.integrity *= 0.997
 
-                # OPTIMIZED: Rare random degradation (0.1% chance per day)
-                # Majority voting + scrubbing handles most issues
-                if np.random.random() < 0.001:
-                    tile.integrity *= np.random.uniform(0.90, 0.97)
+                # Random degradation events (0.5% chance per day)
+                # Accelerates degradation for some tiles
+                if np.random.random() < 0.005:
+                    tile.integrity *= np.random.uniform(0.85, 0.95)
+                    self.total_degradation_events += 1
+
+                # DETERMINISTIC SHOCK EVENT: Day 30, tile 7 drops 25%
+                if self.uptime_days == 30 and tile.id == 7:
+                    print(f"\n⚡ SHOCK EVENT: Tile 7 integrity drop (-25%)")
+                    tile.integrity *= 0.75
                     self.total_degradation_events += 1
 
                 # State transitions based on integrity
@@ -301,6 +307,15 @@ class BioRAIDController:
         # Check for rebuild triggers
         self._check_rebuild_needed()
 
+        # Daily monitoring: print min/avg integrity and triggers
+        if self.uptime_days % 10 == 0:  # Every 10 days
+            active_tiles = [t for t in self.tiles if t.state in [TileState.ACTIVE, TileState.SICK]]
+            if active_tiles:
+                min_integrity = min(t.integrity for t in active_tiles)
+                avg_integrity = np.mean([t.integrity for t in active_tiles])
+                sick_count = sum(1 for t in self.tiles if t.state == TileState.SICK)
+                print(f"📊 Day {self.uptime_days}: min={min_integrity:.1%}, avg={avg_integrity:.1%}, SICK={sick_count}, rebuilds={self.rebuild_count}")
+
         # Record state
         self.history.append(self._get_state_snapshot())
 
@@ -308,6 +323,9 @@ class BioRAIDController:
         """
         Run scrub operation: read with majority voting, repair disagreements.
         This is the key ECC mechanism that prevents data corruption.
+
+        NOTE: Scrub repairs BIT STATE only (binary_data), NOT tile integrity.
+        Integrity degradation is permanent and requires physical rebuild.
         """
         print(f"🔍 Running scrub (Day {self.uptime_days})...")
         try:
