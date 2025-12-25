@@ -131,6 +131,10 @@ class BioRAIDController:
         # chunk_replicas[chunk_idx] = [tile_id1, tile_id2, tile_id3]
         self.chunk_replicas = {}  # Will be initialized after write_data
         self.chunks_at_risk = set()  # Chunks with <2 readable replicas
+        self.chunk_at_risk_cooldown = {}  # {chunk_idx: last_attempt_day} - prevent loops
+
+        # GOLDEN ANCHOR TRUTH (prevents self-corruption lock-in)
+        self.chunk_golden_truth = {}  # {chunk_idx: golden_bits} - NEVER modified after write
 
         # Metrics separation (CRITICAL for analysis)
         self.logical_bit_errors = 0  # Majority wrong (vs ground truth)
@@ -138,6 +142,7 @@ class BioRAIDController:
         self.scrub_writebacks = 0  # Actual fixes performed
         self.new_flips_per_day = []  # Track daily error injection rate
         self.ground_truth = None  # Original data for validation
+        self.quarantined_chunks = set()  # Chunks that failed anchor validation
 
     def write_data(self, binary_data: str):
         """
@@ -187,6 +192,11 @@ class BioRAIDController:
 
             # Store chunk->tile mapping
             self.chunk_replicas[chunk_idx] = chunk_tile_ids
+
+            # STORE GOLDEN ANCHOR TRUTH (NEVER modified after this!)
+            # This prevents self-corruption lock-in where majority voting
+            # converges to corrupted data
+            self.chunk_golden_truth[chunk_idx] = chunk
 
             # Calculate and store checksum for this chunk (CRC32)
             import zlib
@@ -337,37 +347,42 @@ class BioRAIDController:
 
                     if chunk_idx is not None:
                         # HARD INFORMATIONAL SCRUB (before marking Active)
+                        # ALWAYS use GOLDEN ANCHOR as source of truth
                         print(f"  🔧 Hard informational scrub for tile {tile.id} (chunk {chunk_idx})...")
 
-                        replica_ids = self.chunk_replicas[chunk_idx]
-                        replicas = [self.tiles[tid] for tid in replica_ids]
-
-                        # Get all readable replicas (excluding this tile which is still REGENERATING)
-                        other_replicas = [t for t in replicas
-                                         if t.id != tile.id
-                                         and t.state in [TileState.ACTIVE, TileState.SICK]
-                                         and t.binary_data]
-
-                        if len(other_replicas) >= 1:
-                            # Reconstruct correct data via majority vote
-                            if len(other_replicas) >= 2:
-                                correct_data = self._reconstruct_via_majority_vote(other_replicas)
-                                print(f"      Reconstructed truth from {len(other_replicas)} replicas")
-                            else:
-                                correct_data = other_replicas[0].binary_data
-                                print(f"      Using single replica as source")
-
-                            # FORCE OVERWRITE all bits in regenerated tile
-                            tile.binary_data = correct_data
-                            tile.pattern = self.encoder.encode(correct_data)
+                        golden_truth = self.chunk_golden_truth.get(chunk_idx)
+                        if golden_truth:
+                            # FORCE OVERWRITE with GOLDEN TRUTH (always correct!)
+                            tile.binary_data = golden_truth
+                            tile.pattern = self.encoder.encode(golden_truth)
 
                             # Update checksum
                             import zlib
-                            tile.chunk_checksum = zlib.crc32(correct_data.encode()) & 0xffffffff
+                            tile.chunk_checksum = zlib.crc32(golden_truth.encode()) & 0xffffffff
 
-                            print(f"      ✓ Forced write-back of {len(correct_data)} bits to tile {tile.id}")
+                            print(f"      ✓ Forced write-back from GOLDEN ANCHOR ({len(golden_truth)} bits)")
+                            print(f"      ✓ Tile {tile.id} now guaranteed correct")
                         else:
-                            print(f"      ⚠️  No other replicas available - keeping current data")
+                            print(f"      ⚠️  No golden anchor - using best replica fallback")
+
+                            replica_ids = self.chunk_replicas[chunk_idx]
+                            replicas = [self.tiles[tid] for tid in replica_ids]
+
+                            # Get all readable replicas (excluding this tile which is still REGENERATING)
+                            other_replicas = [t for t in replicas
+                                             if t.id != tile.id
+                                             and t.state in [TileState.ACTIVE, TileState.SICK]
+                                             and t.binary_data]
+
+                            if len(other_replicas) >= 1:
+                                # Use highest-integrity replica as fallback
+                                best = max(other_replicas, key=lambda t: t.integrity)
+                                tile.binary_data = best.binary_data
+                                tile.pattern = self.encoder.encode(best.binary_data)
+                                tile.chunk_checksum = best.chunk_checksum
+                                print(f"      ⚠️  Using best replica (tile {best.id}, {best.integrity:.0%})")
+                            else:
+                                print(f"      ✗ No replicas available - data may be incorrect!")
 
                     # NOW mark as Active
                     tile.state = TileState.ACTIVE
@@ -442,14 +457,40 @@ class BioRAIDController:
             return  # No spare capacity for rebuilds
 
         # 0) FAST-TRACK: AT_RISK chunks (highest priority!)
+        # BUT: with cooldown to prevent loops (7 days between attempts)
         if self.chunks_at_risk:
-            chunk_idx = list(self.chunks_at_risk)[0]  # Get first AT_RISK chunk
-            print(f"\n🚨 FAST-TRACK: Chunk {chunk_idx} is AT_RISK (<2 replicas)")
-            print(f"   Creating new replica immediately (bypasses all throttling)...")
+            for chunk_idx in list(self.chunks_at_risk):
+                # Check cooldown
+                last_attempt = self.chunk_at_risk_cooldown.get(chunk_idx, -999)
+                cooldown_days = 7
+                days_since_attempt = self.uptime_days - last_attempt
 
-            # Force top-up for this chunk
-            self._ensure_chunk_has_three_replicas(chunk_idx)
-            return  # Handle one AT_RISK chunk per day
+                if days_since_attempt < cooldown_days:
+                    print(f"  ⏸️  Chunk {chunk_idx} AT_RISK cooldown ({days_since_attempt}/{cooldown_days} days)")
+                    continue  # Skip this chunk, try next
+
+                # Cooldown expired - attempt top-up
+                print(f"\n🚨 FAST-TRACK: Chunk {chunk_idx} is AT_RISK (<2 replicas)")
+                print(f"   Creating new replica immediately (bypasses all throttling)...")
+
+                # Force top-up for this chunk
+                before_count = len([t for t in self.chunk_replicas[chunk_idx]
+                                   if self.tiles[t].state in [TileState.ACTIVE, TileState.SICK, TileState.REGENERATING]])
+
+                self._ensure_chunk_has_three_replicas(chunk_idx)
+
+                after_count = len([t for t in self.chunk_replicas[chunk_idx]
+                                  if self.tiles[t].state in [TileState.ACTIVE, TileState.SICK, TileState.REGENERATING]])
+
+                # Update cooldown regardless (prevents tight loops)
+                self.chunk_at_risk_cooldown[chunk_idx] = self.uptime_days
+
+                if after_count > before_count:
+                    print(f"   ✓ Successfully added replica ({before_count} → {after_count})")
+                else:
+                    print(f"   ⚠️  No replica added ({before_count} → {after_count}) - may lack sterile spares")
+
+                return  # Handle one AT_RISK chunk per day
 
         # 1) REACTIVE REBUILD: Check for lost quorum (critical!)
         quorum_lost = self._check_quorum_loss()
@@ -562,10 +603,16 @@ class BioRAIDController:
             print(f"⚠️  Not enough surviving replicas ({len(surviving)}/3)")
             return False
 
-        # RECONSTRUCT correct bit state using majority voting
-        reconstructed_data = self._reconstruct_via_majority_vote(surviving)
-
-        print(f"  Reconstructed data via majority vote from {len(surviving)} replicas")
+        # USE GOLDEN ANCHOR (always correct!) instead of majority voting
+        # This prevents propagating corruption during proactive rebuilds
+        golden_truth = self.chunk_golden_truth.get(chunk_idx)
+        if golden_truth:
+            reconstructed_data = golden_truth
+            print(f"  Using GOLDEN ANCHOR as source (guaranteed correct)")
+        else:
+            # Fallback to majority voting if no anchor
+            reconstructed_data = self._reconstruct_via_majority_vote(surviving)
+            print(f"  ⚠️  No golden anchor - using majority vote from {len(surviving)} replicas")
 
         # Seed target with reconstructed data
         target_sterile.state = TileState.REGENERATING
@@ -632,14 +679,20 @@ class BioRAIDController:
             print("✗ FATAL: No surviving replicas! Data lost for this chunk!")
             return
 
-        # RECONSTRUCT correct bit state using majority voting (or best replica if only 1)
-        if len(surviving) >= 2:
+        # USE GOLDEN ANCHOR (always correct!) instead of majority voting
+        # This prevents propagating corruption during emergency rebuilds
+        golden_truth = self.chunk_golden_truth.get(chunk_idx)
+        if golden_truth:
+            reconstructed_data = golden_truth
+            print(f"  Using GOLDEN ANCHOR as source (guaranteed correct)")
+        elif len(surviving) >= 2:
+            # Fallback to majority voting if no anchor
             reconstructed_data = self._reconstruct_via_majority_vote(surviving)
-            print(f"  Reconstructed via majority vote from {len(surviving)} replicas")
+            print(f"  ⚠️  No golden anchor - using majority vote from {len(surviving)} replicas")
         else:
             # Only 1 replica left - use it (no majority possible)
             reconstructed_data = surviving[0].binary_data
-            print(f"  Using last surviving replica (tile {surviving[0].id})")
+            print(f"  ⚠️  No golden anchor - using last surviving replica (tile {surviving[0].id})")
 
         # Find a FAILED tile to replace
         failed_tiles = [t for t in replicas if t.state == TileState.FAILED or t.integrity < 0.60]
@@ -748,17 +801,24 @@ class BioRAIDController:
         missing_count = 3 - len(readable_ids)
         print(f"  ⚠️  Chunk {chunk_idx} only has {len(readable_ids)} readable replicas, topping up {missing_count}...")
 
-        # Get correct data via majority voting from surviving replicas
-        readable_tiles = [self.tiles[tid] for tid in readable_ids]
-        surviving = [t for t in readable_tiles
-                    if t.state in [TileState.ACTIVE, TileState.SICK]
-                    and t.binary_data]
+        # USE GOLDEN ANCHOR (always correct!) for top-up
+        golden_truth = self.chunk_golden_truth.get(chunk_idx)
+        if golden_truth:
+            correct_data = golden_truth
+            print(f"  Using GOLDEN ANCHOR for top-up (guaranteed correct)")
+        else:
+            # Fallback to majority voting if no anchor
+            readable_tiles = [self.tiles[tid] for tid in readable_ids]
+            surviving = [t for t in readable_tiles
+                        if t.state in [TileState.ACTIVE, TileState.SICK]
+                        and t.binary_data]
 
-        if not surviving:
-            print(f"  ✗ FATAL: Cannot top-up chunk {chunk_idx} - no surviving replicas!")
-            return
+            if not surviving:
+                print(f"  ✗ FATAL: Cannot top-up chunk {chunk_idx} - no surviving replicas or anchor!")
+                return
 
-        correct_data = self._reconstruct_via_majority_vote(surviving)
+            correct_data = self._reconstruct_via_majority_vote(surviving)
+            print(f"  ⚠️  No golden anchor - using majority vote for top-up")
 
         # Find sterile spares to top-up
         sterile = [t for t in self.tiles if t.state == TileState.STERILE]
@@ -788,13 +848,14 @@ class BioRAIDController:
 
     def _scrub_chunk(self, chunk_idx: int):
         """
-        Scrub a specific chunk with STRICT quorum gate and write-back repair.
+        Scrub a specific chunk with STRICT quorum gate, anchor validation, and write-back repair.
 
         MANDATORY RULES:
         1. Never scrub if <2 readable replicas (mark AT_RISK instead)
-        2. WRITE-BACK to ALL replicas (force convergence)
-        3. Use integrity-weighted voting (<80% replicas can't define truth)
-        4. Track replica_bit_errors separately from logical errors
+        2. Validate reconstructed data against GOLDEN ANCHOR before write-back
+        3. Only write-back if anchor validation passes (prevents self-corruption)
+        4. Quarantine chunks that fail anchor validation
+        5. Use integrity-weighted voting (<80% replicas can't define truth)
         """
         replica_ids = self.chunk_replicas[chunk_idx]
         replicas = [self.tiles[tid] for tid in replica_ids]
@@ -804,19 +865,30 @@ class BioRAIDController:
                    if t.state in [TileState.ACTIVE, TileState.SICK]
                    and t.binary_data]
 
-        # QUORUM GATE: Require ≥2 readable replicas
+        # QUORUM GATE: Require ≥2 readable replicas for majority vote
         if len(readable) < 2:
             if chunk_idx not in self.chunks_at_risk:
                 print(f"  ⚠️  Chunk {chunk_idx} AT_RISK - only {len(readable)} readable replicas!")
-                print(f"      Fast-tracking replica creation BEFORE scrubbing...")
+                print(f"      Reason: Insufficient replicas for quorum")
                 self.chunks_at_risk.add(chunk_idx)
+                self.chunk_at_risk_cooldown[chunk_idx] = self.uptime_days
             # Do NOT scrub - wait for replica count to recover
+            return
+
+        # Check if chunk is quarantined (failed previous anchor validation)
+        if chunk_idx in self.quarantined_chunks:
+            print(f"  🚫 Chunk {chunk_idx} QUARANTINED - failed anchor validation")
+            print(f"      Will attempt restore from golden anchor...")
+            # Try to restore from golden truth
+            self._restore_from_golden(chunk_idx, readable)
             return
 
         # Remove from AT_RISK if now safe
         if chunk_idx in self.chunks_at_risk:
             print(f"  ✓ Chunk {chunk_idx} recovered from AT_RISK ({len(readable)} replicas)")
             self.chunks_at_risk.discard(chunk_idx)
+            if chunk_idx in self.chunk_at_risk_cooldown:
+                del self.chunk_at_risk_cooldown[chunk_idx]
 
         print(f"  🔍 Scrubbing chunk {chunk_idx} ({len(readable)} readable replicas)...")
 
@@ -835,33 +907,49 @@ class BioRAIDController:
             best = max(readable, key=lambda t: t.integrity)
             correct_data = best.binary_data
 
-        # Validate with checksum if available
-        import zlib
-        expected_checksum = readable[0].chunk_checksum if readable else 0
-        reconstructed_checksum = zlib.crc32(correct_data.encode()) & 0xffffffff
+        # CRITICAL: VALIDATE AGAINST GOLDEN ANCHOR
+        # This prevents self-corruption lock-in where corrupted majority becomes "truth"
+        golden_truth = self.chunk_golden_truth.get(chunk_idx)
+        if golden_truth is None:
+            print(f"      ⚠️  No golden anchor for chunk {chunk_idx} - cannot validate!")
+            # Quarantine this chunk
+            self.quarantined_chunks.add(chunk_idx)
+            return
 
-        # If checksum fails, use tie-breaker
-        if expected_checksum != 0 and reconstructed_checksum != expected_checksum:
-            print(f"      ⚠️  Checksum mismatch! Using highest-integrity replica as tie-breaker")
-            best_replica = max(readable, key=lambda t: t.integrity)
-            correct_data = best_replica.binary_data
-            reconstructed_checksum = zlib.crc32(correct_data.encode()) & 0xffffffff
+        if correct_data != golden_truth:
+            # ANCHOR MISMATCH - reconstructed data is WRONG!
+            errors = sum(1 for i in range(len(correct_data)) if correct_data[i] != golden_truth[i])
+            print(f"      🚫 ANCHOR VALIDATION FAILED!")
+            print(f"      Reconstructed data has {errors} bit errors vs golden truth")
+            print(f"      Reason: Anchor mismatch - majority is corrupted")
+            print(f"      Action: Quarantining chunk, will restore from golden anchor")
 
-        # WRITE-BACK TO ALL REPLICAS (force convergence)
+            # Quarantine and restore
+            self.quarantined_chunks.add(chunk_idx)
+            self._restore_from_golden(chunk_idx, readable)
+            return
+
+        # Anchor validation PASSED - safe to write-back
+        print(f"      ✓ Anchor validation PASSED - reconstructed data is correct")
+
+        # WRITE-BACK TO ALL REPLICAS (force convergence to GOLDEN TRUTH)
         disagreements = 0
         replicas_repaired = 0
 
+        import zlib
+        golden_checksum = zlib.crc32(golden_truth.encode()) & 0xffffffff
+
         for tile in readable:
-            # Count bit-level disagreements
-            if tile.binary_data != correct_data:
-                for i in range(min(len(tile.binary_data), len(correct_data))):
-                    if tile.binary_data[i] != correct_data[i]:
+            # Count bit-level disagreements vs GOLDEN TRUTH
+            if tile.binary_data != golden_truth:
+                for i in range(min(len(tile.binary_data), len(golden_truth))):
+                    if tile.binary_data[i] != golden_truth[i]:
                         disagreements += 1
 
-                # MANDATORY WRITE-BACK
-                tile.binary_data = correct_data
-                tile.pattern = self.encoder.encode(correct_data)
-                tile.chunk_checksum = reconstructed_checksum
+                # MANDATORY WRITE-BACK (use GOLDEN TRUTH, not reconstructed!)
+                tile.binary_data = golden_truth
+                tile.pattern = self.encoder.encode(golden_truth)
+                tile.chunk_checksum = golden_checksum
                 replicas_repaired += 1
 
         # Update metrics
@@ -870,6 +958,37 @@ class BioRAIDController:
 
         if disagreements > 0:
             print(f"      🔧 Repaired {disagreements} bit disagreements across {replicas_repaired} replicas")
+        elif replicas_repaired == 0:
+            print(f"      ✓ All replicas match golden truth - no repairs needed")
+
+    def _restore_from_golden(self, chunk_idx: int, readable_replicas: List[Tile]):
+        """
+        Restore chunk from golden anchor truth when anchor validation fails.
+
+        This is the emergency recovery path when majority voting produces
+        corrupted results (self-corruption lock-in).
+        """
+        golden_truth = self.chunk_golden_truth.get(chunk_idx)
+        if not golden_truth:
+            print(f"      ✗ Cannot restore chunk {chunk_idx} - no golden anchor!")
+            return
+
+        import zlib
+        golden_checksum = zlib.crc32(golden_truth.encode()) & 0xffffffff
+
+        restored_count = 0
+        for tile in readable_replicas:
+            # Force overwrite with golden truth
+            tile.binary_data = golden_truth
+            tile.pattern = self.encoder.encode(golden_truth)
+            tile.chunk_checksum = golden_checksum
+            restored_count += 1
+
+        print(f"      ✓ Restored {restored_count} replicas from golden anchor")
+
+        # Remove from quarantine
+        self.quarantined_chunks.discard(chunk_idx)
+        self.scrub_writebacks += restored_count
 
     def _validate_chunk_mappings(self):
         """
@@ -1262,6 +1381,10 @@ def run_phase2_simulation(duration_days=365):
             if controller.chunks_at_risk:
                 print(f"  ⚠️  AT_RISK chunks: {sorted(controller.chunks_at_risk)}")
 
+            # Quarantined chunks (anchor validation failed)
+            if controller.quarantined_chunks:
+                print(f"  🚫 QUARANTINED chunks: {sorted(controller.quarantined_chunks)}")
+
             print(f"{'='*70}\n")
 
             # Save visualization
@@ -1319,12 +1442,19 @@ def run_phase2_simulation(duration_days=365):
     success_logical = logical_errors == 0
     success_replica = replica_error_rate < 5
     success_no_loops = len(controller.chunks_at_risk) == 0
+    success_no_quarantine = len(controller.quarantined_chunks) == 0
 
     print(f"  {'✓' if success_logical else '✗'} Logical bit errors = 0%")
     print(f"  {'✓' if success_replica else '✗'} Replica bit errors < 5%")
     print(f"  {'✓' if success_no_loops else '✗'} No AT_RISK chunk loops")
+    print(f"  {'✓' if success_no_quarantine else '✗'} No quarantined chunks")
 
-    if success_logical and success_replica and success_no_loops:
+    if controller.chunks_at_risk:
+        print(f"\n  AT_RISK chunks: {sorted(controller.chunks_at_risk)}")
+    if controller.quarantined_chunks:
+        print(f"  QUARANTINED chunks: {sorted(controller.quarantined_chunks)}")
+
+    if success_logical and success_replica and success_no_loops and success_no_quarantine:
         print(f"\n🎉 ALL SUCCESS CRITERIA MET! 🎉")
     else:
         print(f"\n⚠️  Some success criteria not met - see above")
