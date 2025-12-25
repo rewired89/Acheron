@@ -94,7 +94,8 @@ class BioRAIDController:
 
         # 3-way replication configuration
         self.replication_factor = 3  # Each bit stored in 3 tiles
-        self.bits_per_tile = 4  # How many unique bits each tile stores
+        self.bits_per_tile = 26  # How many unique bits each tile stores
+        # With 16 active tiles: 16/3 = 5 chunks × 26 bits = 130 bits capacity
 
         # Encoder for each tile
         self.encoder = BioelectricEncoder(grid_size=(30, 30), cells_per_bit=9)
