@@ -41,6 +41,7 @@ class TileState(Enum):
     SICK = "SICK"               # Degraded but online (60-80%), needs proactive rebuild
     DEGRADING = "DEGRADING"     # Flagged for rebuild (legacy - will be removed)
     REGENERATING = "REGENERATING"  # Currently rebuilding
+    CLEAN_LOCKED = "CLEAN_LOCKED"  # Recently scrubbed, locked from proactive rebuild (7 days)
     STERILE = "STERILE"         # Empty, ready for seeding
     FAILED = "FAILED"           # Unusable (<60%)
 
@@ -68,6 +69,7 @@ class Tile:
     last_rebuild_attempt_day: int = -999  # Last day rebuild was attempted for this tile
     regen_complete_day: int = -999  # Day when regeneration completed
     chunk_checksum: int = 0  # CRC32 checksum of chunk data
+    clean_locked_until_day: int = -999  # Day when CLEAN_LOCKED expires (stabilization window)
 
 
 class BioRAIDController:
@@ -148,7 +150,9 @@ class BioRAIDController:
 
         # Metrics separation (CRITICAL for analysis)
         self.logical_bit_errors = 0  # Majority wrong (vs ground truth)
-        self.replica_bit_errors = 0  # Disagreements across replicas
+        self.replica_bit_errors = 0  # Disagreements across replicas (ALL readable)
+        self.replica_bit_errors_active_only = 0  # Disagreements only from ACTIVE tiles (convergence metric)
+        self.replica_offline_count = 0  # Count of offline replicas (REGENERATING/unreadable)
         self.scrub_writebacks = 0  # Actual fixes performed
         self.scrub_failed_to_converge = 0  # Scrubs that failed post-condition
         self.new_flips_per_day = []  # Track daily error injection rate
@@ -243,9 +247,9 @@ class BioRAIDController:
         Returns:
             Reconstructed binary string
         """
-        # READABLE tiles: ACTIVE + SICK (both can be read, ≥60% integrity)
+        # READABLE tiles: ACTIVE + SICK + CLEAN_LOCKED (all can be read, ≥60% integrity)
         active_tiles = [t for t in self.tiles
-                       if t.state in [TileState.ACTIVE, TileState.SICK]
+                       if t.state in [TileState.ACTIVE, TileState.SICK, TileState.CLEAN_LOCKED]
                        and t.binary_data]
 
         if len(active_tiles) == 0:
@@ -313,7 +317,7 @@ class BioRAIDController:
 
         # Age all tiles and update states
         for tile in self.tiles:
-            if tile.state in [TileState.ACTIVE, TileState.SICK]:
+            if tile.state in [TileState.ACTIVE, TileState.SICK, TileState.CLEAN_LOCKED]:
                 tile.age += 1
 
                 # REALISTIC DEGRADATION: 0.3% per day (reaches 80% in ~70 days)
@@ -332,22 +336,24 @@ class BioRAIDController:
                     tile.integrity *= 0.75
                     self.total_degradation_events += 1
 
-                # State transitions based on integrity
+                # State transitions based on integrity (but respect CLEAN_LOCKED!)
                 if tile.integrity < 0.60:
-                    # FAILED: Below 60%, unusable
+                    # FAILED: Below 60%, unusable (even if CLEAN_LOCKED)
                     if tile.state != TileState.FAILED:
                         tile.state = TileState.FAILED
+                        tile.clean_locked_until_day = -999  # Clear lock
                         print(f"✗ Tile {tile.id} FAILED (integrity: {tile.integrity:.2%})")
-                elif tile.integrity < 0.80:
-                    # SICK: 60-80%, needs proactive rebuild
-                    if tile.state != TileState.SICK:
-                        tile.state = TileState.SICK
-                        print(f"⚠️  Tile {tile.id} is SICK (integrity: {tile.integrity:.2%}) - proactive rebuild needed")
-                else:
-                    # ACTIVE: ≥80%, healthy
-                    if tile.state == TileState.SICK:
-                        tile.state = TileState.ACTIVE
-                        print(f"✓ Tile {tile.id} recovered to ACTIVE (integrity: {tile.integrity:.2%})")
+                elif tile.state != TileState.CLEAN_LOCKED:  # Don't transition if CLEAN_LOCKED
+                    if tile.integrity < 0.80:
+                        # SICK: 60-80%, needs proactive rebuild
+                        if tile.state != TileState.SICK:
+                            tile.state = TileState.SICK
+                            print(f"⚠️  Tile {tile.id} is SICK (integrity: {tile.integrity:.2%}) - proactive rebuild needed")
+                    else:
+                        # ACTIVE: ≥80%, healthy
+                        if tile.state == TileState.SICK:
+                            tile.state = TileState.ACTIVE
+                            print(f"✓ Tile {tile.id} recovered to ACTIVE (integrity: {tile.integrity:.2%})")
 
         # Process regenerating tiles
         for tile in self.tiles:
@@ -382,7 +388,47 @@ class BioRAIDController:
                             tile.chunk_checksum = zlib.crc32(golden_truth.encode()) & 0xffffffff
 
                             print(f"      ✓ Forced write-back from GOLDEN ANCHOR ({len(golden_truth)} bits)")
-                            print(f"      ✓ Tile {tile.id} now guaranteed correct")
+
+                            # POST-CONDITION: Verify ALL ACTIVE replicas match anchor
+                            replica_ids = self.chunk_replicas[chunk_idx]
+                            replicas = [self.tiles[tid] for tid in replica_ids]
+
+                            # Check all live replicas (this tile is still REGENERATING, so check others)
+                            live_replicas = [t for t in replicas
+                                           if t.state in [TileState.ACTIVE, TileState.SICK, TileState.CLEAN_LOCKED]
+                                           and t.binary_data]
+
+                            mismatches = []
+                            for rep in live_replicas:
+                                if rep.binary_data != golden_truth:
+                                    mismatches.append(rep.id)
+
+                            if mismatches:
+                                print(f"      ⚠️  POST-CONDITION FAILED: {len(mismatches)} replicas still mismatch anchor: {mismatches}")
+                                print(f"      🔁 Retrying write-back ONCE...")
+
+                                # RETRY: Force overwrite all mismatching replicas
+                                for tid in mismatches:
+                                    rep = self.tiles[tid]
+                                    rep.binary_data = golden_truth
+                                    rep.pattern = self.encoder.encode(golden_truth)
+                                    rep.chunk_checksum = zlib.crc32(golden_truth.encode()) & 0xffffffff
+
+                                # Verify again
+                                still_mismatches = []
+                                for tid in mismatches:
+                                    rep = self.tiles[tid]
+                                    if rep.binary_data != golden_truth:
+                                        still_mismatches.append(tid)
+
+                                if still_mismatches:
+                                    print(f"      ✗ POST-CONDITION STILL FAILED after retry: {still_mismatches}")
+                                    self.scrub_failed_to_converge += 1
+                                else:
+                                    print(f"      ✓ POST-CONDITION VERIFIED after retry: all replicas match anchor")
+                            else:
+                                print(f"      ✓ POST-CONDITION VERIFIED: all {len(live_replicas)} replicas match anchor")
+                                print(f"      ✓ Tile {tile.id} now guaranteed correct")
                         else:
                             print(f"      ⚠️  No golden anchor - using best replica fallback")
 
@@ -392,7 +438,7 @@ class BioRAIDController:
                             # Get all readable replicas (excluding this tile which is still REGENERATING)
                             other_replicas = [t for t in replicas
                                              if t.id != tile.id
-                                             and t.state in [TileState.ACTIVE, TileState.SICK]
+                                             and t.state in [TileState.ACTIVE, TileState.SICK, TileState.CLEAN_LOCKED]
                                              and t.binary_data]
 
                             if len(other_replicas) >= 1:
@@ -405,13 +451,32 @@ class BioRAIDController:
                             else:
                                 print(f"      ✗ No replicas available - data may be incorrect!")
 
-                    # NOW mark as Active
-                    tile.state = TileState.ACTIVE
+                    # NOW mark as CLEAN_LOCKED (stabilization window to reduce churn)
+                    # CLEAN_LOCKED for 7 days - cannot be replaced proactively
+                    tile.state = TileState.CLEAN_LOCKED
                     tile.integrity = 0.98  # Near-perfect regeneration
                     tile.age = 0
                     tile.regeneration_progress = 0.0
                     tile.regen_complete_day = self.uptime_days
+                    tile.clean_locked_until_day = self.uptime_days + 7
                     tile.needs_scrub = False  # Already did hard scrub above
+                    print(f"  🔒 Tile {tile.id} marked CLEAN_LOCKED for 7 days (until day {tile.clean_locked_until_day})")
+
+        # Check for expired CLEAN_LOCKED tiles and transition to ACTIVE
+        for tile in self.tiles:
+            if tile.state == TileState.CLEAN_LOCKED:
+                if self.uptime_days >= tile.clean_locked_until_day:
+                    # Lock expired - transition to ACTIVE (or SICK based on integrity)
+                    if tile.integrity >= 0.80:
+                        tile.state = TileState.ACTIVE
+                        print(f"🔓 Tile {tile.id} CLEAN_LOCKED expired → ACTIVE (integrity: {tile.integrity:.2%})")
+                    elif tile.integrity >= 0.60:
+                        tile.state = TileState.SICK
+                        print(f"🔓 Tile {tile.id} CLEAN_LOCKED expired → SICK (integrity: {tile.integrity:.2%})")
+                    else:
+                        tile.state = TileState.FAILED
+                        print(f"🔓 Tile {tile.id} CLEAN_LOCKED expired → FAILED (integrity: {tile.integrity:.2%})")
+                    tile.clean_locked_until_day = -999
 
         # Adaptive scrubbing: if SICK tiles or recent rebuild, scrub every 2 days
         sick_count = sum(1 for t in self.tiles if t.state == TileState.SICK)
@@ -495,13 +560,15 @@ class BioRAIDController:
                 print(f"   Creating new replica immediately (bypasses all throttling)...")
 
                 # Force top-up for this chunk
+                # Count only LIVE replicas (ACTIVE/SICK, NOT REGENERATING)
                 before_count = len([t for t in self.chunk_replicas[chunk_idx]
-                                   if self.tiles[t].state in [TileState.ACTIVE, TileState.SICK, TileState.REGENERATING]])
+                                   if self.tiles[t].state in [TileState.ACTIVE, TileState.SICK]])
 
                 self._ensure_chunk_has_three_replicas(chunk_idx)
 
+                # Count only LIVE replicas (ACTIVE/SICK, NOT REGENERATING)
                 after_count = len([t for t in self.chunk_replicas[chunk_idx]
-                                  if self.tiles[t].state in [TileState.ACTIVE, TileState.SICK, TileState.REGENERATING]])
+                                  if self.tiles[t].state in [TileState.ACTIVE, TileState.SICK]])
 
                 # Update cooldown regardless (prevents tight loops)
                 self.chunk_at_risk_cooldown[chunk_idx] = self.uptime_days
@@ -523,7 +590,11 @@ class BioRAIDController:
             return
 
         # 2) PROACTIVE REBUILD: Replace SICK tiles before they fail
-        sick_tiles = [t for t in self.tiles if t.state == TileState.SICK and t.binary_data]
+        # CRITICAL: Skip CLEAN_LOCKED tiles (stabilization window)
+        sick_tiles = [t for t in self.tiles
+                     if t.state == TileState.SICK
+                     and t.binary_data
+                     and t.state != TileState.CLEAN_LOCKED]  # Don't replace recently regenerated tiles
 
         if sick_tiles:
             # Rebuild throttling for proactive rebuilds only
@@ -532,11 +603,16 @@ class BioRAIDController:
                 return
 
             # Filter out tiles that were recently attempted (prevent spam)
+            # Also filter out CLEAN_LOCKED tiles (even if they degrade to SICK during lock)
             eligible_tiles = [t for t in sick_tiles
-                            if (self.uptime_days - t.last_rebuild_attempt_day) >= 7]
+                            if (self.uptime_days - t.last_rebuild_attempt_day) >= 7
+                            and t.clean_locked_until_day < self.uptime_days]  # Lock expired
 
             if not eligible_tiles:
-                return  # All SICK tiles attempted recently
+                locked_count = sum(1 for t in sick_tiles if t.clean_locked_until_day >= self.uptime_days)
+                if locked_count > 0:
+                    print(f"⏸️  {locked_count} SICK tiles are CLEAN_LOCKED (stabilization window)")
+                return  # All SICK tiles attempted recently or locked
 
             # Pick the sickest tile
             tile_to_rebuild = min(eligible_tiles, key=lambda t: t.integrity)
@@ -563,9 +639,9 @@ class BioRAIDController:
         for chunk_idx, tile_ids in self.chunk_replicas.items():
             replicas = [self.tiles[tid] for tid in tile_ids]
 
-            # Count healthy replicas (ACTIVE or SICK, not FAILED, not REGENERATING)
+            # Count healthy replicas (ACTIVE or SICK or CLEAN_LOCKED, not FAILED, not REGENERATING)
             healthy = [t for t in replicas
-                      if t.state in [TileState.ACTIVE, TileState.SICK]
+                      if t.state in [TileState.ACTIVE, TileState.SICK, TileState.CLEAN_LOCKED]
                       and t.integrity >= 0.60]
 
             # Count regenerating (mid-rebuild, don't trigger again)
@@ -617,7 +693,7 @@ class BioRAIDController:
 
         # Find surviving replicas (readable, not FAILED)
         surviving = [t for t in replicas
-                    if t.state in [TileState.ACTIVE, TileState.SICK]
+                    if t.state in [TileState.ACTIVE, TileState.SICK, TileState.CLEAN_LOCKED]
                     and t.binary_data]
 
         if len(surviving) < 2:
@@ -692,7 +768,7 @@ class BioRAIDController:
 
         # Find surviving replicas (readable, not FAILED)
         surviving = [t for t in replicas
-                    if t.state in [TileState.ACTIVE, TileState.SICK]
+                    if t.state in [TileState.ACTIVE, TileState.SICK, TileState.CLEAN_LOCKED]
                     and t.binary_data
                     and t.integrity >= 0.60]
 
@@ -804,23 +880,36 @@ class BioRAIDController:
         Enforce 3-replica invariant: top-up chunk to 3 replicas if needed.
 
         This is CRITICAL to prevent chunk replica count from drifting below 3.
+
+        CRITICAL: REGENERATING tiles are NOT counted as live replicas - they are
+        "pending replicas" that will become available after regeneration completes.
         """
         replica_ids = self.chunk_replicas[chunk_idx]
         replicas = [self.tiles[tid] for tid in replica_ids]
 
-        # Filter out STERILE/FAILED tiles from mapping (they're not real replicas anymore)
-        readable_ids = [t.id for t in replicas
-                       if t.state in [TileState.ACTIVE, TileState.SICK, TileState.REGENERATING]]
+        # Filter to LIVE REPLICAS ONLY (ACTIVE or SICK or CLEAN_LOCKED, NOT REGENERATING)
+        # REGENERATING tiles are "pending" and don't count toward quorum yet
+        live_ids = [t.id for t in replicas
+                   if t.state in [TileState.ACTIVE, TileState.SICK, TileState.CLEAN_LOCKED]]
 
-        # Update mapping to only include readable replicas
-        self.chunk_replicas[chunk_idx] = readable_ids
+        # Track pending replicas (REGENERATING - will be available soon)
+        pending_ids = [t.id for t in replicas
+                      if t.state == TileState.REGENERATING]
 
-        if len(readable_ids) >= 3:
-            return  # Already have 3 replicas
+        # Update mapping to include both live and pending (for tracking purposes)
+        # But only live replicas count toward the 3-replica requirement
+        all_valid_ids = live_ids + pending_ids
+        self.chunk_replicas[chunk_idx] = all_valid_ids
+
+        if len(live_ids) >= 3:
+            return  # Already have 3 live replicas
 
         # Need to top-up!
-        missing_count = 3 - len(readable_ids)
-        print(f"  ⚠️  Chunk {chunk_idx} only has {len(readable_ids)} readable replicas, topping up {missing_count}...")
+        missing_count = 3 - len(live_ids)
+        if pending_ids:
+            print(f"  ⚠️  Chunk {chunk_idx} has {len(live_ids)} live replicas + {len(pending_ids)} pending (REGENERATING), topping up {missing_count}...")
+        else:
+            print(f"  ⚠️  Chunk {chunk_idx} only has {len(live_ids)} live replicas, topping up {missing_count}...")
 
         # USE GOLDEN ANCHOR (always correct!) for top-up
         golden_truth = self.chunk_golden_truth.get(chunk_idx)
@@ -831,7 +920,7 @@ class BioRAIDController:
             # Fallback to majority voting if no anchor
             readable_tiles = [self.tiles[tid] for tid in readable_ids]
             surviving = [t for t in readable_tiles
-                        if t.state in [TileState.ACTIVE, TileState.SICK]
+                        if t.state in [TileState.ACTIVE, TileState.SICK, TileState.CLEAN_LOCKED]
                         and t.binary_data]
 
             if not surviving:
@@ -878,9 +967,9 @@ class BioRAIDController:
         replica_ids = self.chunk_replicas[chunk_idx]
         replicas = [self.tiles[tid] for tid in replica_ids]
 
-        # Get readable replicas (ACTIVE or SICK, ≥60% integrity)
+        # Get readable replicas (ACTIVE or SICK or CLEAN_LOCKED, ≥60% integrity)
         readable = [t for t in replicas
-                   if t.state in [TileState.ACTIVE, TileState.SICK]
+                   if t.state in [TileState.ACTIVE, TileState.SICK, TileState.CLEAN_LOCKED]
                    and t.binary_data]
 
         # Get truth source for this chunk
@@ -1131,6 +1220,7 @@ class BioRAIDController:
         tile.needs_scrub = False
         tile.last_rebuild_attempt_day = -999
         tile.regen_complete_day = -999
+        tile.clean_locked_until_day = -999
         print(f"  Flushed tile {tile.id} to STERILE")
 
     def _get_neighbors(self, tile_id: int) -> List[int]:
@@ -1171,7 +1261,7 @@ class BioRAIDController:
 
                 # Get readable replicas
                 readable = [t for t in replicas
-                           if t.state in [TileState.ACTIVE, TileState.SICK]
+                           if t.state in [TileState.ACTIVE, TileState.SICK, TileState.CLEAN_LOCKED]
                            and t.binary_data]
 
                 # Reconstruct based on truth authority
@@ -1217,14 +1307,20 @@ class BioRAIDController:
             print(f"⚠️  Error calculating logical errors: {e}")
             return -1
 
-    def _calculate_replica_errors(self) -> int:
+    def _calculate_replica_errors(self) -> tuple:
         """
         Calculate replica bit errors: total disagreements vs GOLDEN ANCHOR.
 
         This metric tracks data drift and shows scrubbing effectiveness.
         Uses golden anchor as reference (not majority voting between replicas).
+
+        Returns:
+            (active_only_errors, offline_count) - only ACTIVE tiles for convergence metric
         """
-        total_disagreements = 0
+        active_only_disagreements = 0
+        offline_count = 0
+
+        readable_threshold = 0.60  # Minimum integrity to be readable
 
         for chunk_idx in self.chunk_replicas.keys():
             replica_ids = self.chunk_replicas[chunk_idx]
@@ -1235,18 +1331,28 @@ class BioRAIDController:
             if not golden_truth:
                 continue  # Skip chunks without anchor
 
-            # Get readable replicas
-            readable = [t for t in replicas
-                       if t.state in [TileState.ACTIVE, TileState.SICK]
-                       and t.binary_data]
+            # Count offline replicas (REGENERATING or unreadable)
+            for tile in replicas:
+                if tile.state == TileState.REGENERATING:
+                    offline_count += 1
+                elif tile.state not in [TileState.ACTIVE, TileState.SICK]:
+                    offline_count += 1
+                elif tile.integrity < readable_threshold:
+                    offline_count += 1
 
-            # Count disagreements vs GOLDEN ANCHOR (not each other!)
-            for tile in readable:
+            # Get ACTIVE replicas ONLY (not SICK, not REGENERATING)
+            active_only = [t for t in replicas
+                          if t.state == TileState.ACTIVE
+                          and t.integrity >= readable_threshold
+                          and t.binary_data]
+
+            # Count disagreements vs GOLDEN ANCHOR (only from ACTIVE tiles)
+            for tile in active_only:
                 for i in range(min(len(tile.binary_data), len(golden_truth))):
                     if tile.binary_data[i] != golden_truth[i]:
-                        total_disagreements += 1
+                        active_only_disagreements += 1
 
-        return total_disagreements
+        return (active_only_disagreements, offline_count)
 
     def _get_state_snapshot(self) -> dict:
         """Get current system state for history."""
@@ -1273,6 +1379,7 @@ class BioRAIDController:
             TileState.FAILED: '#FF3333',      # Red
             TileState.SICK: '#FF8C00',        # Dark orange
             TileState.REGENERATING: '#FFD700', # Yellow/gold
+            TileState.CLEAN_LOCKED: '#00DDAA', # Cyan/teal (locked but healthy)
             TileState.ACTIVE: '#00CC66',      # Green
             TileState.STERILE: '#A9B7C6',     # Gray/blue
             TileState.DEGRADING: '#FFA500'    # Orange (legacy)
@@ -1284,7 +1391,8 @@ class BioRAIDController:
             TileState.SICK: 2,
             TileState.REGENERATING: 3,
             TileState.DEGRADING: 4,
-            TileState.ACTIVE: 5
+            TileState.CLEAN_LOCKED: 5,
+            TileState.ACTIVE: 6
         }
 
         # Create grid
@@ -1300,9 +1408,10 @@ class BioRAIDController:
                               state_colors[TileState.SICK],
                               state_colors[TileState.REGENERATING],
                               state_colors[TileState.DEGRADING],
+                              state_colors[TileState.CLEAN_LOCKED],
                               state_colors[TileState.ACTIVE]])
 
-        bounds = [0, 1, 2, 3, 4, 5, 6]
+        bounds = [0, 1, 2, 3, 4, 5, 6, 7]
         norm = BoundaryNorm(bounds, cmap.N)
 
         im = ax1.imshow(grid, cmap=cmap, norm=norm, interpolation='nearest')
@@ -1321,6 +1430,7 @@ class BioRAIDController:
                 TileState.SICK: 'K',
                 TileState.DEGRADING: 'D',
                 TileState.REGENERATING: 'R',
+                TileState.CLEAN_LOCKED: 'L',
                 TileState.STERILE: 'S',
                 TileState.FAILED: 'F'
             }.get(tile.state, '?')
@@ -1332,6 +1442,7 @@ class BioRAIDController:
         # Legend
         legend_elements = [
             mpatches.Patch(color=state_colors[TileState.ACTIVE], label='Active (≥80%)'),
+            mpatches.Patch(color=state_colors[TileState.CLEAN_LOCKED], label='Clean-Locked (7d)'),
             mpatches.Patch(color=state_colors[TileState.SICK], label='Sick (60-80%)'),
             mpatches.Patch(color=state_colors[TileState.REGENERATING], label='Regenerating'),
             mpatches.Patch(color=state_colors[TileState.STERILE], label='Sterile'),
@@ -1417,6 +1528,7 @@ def run_phase2_simulation(duration_days=365):
 
             # Tile state counts
             active_count = sum(1 for t in controller.tiles if t.state == TileState.ACTIVE)
+            clean_locked_count = sum(1 for t in controller.tiles if t.state == TileState.CLEAN_LOCKED)
             sick_count = sum(1 for t in controller.tiles if t.state == TileState.SICK)
             regen_count = sum(1 for t in controller.tiles if t.state == TileState.REGENERATING)
             sterile_count = sum(1 for t in controller.tiles if t.state == TileState.STERILE)
@@ -1424,6 +1536,7 @@ def run_phase2_simulation(duration_days=365):
 
             print(f"\nTILE STATUS:")
             print(f"  Active (≥80%):     {active_count}")
+            print(f"  Clean-Locked:      {clean_locked_count}")
             print(f"  Sick (60-80%):     {sick_count}")
             print(f"  Regenerating:      {regen_count}")
             print(f"  Sterile:           {sterile_count}")
@@ -1431,6 +1544,7 @@ def run_phase2_simulation(duration_days=365):
 
             # List tile IDs per state
             active_ids = [t.id for t in controller.tiles if t.state == TileState.ACTIVE]
+            clean_locked_ids = [t.id for t in controller.tiles if t.state == TileState.CLEAN_LOCKED]
             sick_ids = [t.id for t in controller.tiles if t.state == TileState.SICK]
             regen_ids = [t.id for t in controller.tiles if t.state == TileState.REGENERATING]
             sterile_ids = [t.id for t in controller.tiles if t.state == TileState.STERILE]
@@ -1438,6 +1552,8 @@ def run_phase2_simulation(duration_days=365):
 
             if active_ids:
                 print(f"  Active IDs: {active_ids}")
+            if clean_locked_ids:
+                print(f"  Clean-Locked IDs: {clean_locked_ids}")
             if sick_ids:
                 print(f"  Sick IDs: {sick_ids}")
             if regen_ids:
@@ -1448,15 +1564,30 @@ def run_phase2_simulation(duration_days=365):
                 print(f"  Failed IDs: {failed_ids}")
 
             # Per-chunk replica mapping (using actual chunk_replicas mapping)
-            print(f"\nCHUNK REPLICA MAPPING:")
+            print(f"\nCHUNK REPLICA MAPPING (live vs pending):")
             for chunk_idx in sorted(controller.chunk_replicas.keys()):
                 tile_ids = controller.chunk_replicas[chunk_idx]
                 replicas_info = []
+                live_count = 0
+                pending_count = 0
                 for tid in tile_ids:
                     tile = controller.tiles[tid]
-                    state_char = {'ACTIVE': 'A', 'SICK': 'K', 'REGENERATING': 'R', 'FAILED': 'F', 'STERILE': 'S'}.get(tile.state.value, '?')
-                    replicas_info.append(f"{tile.id}({state_char},{tile.integrity:.0%})")
-                print(f"  Chunk {chunk_idx}: {' | '.join(replicas_info)} [{len(tile_ids)} replicas]")
+                    state_char = {'ACTIVE': 'A', 'SICK': 'K', 'REGENERATING': 'R', 'FAILED': 'F', 'STERILE': 'S', 'CLEAN_LOCKED': 'L'}.get(tile.state.value, '?')
+
+                    # Mark pending replicas differently
+                    if tile.state == TileState.REGENERATING:
+                        replicas_info.append(f"{tile.id}({state_char},{tile.integrity:.0%})[PENDING]")
+                        pending_count += 1
+                    elif tile.state in [TileState.ACTIVE, TileState.SICK, TileState.CLEAN_LOCKED]:
+                        replicas_info.append(f"{tile.id}({state_char},{tile.integrity:.0%})")
+                        live_count += 1
+                    else:
+                        replicas_info.append(f"{tile.id}({state_char},{tile.integrity:.0%})[OFFLINE]")
+
+                status = f"{live_count} live"
+                if pending_count > 0:
+                    status += f", {pending_count} pending"
+                print(f"  Chunk {chunk_idx}: {' | '.join(replicas_info)} [{status}]")
 
             # ASSERT: All chunks must have exactly 3 replicas
             for chunk_idx, tile_ids in controller.chunk_replicas.items():
@@ -1480,14 +1611,22 @@ def run_phase2_simulation(duration_days=365):
             else:
                 print(f"  ⚠️  Logical errors: calculation failed")
 
-            # Replica bit errors (convergence metric)
-            replica_errors = controller._calculate_replica_errors()
-            total_bits = len(test_data) * controller.replication_factor
-            replica_error_rate = (replica_errors / total_bits * 100) if replica_errors > 0 else 0
+            # Replica bit errors (convergence metric - ACTIVE tiles only)
+            replica_errors_active, offline_count = controller._calculate_replica_errors()
+
+            # Count total ACTIVE tiles with data
+            active_tile_count = sum(1 for t in controller.tiles
+                                   if t.state == TileState.ACTIVE and t.binary_data)
+            total_active_bits = len(test_data) * active_tile_count // (controller.n_active // controller.replication_factor) if active_tile_count > 0 else 0
+
+            replica_error_rate = (replica_errors_active / total_active_bits * 100) if total_active_bits > 0 and replica_errors_active > 0 else 0
             if replica_error_rate < 5:
-                print(f"  ✓ Replica bit errors: {replica_errors} ({replica_error_rate:.2f}%) - GOOD")
+                print(f"  ✓ Replica bit errors (ACTIVE only): {replica_errors_active} ({replica_error_rate:.2f}%) - GOOD")
             else:
-                print(f"  ⚠️  Replica bit errors: {replica_errors} ({replica_error_rate:.2f}%) - HIGH")
+                print(f"  ⚠️  Replica bit errors (ACTIVE only): {replica_errors_active} ({replica_error_rate:.2f}%) - HIGH")
+
+            print(f"  📊 Replica availability: {offline_count} replicas offline (REGENERATING/unreadable)")
+            print(f"  📊 Convergence: {'YES' if replica_error_rate < 5 else 'NO'}")
 
             # Scrub effectiveness
             print(f"  📊 Scrub write-backs: {controller.scrub_writebacks} replicas repaired")
@@ -1550,19 +1689,26 @@ def run_phase2_simulation(duration_days=365):
     else:
         print(f"  ⚠️  Logical error calculation failed")
 
-    # Replica bit errors (convergence metric)
-    replica_errors = controller._calculate_replica_errors()
-    total_bits = len(test_data) * controller.replication_factor
-    replica_error_rate = (replica_errors / total_bits * 100) if replica_errors > 0 else 0
+    # Replica bit errors (convergence metric - ACTIVE tiles only)
+    replica_errors_active, offline_count = controller._calculate_replica_errors()
+
+    # Count total ACTIVE tiles with data
+    active_tile_count = sum(1 for t in controller.tiles
+                           if t.state == TileState.ACTIVE and t.binary_data)
+    total_active_bits = len(test_data) * active_tile_count // (controller.n_active // controller.replication_factor) if active_tile_count > 0 else 0
+
+    replica_error_rate = (replica_errors_active / total_active_bits * 100) if total_active_bits > 0 and replica_errors_active > 0 else 0
 
     if replica_error_rate == 0:
-        print(f"  ✓✓ REPLICA BIT ERRORS: 0 (0.0%) - PERFECT CONVERGENCE ✓✓")
+        print(f"  ✓✓ REPLICA BIT ERRORS (ACTIVE only): 0 (0.0%) - PERFECT CONVERGENCE ✓✓")
     elif replica_error_rate < 5:
-        print(f"  ✓ REPLICA BIT ERRORS: {replica_errors} ({replica_error_rate:.2f}%) - GOOD")
+        print(f"  ✓ REPLICA BIT ERRORS (ACTIVE only): {replica_errors_active} ({replica_error_rate:.2f}%) - GOOD")
         print(f"     Goal was <5% - achieved!")
     else:
-        print(f"  ⚠️  REPLICA BIT ERRORS: {replica_errors} ({replica_error_rate:.2f}%) - HIGH")
+        print(f"  ⚠️  REPLICA BIT ERRORS (ACTIVE only): {replica_errors_active} ({replica_error_rate:.2f}%) - HIGH")
         print(f"     Goal was <5% - needs improvement")
+
+    print(f"  📊 Replica availability: {offline_count} replicas offline (REGENERATING/unreadable)")
 
     # Scrub effectiveness
     print(f"\nSCRUBBING EFFECTIVENESS:")
