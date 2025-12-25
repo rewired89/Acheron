@@ -337,6 +337,8 @@ class BioRAIDController:
                     self.total_degradation_events += 1
 
                 # State transitions based on integrity (but respect CLEAN_LOCKED!)
+                # HYSTERESIS: Enter SICK at <75%, exit SICK at >85%
+                # This reduces flip-flopping and rebuild churn
                 if tile.integrity < 0.60:
                     # FAILED: Below 60%, unusable (even if CLEAN_LOCKED)
                     if tile.state != TileState.FAILED:
@@ -344,16 +346,17 @@ class BioRAIDController:
                         tile.clean_locked_until_day = -999  # Clear lock
                         print(f"✗ Tile {tile.id} FAILED (integrity: {tile.integrity:.2%})")
                 elif tile.state != TileState.CLEAN_LOCKED:  # Don't transition if CLEAN_LOCKED
-                    if tile.integrity < 0.80:
-                        # SICK: 60-80%, needs proactive rebuild
+                    if tile.integrity < 0.75:
+                        # SICK: <75%, needs proactive rebuild (hysteresis lower bound)
                         if tile.state != TileState.SICK:
                             tile.state = TileState.SICK
                             print(f"⚠️  Tile {tile.id} is SICK (integrity: {tile.integrity:.2%}) - proactive rebuild needed")
-                    else:
-                        # ACTIVE: ≥80%, healthy
+                    elif tile.integrity > 0.85:
+                        # ACTIVE: >85%, healthy (hysteresis upper bound)
                         if tile.state == TileState.SICK:
                             tile.state = TileState.ACTIVE
                             print(f"✓ Tile {tile.id} recovered to ACTIVE (integrity: {tile.integrity:.2%})")
+                    # Between 75% and 85%: maintain current state (hysteresis band)
 
         # Process regenerating tiles
         for tile in self.tiles:
@@ -605,10 +608,19 @@ class BioRAIDController:
                 return
 
             # Filter out tiles that were recently attempted (prevent spam)
+            # REBUILD COOLDOWN: 14 days unless integrity <60% (emergency)
             # Also filter out CLEAN_LOCKED tiles (even if they degrade to SICK during lock)
-            eligible_tiles = [t for t in sick_tiles
-                            if (self.uptime_days - t.last_rebuild_attempt_day) >= 7
-                            and t.clean_locked_until_day < self.uptime_days]  # Lock expired
+            eligible_tiles = []
+            for t in sick_tiles:
+                # Skip CLEAN_LOCKED tiles (stabilization window)
+                if t.clean_locked_until_day >= self.uptime_days:
+                    continue
+                # EMERGENCY: If integrity <60%, bypass cooldown (impending failure)
+                if t.integrity < 0.60:
+                    eligible_tiles.append(t)
+                # NORMAL: Require 14-day cooldown for proactive rebuilds
+                elif (self.uptime_days - t.last_rebuild_attempt_day) >= 14:
+                    eligible_tiles.append(t)
 
             if not eligible_tiles:
                 locked_count = sum(1 for t in sick_tiles if t.clean_locked_until_day >= self.uptime_days)
