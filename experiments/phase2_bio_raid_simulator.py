@@ -502,6 +502,12 @@ class BioRAIDController:
         self.rebuild_count += 1
         print(f"✓ Proactive rebuild #{self.rebuild_count} complete")
 
+        # ENFORCE 3-REPLICA INVARIANT: Top-up if needed
+        self._ensure_chunk_has_three_replicas(chunk_idx)
+
+        # Scrub this chunk immediately to correct any bit disagreements
+        self._scrub_chunk(chunk_idx)
+
         # Validate invariants
         self._validate_chunk_mappings()
 
@@ -579,6 +585,12 @@ class BioRAIDController:
         self.rebuild_count += 1
         print(f"✓ Emergency rebuild #{self.rebuild_count} complete")
 
+        # ENFORCE 3-REPLICA INVARIANT: Top-up if needed
+        self._ensure_chunk_has_three_replicas(chunk_idx)
+
+        # Scrub this chunk immediately to correct any bit disagreements
+        self._scrub_chunk(chunk_idx)
+
         # Validate invariants
         self._validate_chunk_mappings()
 
@@ -618,6 +630,97 @@ class BioRAIDController:
             reconstructed += majority_bit
 
         return reconstructed
+
+    def _ensure_chunk_has_three_replicas(self, chunk_idx: int):
+        """
+        Enforce 3-replica invariant: top-up chunk to 3 replicas if needed.
+
+        This is CRITICAL to prevent chunk replica count from drifting below 3.
+        """
+        replica_ids = self.chunk_replicas[chunk_idx]
+        replicas = [self.tiles[tid] for tid in replica_ids]
+
+        # Filter out STERILE/FAILED tiles from mapping (they're not real replicas anymore)
+        readable_ids = [t.id for t in replicas
+                       if t.state in [TileState.ACTIVE, TileState.SICK, TileState.REGENERATING]]
+
+        # Update mapping to only include readable replicas
+        self.chunk_replicas[chunk_idx] = readable_ids
+
+        if len(readable_ids) >= 3:
+            return  # Already have 3 replicas
+
+        # Need to top-up!
+        missing_count = 3 - len(readable_ids)
+        print(f"  ⚠️  Chunk {chunk_idx} only has {len(readable_ids)} readable replicas, topping up {missing_count}...")
+
+        # Get correct data via majority voting from surviving replicas
+        readable_tiles = [self.tiles[tid] for tid in readable_ids]
+        surviving = [t for t in readable_tiles
+                    if t.state in [TileState.ACTIVE, TileState.SICK]
+                    and t.binary_data]
+
+        if not surviving:
+            print(f"  ✗ FATAL: Cannot top-up chunk {chunk_idx} - no surviving replicas!")
+            return
+
+        correct_data = self._reconstruct_via_majority_vote(surviving)
+
+        # Find sterile spares to top-up
+        sterile = [t for t in self.tiles if t.state == TileState.STERILE]
+
+        for i in range(missing_count):
+            if not sterile:
+                print(f"  ✗ No sterile spares available for top-up!")
+                break
+
+            target = sterile.pop(0)
+
+            # Seed target with correct data
+            target.state = TileState.REGENERATING
+            target.binary_data = correct_data
+            target.pattern = self.encoder.encode(correct_data)
+            target.regeneration_progress = 0.0
+            target.needs_scrub = False
+            target.integrity = 0.0
+
+            # Add to chunk mapping
+            self.chunk_replicas[chunk_idx].append(target.id)
+            print(f"  ✓ Added replica on tile {target.id} (top-up #{i+1}/{missing_count})")
+
+    def _scrub_chunk(self, chunk_idx: int):
+        """
+        Scrub a specific chunk: read with majority voting, repair disagreements.
+
+        Runs immediately after rebuild/regen to ensure chunk consistency.
+        """
+        print(f"  🔍 Scrubbing chunk {chunk_idx}...")
+
+        replica_ids = self.chunk_replicas[chunk_idx]
+        replicas = [self.tiles[tid] for tid in replica_ids]
+
+        # Get readable replicas
+        readable = [t for t in replicas
+                   if t.state in [TileState.ACTIVE, TileState.SICK]
+                   and t.binary_data]
+
+        if len(readable) < 2:
+            print(f"  ⚠️  Cannot scrub chunk {chunk_idx} - only {len(readable)} readable replicas")
+            return
+
+        # Reconstruct correct data via majority voting
+        correct_data = self._reconstruct_via_majority_vote(readable)
+
+        # Repair disagreeing replicas
+        repairs = 0
+        for tile in readable:
+            if tile.binary_data != correct_data:
+                tile.binary_data = correct_data
+                tile.pattern = self.encoder.encode(correct_data)
+                repairs += 1
+
+        if repairs > 0:
+            print(f"  🔧 Repaired {repairs} replica disagreements in chunk {chunk_idx}")
 
     def _validate_chunk_mappings(self):
         """
@@ -872,17 +975,21 @@ def run_phase2_simulation(duration_days=365):
             if failed_ids:
                 print(f"  Failed IDs: {failed_ids}")
 
-            # Per-chunk replica mapping
+            # Per-chunk replica mapping (using actual chunk_replicas mapping)
             print(f"\nCHUNK REPLICA MAPPING:")
-            data_tiles = [t for t in controller.tiles if t.state in [TileState.ACTIVE, TileState.SICK] and t.binary_data]
-            for chunk_idx in range(0, len(data_tiles), controller.replication_factor):
-                chunk_tiles = data_tiles[chunk_idx:chunk_idx+controller.replication_factor]
-                chunk_num = chunk_idx // controller.replication_factor
+            for chunk_idx in sorted(controller.chunk_replicas.keys()):
+                tile_ids = controller.chunk_replicas[chunk_idx]
                 replicas_info = []
-                for tile in chunk_tiles:
-                    state_char = {'ACTIVE': 'A', 'SICK': 'K', 'REGENERATING': 'R', 'FAILED': 'F'}.get(tile.state.value, '?')
+                for tid in tile_ids:
+                    tile = controller.tiles[tid]
+                    state_char = {'ACTIVE': 'A', 'SICK': 'K', 'REGENERATING': 'R', 'FAILED': 'F', 'STERILE': 'S'}.get(tile.state.value, '?')
                     replicas_info.append(f"{tile.id}({state_char},{tile.integrity:.0%})")
-                print(f"  Chunk {chunk_num}: {' | '.join(replicas_info)}")
+                print(f"  Chunk {chunk_idx}: {' | '.join(replicas_info)} [{len(tile_ids)} replicas]")
+
+            # ASSERT: All chunks must have exactly 3 replicas
+            for chunk_idx, tile_ids in controller.chunk_replicas.items():
+                if len(tile_ids) != 3:
+                    print(f"  ✗ ASSERTION FAILED: Chunk {chunk_idx} has {len(tile_ids)} replicas, expected 3!")
 
             print(f"\nREBUILD STATS:")
             print(f"  Total rebuilds: {controller.rebuild_count}")
