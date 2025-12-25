@@ -37,11 +37,12 @@ from enum import Enum
 
 class TileState(Enum):
     """Tile operational states."""
-    ACTIVE = "ACTIVE"           # Storing data
-    DEGRADING = "DEGRADING"     # Flagged for rebuild
+    ACTIVE = "ACTIVE"           # Storing data, healthy (≥80%)
+    SICK = "SICK"               # Degraded but online (60-80%), needs proactive rebuild
+    DEGRADING = "DEGRADING"     # Flagged for rebuild (legacy - will be removed)
     REGENERATING = "REGENERATING"  # Currently rebuilding
     STERILE = "STERILE"         # Empty, ready for seeding
-    FAILED = "FAILED"           # Unusable
+    FAILED = "FAILED"           # Unusable (<60%)
 
 
 @dataclass
@@ -106,8 +107,8 @@ class BioRAIDController:
         self.scrub_repairs = 0
 
         # Rebuild throttling
-        self.donor_cooldown_days = 14  # Donors rest 2 weeks after fragmenting
-        self.max_rebuilds_per_week = 2
+        self.donor_cooldown_days = 7  # Donors rest 1 week after fragmenting
+        self.max_rebuilds_per_week = 3  # Allow 3 proactive rebuilds per week
         self.rebuilds_this_week = 0
         self.week_number = 0
 
@@ -235,9 +236,9 @@ class BioRAIDController:
             self.week_number = current_week
             self.rebuilds_this_week = 0
 
-        # Age all tiles
+        # Age all tiles and update states
         for tile in self.tiles:
-            if tile.state == TileState.ACTIVE:
+            if tile.state in [TileState.ACTIVE, TileState.SICK]:
                 tile.age += 1
 
                 # OPTIMIZED: Gentler degradation with ECC in place
@@ -250,11 +251,22 @@ class BioRAIDController:
                     tile.integrity *= np.random.uniform(0.90, 0.97)
                     self.total_degradation_events += 1
 
-                # OPTIMIZED: Flag for rebuild if below 75% (more conservative with ECC)
-                # Scrubbing keeps data intact even with degraded tiles
-                if tile.integrity < 0.75 and tile.state != TileState.DEGRADING:
-                    tile.state = TileState.DEGRADING
-                    print(f"⚠️  Tile {tile.id} degrading (integrity: {tile.integrity:.2%}) - rebuild queued")
+                # State transitions based on integrity
+                if tile.integrity < 0.60:
+                    # FAILED: Below 60%, unusable
+                    if tile.state != TileState.FAILED:
+                        tile.state = TileState.FAILED
+                        print(f"✗ Tile {tile.id} FAILED (integrity: {tile.integrity:.2%})")
+                elif tile.integrity < 0.80:
+                    # SICK: 60-80%, needs proactive rebuild
+                    if tile.state != TileState.SICK:
+                        tile.state = TileState.SICK
+                        print(f"⚠️  Tile {tile.id} is SICK (integrity: {tile.integrity:.2%}) - proactive rebuild needed")
+                else:
+                    # ACTIVE: ≥80%, healthy
+                    if tile.state == TileState.SICK:
+                        tile.state = TileState.ACTIVE
+                        print(f"✓ Tile {tile.id} recovered to ACTIVE (integrity: {tile.integrity:.2%})")
 
         # Process regenerating tiles
         for tile in self.tiles:
@@ -306,113 +318,186 @@ class BioRAIDController:
 
     def _check_rebuild_needed(self):
         """
-        Check if any degrading tiles need rebuild with throttling.
-        Prevents rebuild storms by limiting rebuilds per week.
+        Check for both proactive and reactive rebuild needs.
+
+        PROACTIVE: SICK tiles (60-80%) get replicas moved to healthy spares
+        REACTIVE: Chunks below quorum (<2 replicas) get emergency rebuild
         """
-        degrading = [t for t in self.tiles if t.state == TileState.DEGRADING]
         sterile = [t for t in self.tiles if t.state == TileState.STERILE]
 
-        if degrading and sterile:
-            # Rebuild throttling: max 2 rebuilds per week
-            if self.rebuilds_this_week >= self.max_rebuilds_per_week:
-                print(f"⏸️  Rebuild throttled (hit weekly limit: {self.rebuilds_this_week}/{self.max_rebuilds_per_week})")
-                return
+        if not sterile:
+            return  # No spare capacity for rebuilds
 
-            # Rebuild first degrading tile
-            tile_to_rebuild = degrading[0]
-            target_sterile = sterile[0]
-
-            self._initiate_rebuild(tile_to_rebuild, target_sterile)
-            self.rebuilds_this_week += 1
-
-    def _initiate_rebuild(self, failing_tile: Tile, target_sterile: Tile):
-        """
-        Initiate rebuild via fragmentation with intelligent donor selection.
-
-        Args:
-            failing_tile: Tile that needs replacement
-            target_sterile: Empty chamber to seed
-        """
-        print(f"\n{'='*60}")
-        print(f"REBUILD INITIATED")
-        print(f"{'='*60}")
-        print(f"Failing tile: {failing_tile.id} (integrity: {failing_tile.integrity:.2%})")
-        print(f"Target: {target_sterile.id} (sterile chamber)")
-
-        # FULLY RESET sterile chamber before fragmentation
-        target_sterile.binary_data = None
-        target_sterile.pattern = None
-        target_sterile.integrity = 0.0
-        target_sterile.age = 0
-        target_sterile.regeneration_progress = 0.0
-        target_sterile.needs_scrub = False
-
-        # Find the chunk that failing_tile belongs to (3-way replication)
-        # We need to find the other 2 replicas of the same chunk
-        active_tiles = [t for t in self.tiles if t.state == TileState.ACTIVE and t.binary_data]
-        failing_chunk_idx = None
-        for i in range(0, len(active_tiles), self.replication_factor):
-            replica_tiles = active_tiles[i:i+self.replication_factor]
-            if failing_tile in replica_tiles:
-                failing_chunk_idx = i
-                break
-
-        if failing_chunk_idx is None:
-            print("⚠️  Could not find chunk for failing tile!")
+        # 1) REACTIVE REBUILD: Check for lost quorum (critical!)
+        quorum_lost = self._check_quorum_loss()
+        if quorum_lost:
+            chunk_idx, failed_tiles = quorum_lost
+            print(f"\n🚨 EMERGENCY: Chunk {chunk_idx} lost quorum! ({len(failed_tiles)} replicas down)")
+            # Emergency rebuild bypasses throttling
+            self._reactive_rebuild(chunk_idx, sterile[0])
             return
 
-        # Get the 3 replicas (including the failing one)
-        chunk_replicas = active_tiles[failing_chunk_idx:failing_chunk_idx+self.replication_factor]
-        healthy_replicas = [t for t in chunk_replicas if t.id != failing_tile.id]
+        # 2) PROACTIVE REBUILD: Replace SICK tiles before they fail
+        sick_tiles = [t for t in self.tiles if t.state == TileState.SICK and t.binary_data]
 
-        # IMPROVED DONOR SELECTION
-        # 1. Prefer donors ≥95% integrity (optimal health)
-        # 2. Allow ≥92% in emergency mode
-        # 3. Respect donor cooldown (14 days)
+        if sick_tiles:
+            # Rebuild throttling for proactive rebuilds only
+            if self.rebuilds_this_week >= self.max_rebuilds_per_week:
+                print(f"⏸️  Proactive rebuild throttled (hit weekly limit: {self.rebuilds_this_week}/{self.max_rebuilds_per_week})")
+                return
 
+            # Pick the sickest tile
+            tile_to_rebuild = min(sick_tiles, key=lambda t: t.integrity)
+            print(f"\n🔧 PROACTIVE: Replacing SICK tile {tile_to_rebuild.id} before it fails")
+            self._proactive_rebuild(tile_to_rebuild, sterile[0])
+            self.rebuilds_this_week += 1
+
+    def _check_quorum_loss(self):
+        """
+        Check if any chunk has lost quorum (<2 healthy replicas).
+        Returns (chunk_idx, failed_tiles) if quorum lost, None otherwise.
+        """
+        active_tiles = [t for t in self.tiles if t.state in [TileState.ACTIVE, TileState.SICK] and t.binary_data]
+
+        # Group by chunks
+        for chunk_idx in range(0, len(active_tiles), self.replication_factor):
+            chunk_tiles = active_tiles[chunk_idx:chunk_idx+self.replication_factor]
+
+            # Count healthy replicas
+            healthy = [t for t in chunk_tiles if t.integrity >= 0.60]
+            failed = [t for t in chunk_tiles if t.integrity < 0.60 or t.state == TileState.FAILED]
+
+            if len(healthy) < 2:
+                # Lost quorum! Need emergency rebuild
+                return (chunk_idx // self.replication_factor, failed)
+
+        return None
+
+    def _proactive_rebuild(self, sick_tile: Tile, target_sterile: Tile):
+        """
+        Proactive rebuild: Replace SICK tile replica onto healthy spare.
+
+        Args:
+            sick_tile: SICK tile (60-80%) to replace
+            target_sterile: Empty chamber to seed
+        """
+        print(f"{'='*60}")
+        print(f"Failing tile: {sick_tile.id} (integrity: {sick_tile.integrity:.2%}) [SICK]")
+        print(f"Target: {target_sterile.id} (sterile chamber)")
+
+        # Find chunk and healthy replicas
+        active_tiles = [t for t in self.tiles if t.state in [TileState.ACTIVE, TileState.SICK] and t.binary_data]
+        chunk_replicas = self._find_chunk_replicas(sick_tile, active_tiles)
+
+        if not chunk_replicas:
+            print("⚠️  Could not find chunk for SICK tile!")
+            return
+
+        healthy_replicas = [t for t in chunk_replicas if t.id != sick_tile.id and t.state == TileState.ACTIVE]
+
+        # Donor selection: Prefer ≥95% (proactive threshold)
         preferred_donors = [t for t in healthy_replicas
                           if t.integrity >= 0.95
                           and (self.uptime_days - t.last_donor_day) >= self.donor_cooldown_days]
 
-        emergency_donors = [t for t in healthy_replicas
-                          if t.integrity >= 0.92
-                          and (self.uptime_days - t.last_donor_day) >= self.donor_cooldown_days]
-
-        if preferred_donors:
-            donor = max(preferred_donors, key=lambda t: t.integrity)
-            print(f"Donor: Tile {donor.id} (integrity: {donor.integrity:.2%}) [OPTIMAL]")
-        elif emergency_donors:
-            donor = max(emergency_donors, key=lambda t: t.integrity)
-            print(f"Donor: Tile {donor.id} (integrity: {donor.integrity:.2%}) [EMERGENCY]")
-            target_sterile.needs_scrub = True  # Force immediate scrub post-regen
-        else:
-            print("⚠️  No suitable donors available (all on cooldown or too degraded)!")
+        if not preferred_donors:
+            print("⚠️  No optimal donors available (need ≥95% integrity)")
             return
 
+        donor = max(preferred_donors, key=lambda t: t.integrity)
+        print(f"Donor: Tile {donor.id} (integrity: {donor.integrity:.2%}) [OPTIMAL]")
+
         # Fragment donor → seed target
-        target_sterile.state = TileState.REGENERATING
-        target_sterile.binary_data = donor.binary_data  # Pattern will replicate
-        target_sterile.pattern = donor.pattern.copy() if donor.pattern is not None else None
-        target_sterile.regeneration_progress = 0.0
+        self._seed_tile(target_sterile, donor)
 
-        # Donor damaged by fragmentation + track cooldown
-        donor.integrity *= 0.93  # Slightly more damage than before
-        donor.last_donor_day = self.uptime_days
-
-        # Decommission failing tile - FULL RESET
-        failing_tile.state = TileState.STERILE
-        failing_tile.binary_data = None
-        failing_tile.pattern = None
-        failing_tile.integrity = 0.0
-        failing_tile.age = 0
-        failing_tile.regeneration_progress = 0.0
-        failing_tile.last_donor_day = -999
-        failing_tile.needs_scrub = False
+        # Flush SICK tile to STERILE
+        self._flush_tile(sick_tile)
 
         self.rebuild_count += 1
-        print(f"✓ Rebuild #{self.rebuild_count} started")
-        print(f"  Donor cooldown: {self.donor_cooldown_days} days")
+        print(f"✓ Proactive rebuild #{self.rebuild_count} complete")
         print(f"{'='*60}\n")
+
+    def _reactive_rebuild(self, chunk_idx: int, target_sterile: Tile):
+        """
+        Reactive rebuild: Emergency rebuild for chunks that lost quorum.
+
+        Args:
+            chunk_idx: Chunk index that lost quorum
+            target_sterile: Empty chamber to seed
+        """
+        print(f"{'='*60}")
+        print(f"Target: {target_sterile.id} (sterile chamber)")
+
+        # Find the chunk
+        active_tiles = [t for t in self.tiles if t.state in [TileState.ACTIVE, TileState.SICK] and t.binary_data]
+        chunk_start = chunk_idx * self.replication_factor
+        chunk_tiles = active_tiles[chunk_start:chunk_start+self.replication_factor]
+
+        # Find any surviving replica
+        surviving = [t for t in chunk_tiles if t.integrity >= 0.60]
+
+        if not surviving:
+            print("✗ FATAL: No surviving replicas! Data lost for this chunk!")
+            return
+
+        # Emergency donor selection: Allow ≥92% (emergency threshold)
+        emergency_donors = [t for t in surviving if t.integrity >= 0.92]
+
+        if not emergency_donors:
+            print("⚠️  No emergency donors available (all <92%)")
+            return
+
+        donor = max(emergency_donors, key=lambda t: t.integrity)
+        print(f"Donor: Tile {donor.id} (integrity: {donor.integrity:.2%}) [EMERGENCY]")
+
+        # Fragment donor → seed target
+        self._seed_tile(target_sterile, donor, emergency=True)
+
+        self.rebuild_count += 1
+        print(f"✓ Emergency rebuild #{self.rebuild_count} complete")
+        print(f"{'='*60}\n")
+
+    def _find_chunk_replicas(self, tile: Tile, active_tiles: List[Tile]) -> Optional[List[Tile]]:
+        """Find all replicas of the chunk containing this tile."""
+        for i in range(0, len(active_tiles), self.replication_factor):
+            chunk_tiles = active_tiles[i:i+self.replication_factor]
+            if tile in chunk_tiles:
+                return chunk_tiles
+        return None
+
+    def _seed_tile(self, target: Tile, donor: Tile, emergency: bool = False):
+        """Seed a sterile tile from a donor via fragmentation."""
+        # FULLY RESET target chamber before fragmentation
+        target.binary_data = None
+        target.pattern = None
+        target.integrity = 0.0
+        target.age = 0
+        target.regeneration_progress = 0.0
+        target.needs_scrub = False
+
+        # Fragment donor → seed target
+        target.state = TileState.REGENERATING
+        target.binary_data = donor.binary_data
+        target.pattern = donor.pattern.copy() if donor.pattern is not None else None
+        target.regeneration_progress = 0.0
+        target.needs_scrub = emergency  # Force scrub for emergency rebuilds
+
+        # Donor damaged by fragmentation + track cooldown
+        donor.integrity *= 0.93
+        donor.last_donor_day = self.uptime_days
+        print(f"  Donor cooldown: {self.donor_cooldown_days} days")
+
+    def _flush_tile(self, tile: Tile):
+        """Flush a tile to STERILE state (full reset)."""
+        tile.state = TileState.STERILE
+        tile.binary_data = None
+        tile.pattern = None
+        tile.integrity = 0.0
+        tile.age = 0
+        tile.regeneration_progress = 0.0
+        tile.last_donor_day = -999
+        tile.needs_scrub = False
+        print(f"  Flushed tile {tile.id} to STERILE")
 
     def _get_neighbors(self, tile_id: int) -> List[int]:
         """Get neighboring tile IDs in 2D grid."""
@@ -442,26 +527,50 @@ class BioRAIDController:
 
     def visualize_cartridge(self, save_path=None):
         """
-        Visualize bio-RAID cartridge state.
+        Visualize bio-RAID cartridge state with proper colors.
         """
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
 
-        # Left: Cartridge tile grid
-        grid = np.zeros((4, 5))  # 4x5 = 20 tiles
-        colors_map = {
-            TileState.ACTIVE: 0.8,
-            TileState.DEGRADING: 0.4,
-            TileState.REGENERATING: 0.6,
-            TileState.STERILE: 0.0,
-            TileState.FAILED: 0.2
+        # Define discrete colors for each state
+        from matplotlib.colors import ListedColormap, BoundaryNorm
+
+        state_colors = {
+            TileState.FAILED: '#FF3333',      # Red
+            TileState.SICK: '#FF8C00',        # Dark orange
+            TileState.REGENERATING: '#FFD700', # Yellow/gold
+            TileState.ACTIVE: '#00CC66',      # Green
+            TileState.STERILE: '#A9B7C6',     # Gray/blue
+            TileState.DEGRADING: '#FFA500'    # Orange (legacy)
         }
 
+        state_values = {
+            TileState.STERILE: 0,
+            TileState.FAILED: 1,
+            TileState.SICK: 2,
+            TileState.REGENERATING: 3,
+            TileState.DEGRADING: 4,
+            TileState.ACTIVE: 5
+        }
+
+        # Create grid
+        grid = np.zeros((4, 5))  # 4x5 = 20 tiles
         for tile in self.tiles:
             row = tile.id // 5
             col = tile.id % 5
-            grid[row, col] = colors_map[tile.state]
+            grid[row, col] = state_values[tile.state]
 
-        im = ax1.imshow(grid, cmap='RdYlGn', vmin=0, vmax=1, interpolation='nearest')
+        # Create custom colormap
+        cmap = ListedColormap([state_colors[TileState.STERILE],
+                              state_colors[TileState.FAILED],
+                              state_colors[TileState.SICK],
+                              state_colors[TileState.REGENERATING],
+                              state_colors[TileState.DEGRADING],
+                              state_colors[TileState.ACTIVE]])
+
+        bounds = [0, 1, 2, 3, 4, 5, 6]
+        norm = BoundaryNorm(bounds, cmap.N)
+
+        im = ax1.imshow(grid, cmap=cmap, norm=norm, interpolation='nearest')
         ax1.set_title(f'Bio-RAID Cartridge - Day {self.uptime_days}',
                      fontsize=14, fontweight='bold')
         ax1.set_xticks([])
@@ -474,28 +583,32 @@ class BioRAIDController:
 
             state_char = {
                 TileState.ACTIVE: 'A',
+                TileState.SICK: 'K',
                 TileState.DEGRADING: 'D',
                 TileState.REGENERATING: 'R',
                 TileState.STERILE: 'S',
                 TileState.FAILED: 'F'
-            }[tile.state]
+            }.get(tile.state, '?')
 
             ax1.text(col, row, f'{tile.id}\n{state_char}\n{tile.integrity:.0%}',
                     ha='center', va='center', fontsize=9, fontweight='bold',
-                    color='white' if tile.state != TileState.STERILE else 'black')
+                    color='black' if tile.state == TileState.STERILE else 'white')
 
         # Legend
         legend_elements = [
-            mpatches.Patch(color='green', label='Active'),
-            mpatches.Patch(color='yellow', label='Degrading'),
-            mpatches.Patch(color='orange', label='Regenerating'),
-            mpatches.Patch(color='lightgray', label='Sterile'),
-            mpatches.Patch(color='red', label='Failed')
+            mpatches.Patch(color=state_colors[TileState.ACTIVE], label='Active (≥80%)'),
+            mpatches.Patch(color=state_colors[TileState.SICK], label='Sick (60-80%)'),
+            mpatches.Patch(color=state_colors[TileState.REGENERATING], label='Regenerating'),
+            mpatches.Patch(color=state_colors[TileState.STERILE], label='Sterile'),
+            mpatches.Patch(color=state_colors[TileState.FAILED], label='Failed (<60%)')
         ]
         ax1.legend(handles=legend_elements, loc='upper left', bbox_to_anchor=(1.05, 1))
 
         # Right: Statistics
         ax2.axis('off')
+        active_tiles = [t for t in self.tiles if t.state == TileState.ACTIVE]
+        avg_integrity = np.mean([t.integrity for t in active_tiles]) if active_tiles else 0.0
+
         stats_text = f"""
 BIO-RAID STATISTICS
 
@@ -505,13 +618,14 @@ Degradation Events: {self.total_degradation_events}
 Scrub Repairs: {self.scrub_repairs} bits
 
 TILE STATUS
-Active:       {sum(1 for t in self.tiles if t.state == TileState.ACTIVE)}
-Degrading:    {sum(1 for t in self.tiles if t.state == TileState.DEGRADING)}
-Regenerating: {sum(1 for t in self.tiles if t.state == TileState.REGENERATING)}
-Sterile:      {sum(1 for t in self.tiles if t.state == TileState.STERILE)}
+Active (≥80%):     {sum(1 for t in self.tiles if t.state == TileState.ACTIVE)}
+Sick (60-80%):     {sum(1 for t in self.tiles if t.state == TileState.SICK)}
+Regenerating:      {sum(1 for t in self.tiles if t.state == TileState.REGENERATING)}
+Sterile:           {sum(1 for t in self.tiles if t.state == TileState.STERILE)}
+Failed (<60%):     {sum(1 for t in self.tiles if t.state == TileState.FAILED)}
 
 RELIABILITY
-Avg Integrity: {np.mean([t.integrity for t in self.tiles if t.state == TileState.ACTIVE]):.1%}
+Avg Integrity: {avg_integrity:.1%}
 Data Protected: {'YES' if sum(1 for t in self.tiles if t.state == TileState.STERILE) > 0 else 'NO'}
 Uptime: {(self.uptime_days / max(self.uptime_days, 1)) * 100:.3f}%
 """
@@ -562,19 +676,71 @@ def run_phase2_simulation(duration_days=365):
 
         if day in checkpoints:
             # Checkpoint visualization
-            print(f"\n--- Day {day} Checkpoint ---")
-            print(f"Active tiles: {sum(1 for t in controller.tiles if t.state == TileState.ACTIVE)}")
-            print(f"Rebuilds completed: {controller.rebuild_count}")
+            print(f"\n{'='*70}")
+            print(f"DAY {day} CHECKPOINT")
+            print(f"{'='*70}")
+
+            # Tile state counts
+            active_count = sum(1 for t in controller.tiles if t.state == TileState.ACTIVE)
+            sick_count = sum(1 for t in controller.tiles if t.state == TileState.SICK)
+            regen_count = sum(1 for t in controller.tiles if t.state == TileState.REGENERATING)
+            sterile_count = sum(1 for t in controller.tiles if t.state == TileState.STERILE)
+            failed_count = sum(1 for t in controller.tiles if t.state == TileState.FAILED)
+
+            print(f"\nTILE STATUS:")
+            print(f"  Active (≥80%):     {active_count}")
+            print(f"  Sick (60-80%):     {sick_count}")
+            print(f"  Regenerating:      {regen_count}")
+            print(f"  Sterile:           {sterile_count}")
+            print(f"  Failed (<60%):     {failed_count}")
+
+            # List tile IDs per state
+            active_ids = [t.id for t in controller.tiles if t.state == TileState.ACTIVE]
+            sick_ids = [t.id for t in controller.tiles if t.state == TileState.SICK]
+            regen_ids = [t.id for t in controller.tiles if t.state == TileState.REGENERATING]
+            sterile_ids = [t.id for t in controller.tiles if t.state == TileState.STERILE]
+            failed_ids = [t.id for t in controller.tiles if t.state == TileState.FAILED]
+
+            if active_ids:
+                print(f"  Active IDs: {active_ids}")
+            if sick_ids:
+                print(f"  Sick IDs: {sick_ids}")
+            if regen_ids:
+                print(f"  Regenerating IDs: {regen_ids}")
+            if sterile_ids:
+                print(f"  Sterile IDs: {sterile_ids}")
+            if failed_ids:
+                print(f"  Failed IDs: {failed_ids}")
+
+            # Per-chunk replica mapping
+            print(f"\nCHUNK REPLICA MAPPING:")
+            data_tiles = [t for t in controller.tiles if t.state in [TileState.ACTIVE, TileState.SICK] and t.binary_data]
+            for chunk_idx in range(0, len(data_tiles), controller.replication_factor):
+                chunk_tiles = data_tiles[chunk_idx:chunk_idx+controller.replication_factor]
+                chunk_num = chunk_idx // controller.replication_factor
+                replicas_info = []
+                for tile in chunk_tiles:
+                    state_char = {'ACTIVE': 'A', 'SICK': 'K', 'REGENERATING': 'R', 'FAILED': 'F'}.get(tile.state.value, '?')
+                    replicas_info.append(f"{tile.id}({state_char},{tile.integrity:.0%})")
+                print(f"  Chunk {chunk_num}: {' | '.join(replicas_info)}")
+
+            print(f"\nREBUILD STATS:")
+            print(f"  Total rebuilds: {controller.rebuild_count}")
+            print(f"  Degradation events: {controller.total_degradation_events}")
 
             # Verify data integrity
             try:
                 read_data = controller.read_data()
                 if read_data == test_data:
-                    print("✓ Data integrity verified")
+                    print("\n✓ DATA INTEGRITY: VERIFIED")
                 else:
-                    print(f"⚠️  Data corruption detected!")
+                    errors = sum(o != d for o, d in zip(test_data, read_data))
+                    error_rate = errors / len(test_data) * 100
+                    print(f"\n⚠️  DATA INTEGRITY: {errors} bit errors ({error_rate:.1f}%)")
             except Exception as e:
-                print(f"⚠️  Read failed: {e}")
+                print(f"\n✗ DATA READ FAILED: {e}")
+
+            print(f"{'='*70}\n")
 
             # Save visualization
             controller.visualize_cartridge(save_path=f'analysis/bioraid_day{day}.png')
