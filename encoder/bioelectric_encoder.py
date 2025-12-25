@@ -46,8 +46,9 @@ class BioelectricEncoder:
         self.cells_per_bit = cells_per_bit
 
         # Voltage levels (planarian-specific)
+        # OPTIMIZED: Increased voltage separation for better bit stability
         self.V_high = -10.0  # mV - depolarized ("1")
-        self.V_low = -70.0   # mV - hyperpolarized ("0")
+        self.V_low = -80.0   # mV - hyperpolarized ("0") - OPTIMIZED from -70
         self.V_rest = -50.0  # mV - resting state
 
         # Calculate bit layout
