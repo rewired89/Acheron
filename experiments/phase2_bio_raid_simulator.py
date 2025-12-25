@@ -52,7 +52,7 @@ class Tile:
     """
     id: int
     state: TileState
-    integrity: float  # 0.0 to 1.0
+    integrity: float  # 0.0 to 1.0 (physical health, not data correctness)
     age: int  # days
     pattern: Optional[np.ndarray]  # Voltage grid
     binary_data: Optional[str]  # Stored bits
@@ -60,6 +60,7 @@ class Tile:
     last_donor_day: int = -999  # Last day this tile was used as a donor
     needs_scrub: bool = False  # Flag for post-regeneration scrub
     last_rebuild_attempt_day: int = -999  # Last day rebuild was attempted for this tile
+    regen_complete_day: int = -999  # Day when regeneration completed
 
 
 class BioRAIDController:
@@ -119,6 +120,10 @@ class BioRAIDController:
         self.uptime_days = 0
         self.history = []
 
+        # Chunk -> Tile mapping (for invariant enforcement)
+        # chunk_replicas[chunk_idx] = [tile_id1, tile_id2, tile_id3]
+        self.chunk_replicas = {}  # Will be initialized after write_data
+
     def write_data(self, binary_data: str):
         """
         Write data using 3-way replication for fault tolerance.
@@ -148,6 +153,9 @@ class BioRAIDController:
         # Each chunk gets stored in 3 tiles
         tile_idx = 0
         for chunk_idx, chunk in enumerate(chunks):
+            # Track which tiles hold this chunk's replicas
+            chunk_tile_ids = []
+
             # Store this chunk in 3 consecutive tiles
             for replica in range(self.replication_factor):
                 if tile_idx >= len(active_tiles):
@@ -156,11 +164,18 @@ class BioRAIDController:
                 tile = active_tiles[tile_idx]
                 tile.binary_data = chunk
                 tile.pattern = self.encoder.encode(chunk)
+                chunk_tile_ids.append(tile.id)
                 tile_idx += 1
+
+            # Store chunk->tile mapping
+            self.chunk_replicas[chunk_idx] = chunk_tile_ids
 
         total_bits_stored = len(chunks) * self.bits_per_tile * self.replication_factor
         print(f"✓ Wrote {len(binary_data)} unique bits (3-way replication = {total_bits_stored} total bits stored)")
         print(f"  Replicated across {tile_idx} tiles ({len(chunks)} chunks × {self.replication_factor} replicas)")
+
+        # Validate chunk mappings
+        self._validate_chunk_mappings()
 
     def read_data(self, repair_errors=False) -> str:
         """
@@ -292,6 +307,7 @@ class BioRAIDController:
                     tile.integrity = 0.98  # Near-perfect regeneration
                     tile.age = 0
                     tile.regeneration_progress = 0.0
+                    tile.regen_complete_day = self.uptime_days
                     tile.needs_scrub = True  # Force immediate scrub post-regen
                     print(f"✓ Tile {tile.id} regeneration complete (Day {self.uptime_days})")
 
@@ -394,26 +410,37 @@ class BioRAIDController:
         """
         Check if any chunk has lost quorum (<2 healthy replicas).
         Returns (chunk_idx, failed_tiles) if quorum lost, None otherwise.
+
+        Uses chunk_replicas mapping to ensure accurate tracking.
         """
-        active_tiles = [t for t in self.tiles if t.state in [TileState.ACTIVE, TileState.SICK] and t.binary_data]
+        for chunk_idx, tile_ids in self.chunk_replicas.items():
+            replicas = [self.tiles[tid] for tid in tile_ids]
 
-        # Group by chunks
-        for chunk_idx in range(0, len(active_tiles), self.replication_factor):
-            chunk_tiles = active_tiles[chunk_idx:chunk_idx+self.replication_factor]
+            # Count healthy replicas (ACTIVE or SICK, not FAILED, not REGENERATING)
+            healthy = [t for t in replicas
+                      if t.state in [TileState.ACTIVE, TileState.SICK]
+                      and t.integrity >= 0.60]
 
-            # Count healthy replicas
-            healthy = [t for t in chunk_tiles if t.integrity >= 0.60]
-            failed = [t for t in chunk_tiles if t.integrity < 0.60 or t.state == TileState.FAILED]
+            # Count regenerating (mid-rebuild, don't trigger again)
+            regenerating = [t for t in replicas if t.state == TileState.REGENERATING]
 
+            # If we're already regenerating one replica, don't trigger again
+            if regenerating:
+                continue
+
+            # Lost quorum if <2 healthy replicas
             if len(healthy) < 2:
-                # Lost quorum! Need emergency rebuild
-                return (chunk_idx // self.replication_factor, failed)
+                failed = [t for t in replicas if t not in healthy]
+                return (chunk_idx, failed)
 
         return None
 
     def _proactive_rebuild(self, sick_tile: Tile, target_sterile: Tile) -> bool:
         """
-        Proactive rebuild: Replace SICK tile replica onto healthy spare.
+        Proactive rebuild: Replace SICK tile replica using majority voting.
+
+        CRITICAL: Uses majority voting across all surviving replicas to reconstruct
+        correct bit state, NOT just copying from one donor!
 
         Args:
             sick_tile: SICK tile (60-80%) to replace
@@ -426,123 +453,197 @@ class BioRAIDController:
         print(f"Failing tile: {sick_tile.id} (integrity: {sick_tile.integrity:.2%}) [SICK]")
         print(f"Target: {target_sterile.id} (sterile chamber)")
 
-        # Find chunk and healthy replicas
-        active_tiles = [t for t in self.tiles if t.state in [TileState.ACTIVE, TileState.SICK] and t.binary_data]
-        chunk_replicas = self._find_chunk_replicas(sick_tile, active_tiles)
+        # Find which chunk this tile belongs to
+        chunk_idx = None
+        for cidx, tile_ids in self.chunk_replicas.items():
+            if sick_tile.id in tile_ids:
+                chunk_idx = cidx
+                break
 
-        if not chunk_replicas:
+        if chunk_idx is None:
             print("⚠️  Could not find chunk for SICK tile!")
             return False
 
-        # Get other replicas (exclude the sick one)
-        other_replicas = [t for t in chunk_replicas if t.id != sick_tile.id]
+        # Get all replicas for this chunk
+        replica_ids = self.chunk_replicas[chunk_idx]
+        replicas = [self.tiles[tid] for tid in replica_ids]
 
-        # TIERED DONOR SELECTION:
-        # 1. Prefer ≥88% integrity (lowered from 95%)
-        # 2. Fallback: choose best available if no one meets threshold
-        # 3. Respect donor cooldown
+        # Find surviving replicas (readable, not FAILED)
+        surviving = [t for t in replicas
+                    if t.state in [TileState.ACTIVE, TileState.SICK]
+                    and t.binary_data]
 
-        preferred_donors = [t for t in other_replicas
-                          if t.integrity >= 0.88
-                          and (self.uptime_days - t.last_donor_day) >= self.donor_cooldown_days]
-
-        available_donors = [t for t in other_replicas
-                          if (self.uptime_days - t.last_donor_day) >= self.donor_cooldown_days]
-
-        if preferred_donors:
-            donor = max(preferred_donors, key=lambda t: t.integrity)
-            print(f"Donor: Tile {donor.id} (integrity: {donor.integrity:.2%}) [OPTIMAL]")
-        elif available_donors:
-            # Fallback: choose best available, rely on scrub majority vote
-            donor = max(available_donors, key=lambda t: t.integrity)
-            print(f"Donor: Tile {donor.id} (integrity: {donor.integrity:.2%}) [FALLBACK - best available]")
-        else:
-            print("⚠️  No donors available (all on cooldown)")
+        if len(surviving) < 2:
+            print(f"⚠️  Not enough surviving replicas ({len(surviving)}/3)")
             return False
 
-        # Fragment donor → seed target
-        self._seed_tile(target_sterile, donor)
+        # RECONSTRUCT correct bit state using majority voting
+        reconstructed_data = self._reconstruct_via_majority_vote(surviving)
+
+        print(f"  Reconstructed data via majority vote from {len(surviving)} replicas")
+
+        # Seed target with reconstructed data
+        target_sterile.state = TileState.REGENERATING
+        target_sterile.binary_data = reconstructed_data
+        target_sterile.pattern = self.encoder.encode(reconstructed_data)
+        target_sterile.regeneration_progress = 0.0
+        target_sterile.needs_scrub = False
+        target_sterile.integrity = 0.0
+
+        # Update chunk mapping: replace sick_tile.id with target_sterile.id
+        self.chunk_replicas[chunk_idx] = [
+            target_sterile.id if tid == sick_tile.id else tid
+            for tid in replica_ids
+        ]
 
         # Flush SICK tile to STERILE
         self._flush_tile(sick_tile)
 
         self.rebuild_count += 1
         print(f"✓ Proactive rebuild #{self.rebuild_count} complete")
+
+        # Validate invariants
+        self._validate_chunk_mappings()
+
         print(f"{'='*60}\n")
         return True
 
     def _reactive_rebuild(self, chunk_idx: int, target_sterile: Tile):
         """
-        Reactive rebuild: Emergency rebuild for chunks that lost quorum.
+        Reactive rebuild: Emergency rebuild using majority voting.
+
+        CRITICAL: Uses majority voting across all surviving replicas to reconstruct
+        correct bit state, NOT just copying from one donor!
 
         Args:
             chunk_idx: Chunk index that lost quorum
             target_sterile: Empty chamber to seed
         """
         print(f"{'='*60}")
+        print(f"Emergency rebuild for chunk {chunk_idx}")
         print(f"Target: {target_sterile.id} (sterile chamber)")
 
-        # Find the chunk
-        active_tiles = [t for t in self.tiles if t.state in [TileState.ACTIVE, TileState.SICK] and t.binary_data]
-        chunk_start = chunk_idx * self.replication_factor
-        chunk_tiles = active_tiles[chunk_start:chunk_start+self.replication_factor]
+        # Get replica IDs for this chunk
+        if chunk_idx not in self.chunk_replicas:
+            print(f"✗ FATAL: Chunk {chunk_idx} not in mapping!")
+            return
 
-        # Find any surviving replica (≥60%)
-        surviving = [t for t in chunk_tiles if t.integrity >= 0.60]
+        replica_ids = self.chunk_replicas[chunk_idx]
+        replicas = [self.tiles[tid] for tid in replica_ids]
 
-        if not surviving:
+        # Find surviving replicas (readable, not FAILED)
+        surviving = [t for t in replicas
+                    if t.state in [TileState.ACTIVE, TileState.SICK]
+                    and t.binary_data
+                    and t.integrity >= 0.60]
+
+        if len(surviving) < 1:
             print("✗ FATAL: No surviving replicas! Data lost for this chunk!")
             return
 
-        # TIERED EMERGENCY DONOR SELECTION:
-        # 1. Prefer ≥75% (lowered from 92%)
-        # 2. Fallback: choose best available (emergency!)
-        emergency_donors = [t for t in surviving if t.integrity >= 0.75]
-
-        if emergency_donors:
-            donor = max(emergency_donors, key=lambda t: t.integrity)
-            print(f"Donor: Tile {donor.id} (integrity: {donor.integrity:.2%}) [EMERGENCY]")
+        # RECONSTRUCT correct bit state using majority voting (or best replica if only 1)
+        if len(surviving) >= 2:
+            reconstructed_data = self._reconstruct_via_majority_vote(surviving)
+            print(f"  Reconstructed via majority vote from {len(surviving)} replicas")
         else:
-            # Fallback: choose best available (this is an emergency!)
-            donor = max(surviving, key=lambda t: t.integrity)
-            print(f"Donor: Tile {donor.id} (integrity: {donor.integrity:.2%}) [EMERGENCY - BEST AVAILABLE]")
+            # Only 1 replica left - use it (no majority possible)
+            reconstructed_data = surviving[0].binary_data
+            print(f"  Using last surviving replica (tile {surviving[0].id})")
 
-        # Fragment donor → seed target
-        self._seed_tile(target_sterile, donor, emergency=True)
+        # Find a FAILED tile to replace
+        failed_tiles = [t for t in replicas if t.state == TileState.FAILED or t.integrity < 0.60]
+        if not failed_tiles:
+            print("⚠️  No failed tiles to replace in this chunk!")
+            return
+
+        failed_tile = failed_tiles[0]
+
+        # Seed target with reconstructed data
+        target_sterile.state = TileState.REGENERATING
+        target_sterile.binary_data = reconstructed_data
+        target_sterile.pattern = self.encoder.encode(reconstructed_data)
+        target_sterile.regeneration_progress = 0.0
+        target_sterile.needs_scrub = True  # Force scrub for emergency
+        target_sterile.integrity = 0.0
+
+        # Update chunk mapping: replace failed_tile.id with target_sterile.id
+        self.chunk_replicas[chunk_idx] = [
+            target_sterile.id if tid == failed_tile.id else tid
+            for tid in replica_ids
+        ]
+
+        # Flush failed tile to STERILE
+        if failed_tile.id != target_sterile.id:  # Safety check
+            self._flush_tile(failed_tile)
 
         self.rebuild_count += 1
         print(f"✓ Emergency rebuild #{self.rebuild_count} complete")
+
+        # Validate invariants
+        self._validate_chunk_mappings()
+
         print(f"{'='*60}\n")
 
-    def _find_chunk_replicas(self, tile: Tile, active_tiles: List[Tile]) -> Optional[List[Tile]]:
-        """Find all replicas of the chunk containing this tile."""
-        for i in range(0, len(active_tiles), self.replication_factor):
-            chunk_tiles = active_tiles[i:i+self.replication_factor]
-            if tile in chunk_tiles:
-                return chunk_tiles
-        return None
+    def _reconstruct_via_majority_vote(self, surviving_tiles: List[Tile]) -> str:
+        """
+        Reconstruct correct bit state using majority voting across surviving replicas.
 
-    def _seed_tile(self, target: Tile, donor: Tile, emergency: bool = False):
-        """Seed a sterile tile from a donor via fragmentation."""
-        # FULLY RESET target chamber before fragmentation
-        target.binary_data = None
-        target.pattern = None
-        target.integrity = 0.0
-        target.age = 0
-        target.regeneration_progress = 0.0
-        target.needs_scrub = False
+        This is the CRITICAL fix: integrity affects read reliability, but doesn't
+        corrupt the underlying data. We use majority voting to find the correct bits.
 
-        # Fragment donor → seed target
-        target.state = TileState.REGENERATING
-        target.binary_data = donor.binary_data
-        target.pattern = donor.pattern.copy() if donor.pattern is not None else None
-        target.regeneration_progress = 0.0
-        target.needs_scrub = emergency  # Force scrub for emergency rebuilds
+        Args:
+            surviving_tiles: List of tiles with this chunk's data
 
-        # Donor damaged by fragmentation + track cooldown
-        donor.integrity *= 0.93
-        donor.last_donor_day = self.uptime_days
-        print(f"  Donor cooldown: {self.donor_cooldown_days} days")
+        Returns:
+            Reconstructed binary string
+        """
+        if not surviving_tiles:
+            raise RuntimeError("No surviving tiles for majority vote!")
+
+        if len(surviving_tiles) == 1:
+            return surviving_tiles[0].binary_data
+
+        # Get all replicas
+        replicas = [t.binary_data for t in surviving_tiles]
+
+        # Majority vote bit-by-bit
+        max_len = max(len(r) for r in replicas)
+        reconstructed = ""
+
+        for bit_idx in range(max_len):
+            bits = [r[bit_idx] if bit_idx < len(r) else '0' for r in replicas]
+            ones = bits.count('1')
+            zeros = bits.count('0')
+            majority_bit = '1' if ones > zeros else '0'
+            reconstructed += majority_bit
+
+        return reconstructed
+
+    def _validate_chunk_mappings(self):
+        """
+        Validate chunk->tile mapping invariants.
+
+        CRITICAL: Every chunk must have exactly 3 replicas at all times
+        (unless mid-rebuild, in which case we should have a REGENERATING tile).
+        """
+        for chunk_idx, tile_ids in self.chunk_replicas.items():
+            # Assert exactly 3 tile IDs per chunk
+            if len(tile_ids) != 3:
+                raise RuntimeError(
+                    f"Chunk {chunk_idx} has {len(tile_ids)} replicas, expected 3! "
+                    f"Tile IDs: {tile_ids}"
+                )
+
+            # Count how many are readable (ACTIVE/SICK) vs REGENERATING
+            tiles = [self.tiles[tid] for tid in tile_ids]
+            readable = sum(1 for t in tiles if t.state in [TileState.ACTIVE, TileState.SICK])
+            regenerating = sum(1 for t in tiles if t.state == TileState.REGENERATING)
+
+            # Should have at least 1 readable or 1 regenerating
+            if readable == 0 and regenerating == 0:
+                print(f"⚠️  WARNING: Chunk {chunk_idx} has no readable replicas!")
+                for t in tiles:
+                    print(f"    Tile {t.id}: state={t.state.value}, integrity={t.integrity:.2%}")
 
     def _flush_tile(self, tile: Tile):
         """Flush a tile to STERILE state (full reset)."""
@@ -555,6 +656,7 @@ class BioRAIDController:
         tile.last_donor_day = -999
         tile.needs_scrub = False
         tile.last_rebuild_attempt_day = -999
+        tile.regen_complete_day = -999
         print(f"  Flushed tile {tile.id} to STERILE")
 
     def _get_neighbors(self, tile_id: int) -> List[int]:
