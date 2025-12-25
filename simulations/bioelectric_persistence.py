@@ -49,17 +49,20 @@ class PlanarianTissueModel:
         # Cell properties (planarian-specific values from Levin lab data)
         self.V_rest = -50.0  # mV - resting membrane potential
         self.V_high = -10.0  # mV - depolarized state ("bit 1")
-        self.V_low = -70.0   # mV - hyperpolarized state ("bit 0")
+        # OPTIMIZED: Increased separation from -70 to -80 for better bit distinction
+        self.V_low = -80.0   # mV - hyperpolarized state ("bit 0")
 
         # Gap junction conductance (how strongly cells couple)
         # Planarians have strong gap junction coupling for morphogenetic signaling
-        self.g_gap = 0.02  # nS (nanoSiemens)
+        # OPTIMIZED: Increased from 0.02 to 0.08 for better pattern stability
+        self.g_gap = 0.08  # nS (nanoSiemens)
 
         # Membrane resistance (higher = more stable voltage)
-        self.R_mem = 100.0  # MΩ (megaOhms) - planarian cells are resistive
+        self.R_mem = 150.0  # MΩ (megaOhms) - planarian cells are resistive
 
         # Ion channel dynamics
-        self.tau_relax = 60.0  # minutes - slow relaxation (key to persistence!)
+        # OPTIMIZED: Increased from 60 to 120 for slower degradation
+        self.tau_relax = 120.0  # minutes - slow relaxation (key to persistence!)
 
         # History tracking
         self.history = []
