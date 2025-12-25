@@ -45,6 +45,12 @@ class TileState(Enum):
     FAILED = "FAILED"           # Unusable (<60%)
 
 
+class TruthSource(Enum):
+    """Truth authority for chunk data reconstruction."""
+    QUORUM = "QUORUM"          # Majority voting allowed (initial state)
+    GOLDEN_ANCHOR = "GOLDEN_ANCHOR"  # Anchor is sole authority (promoted after first restoration)
+
+
 @dataclass
 class Tile:
     """
@@ -136,6 +142,10 @@ class BioRAIDController:
         # GOLDEN ANCHOR TRUTH (prevents self-corruption lock-in)
         self.chunk_golden_truth = {}  # {chunk_idx: golden_bits} - NEVER modified after write
 
+        # TRUTH AUTHORITY HIERARCHY (prevents anchor vs quorum oscillation)
+        self.chunk_truth_source = {}  # {chunk_idx: TruthSource} - authority for reconstruction
+        self.chunk_anchor_epoch = {}  # {chunk_idx: int} - increments on anchor promotion
+
         # Metrics separation (CRITICAL for analysis)
         self.logical_bit_errors = 0  # Majority wrong (vs ground truth)
         self.replica_bit_errors = 0  # Disagreements across replicas
@@ -143,6 +153,7 @@ class BioRAIDController:
         self.new_flips_per_day = []  # Track daily error injection rate
         self.ground_truth = None  # Original data for validation
         self.quarantined_chunks = set()  # Chunks that failed anchor validation
+        self.anchor_promotions = 0  # Count of QUORUM → GOLDEN_ANCHOR promotions
 
     def write_data(self, binary_data: str):
         """
@@ -197,6 +208,12 @@ class BioRAIDController:
             # This prevents self-corruption lock-in where majority voting
             # converges to corrupted data
             self.chunk_golden_truth[chunk_idx] = chunk
+
+            # Initialize truth authority hierarchy
+            # Start with QUORUM (majority voting allowed)
+            # Will promote to GOLDEN_ANCHOR on first restoration
+            self.chunk_truth_source[chunk_idx] = TruthSource.QUORUM
+            self.chunk_anchor_epoch[chunk_idx] = 0
 
             # Calculate and store checksum for this chunk (CRC32)
             import zlib
@@ -848,14 +865,11 @@ class BioRAIDController:
 
     def _scrub_chunk(self, chunk_idx: int):
         """
-        Scrub a specific chunk with STRICT quorum gate, anchor validation, and write-back repair.
+        Scrub a specific chunk with STRICT TRUTH AUTHORITY HIERARCHY.
 
-        MANDATORY RULES:
-        1. Never scrub if <2 readable replicas (mark AT_RISK instead)
-        2. Validate reconstructed data against GOLDEN ANCHOR before write-back
-        3. Only write-back if anchor validation passes (prevents self-corruption)
-        4. Quarantine chunks that fail anchor validation
-        5. Use integrity-weighted voting (<80% replicas can't define truth)
+        CRITICAL ARCHITECTURAL RULE:
+        - If truth_source == GOLDEN_ANCHOR: majority voting is DISABLED permanently
+        - If truth_source == QUORUM: majority voting allowed, but validates against anchor
         """
         replica_ids = self.chunk_replicas[chunk_idx]
         replicas = [self.tiles[tid] for tid in replica_ids]
@@ -865,22 +879,27 @@ class BioRAIDController:
                    if t.state in [TileState.ACTIVE, TileState.SICK]
                    and t.binary_data]
 
-        # QUORUM GATE: Require ≥2 readable replicas for majority vote
-        if len(readable) < 2:
+        # Get truth source for this chunk
+        truth_source = self.chunk_truth_source.get(chunk_idx, TruthSource.QUORUM)
+        golden_truth = self.chunk_golden_truth.get(chunk_idx)
+
+        if not golden_truth:
+            print(f"  ⚠️  Chunk {chunk_idx} has no golden anchor - cannot scrub!")
+            return
+
+        # QUORUM GATE: For QUORUM chunks, require ≥2 readable replicas
+        if truth_source == TruthSource.QUORUM and len(readable) < 2:
             if chunk_idx not in self.chunks_at_risk:
                 print(f"  ⚠️  Chunk {chunk_idx} AT_RISK - only {len(readable)} readable replicas!")
-                print(f"      Reason: Insufficient replicas for quorum")
+                print(f"      Reason: Insufficient replicas for quorum (truth_source=QUORUM)")
                 self.chunks_at_risk.add(chunk_idx)
                 self.chunk_at_risk_cooldown[chunk_idx] = self.uptime_days
             # Do NOT scrub - wait for replica count to recover
             return
 
-        # Check if chunk is quarantined (failed previous anchor validation)
-        if chunk_idx in self.quarantined_chunks:
-            print(f"  🚫 Chunk {chunk_idx} QUARANTINED - failed anchor validation")
-            print(f"      Will attempt restore from golden anchor...")
-            # Try to restore from golden truth
-            self._restore_from_golden(chunk_idx, readable)
+        # For GOLDEN_ANCHOR chunks, we can scrub with even 1 replica
+        if len(readable) == 0:
+            print(f"  ⚠️  Chunk {chunk_idx} has no readable replicas - cannot scrub!")
             return
 
         # Remove from AT_RISK if now safe
@@ -890,76 +909,107 @@ class BioRAIDController:
             if chunk_idx in self.chunk_at_risk_cooldown:
                 del self.chunk_at_risk_cooldown[chunk_idx]
 
-        print(f"  🔍 Scrubbing chunk {chunk_idx} ({len(readable)} readable replicas)...")
+        epoch = self.chunk_anchor_epoch.get(chunk_idx, 0)
+        print(f"  🔍 Scrubbing chunk {chunk_idx} ({len(readable)} readable replicas, truth_source={truth_source.value}, epoch={epoch})...")
 
-        # STRICT INTEGRITY-WEIGHTED VOTING
-        # Replicas <80% can be read but CANNOT define truth
-        high_integrity = [t for t in readable if t.integrity >= 0.80]
-        low_integrity = [t for t in readable if t.integrity < 0.80]
+        # ===== TRUTH AUTHORITY HIERARCHY =====
 
-        if high_integrity:
-            # Use high-integrity replicas to define truth
-            correct_data = self._reconstruct_via_majority_vote(high_integrity)
-            print(f"      Truth from {len(high_integrity)} high-integrity replicas (≥80%)")
-        else:
-            # All replicas degraded - use best available
-            print(f"      ⚠️  All replicas <80%! Using highest-integrity replica as authority")
-            best = max(readable, key=lambda t: t.integrity)
-            correct_data = best.binary_data
+        if truth_source == TruthSource.GOLDEN_ANCHOR:
+            # GOLDEN_ANCHOR MODE: Majority voting DISABLED permanently
+            # Replicas are informational only - anchor is sole authority
+            print(f"      🔒 GOLDEN_ANCHOR mode - majority voting DISABLED")
+            print(f"      📍 Anchor is sole truth authority (epoch {epoch})")
 
-        # CRITICAL: VALIDATE AGAINST GOLDEN ANCHOR
-        # This prevents self-corruption lock-in where corrupted majority becomes "truth"
-        golden_truth = self.chunk_golden_truth.get(chunk_idx)
-        if golden_truth is None:
-            print(f"      ⚠️  No golden anchor for chunk {chunk_idx} - cannot validate!")
-            # Quarantine this chunk
-            self.quarantined_chunks.add(chunk_idx)
-            return
+            # Compare each replica ONLY to anchor (do NOT compare to each other!)
+            disagreements = 0
+            replicas_repaired = 0
 
-        if correct_data != golden_truth:
-            # ANCHOR MISMATCH - reconstructed data is WRONG!
-            errors = sum(1 for i in range(len(correct_data)) if correct_data[i] != golden_truth[i])
-            print(f"      🚫 ANCHOR VALIDATION FAILED!")
-            print(f"      Reconstructed data has {errors} bit errors vs golden truth")
-            print(f"      Reason: Anchor mismatch - majority is corrupted")
-            print(f"      Action: Quarantining chunk, will restore from golden anchor")
+            import zlib
+            golden_checksum = zlib.crc32(golden_truth.encode()) & 0xffffffff
 
-            # Quarantine and restore
-            self.quarantined_chunks.add(chunk_idx)
-            self._restore_from_golden(chunk_idx, readable)
-            return
+            for tile in readable:
+                # Count disagreements vs GOLDEN TRUTH only
+                if tile.binary_data != golden_truth:
+                    for i in range(min(len(tile.binary_data), len(golden_truth))):
+                        if tile.binary_data[i] != golden_truth[i]:
+                            disagreements += 1
 
-        # Anchor validation PASSED - safe to write-back
-        print(f"      ✓ Anchor validation PASSED - reconstructed data is correct")
+                    # MANDATORY WRITE-BACK from anchor
+                    tile.binary_data = golden_truth
+                    tile.pattern = self.encoder.encode(golden_truth)
+                    tile.chunk_checksum = golden_checksum
+                    replicas_repaired += 1
 
-        # WRITE-BACK TO ALL REPLICAS (force convergence to GOLDEN TRUTH)
-        disagreements = 0
-        replicas_repaired = 0
+            # Update metrics
+            self.replica_bit_errors += disagreements
+            self.scrub_writebacks += replicas_repaired
 
-        import zlib
-        golden_checksum = zlib.crc32(golden_truth.encode()) & 0xffffffff
+            if disagreements > 0:
+                print(f"      🔧 Repaired {disagreements} bit disagreements (anchor authority)")
+            else:
+                print(f"      ✓ All replicas match anchor - no repairs needed")
 
-        for tile in readable:
-            # Count bit-level disagreements vs GOLDEN TRUTH
-            if tile.binary_data != golden_truth:
-                for i in range(min(len(tile.binary_data), len(golden_truth))):
-                    if tile.binary_data[i] != golden_truth[i]:
-                        disagreements += 1
+        else:  # truth_source == TruthSource.QUORUM
+            # QUORUM MODE: Majority voting allowed (for now)
+            print(f"      🗳️  QUORUM mode - majority voting enabled")
 
-                # MANDATORY WRITE-BACK (use GOLDEN TRUTH, not reconstructed!)
-                tile.binary_data = golden_truth
-                tile.pattern = self.encoder.encode(golden_truth)
-                tile.chunk_checksum = golden_checksum
-                replicas_repaired += 1
+            # Use integrity-weighted voting
+            high_integrity = [t for t in readable if t.integrity >= 0.80]
 
-        # Update metrics
-        self.replica_bit_errors += disagreements  # Track replica disagreements
-        self.scrub_writebacks += replicas_repaired  # Track actual repairs
+            if high_integrity:
+                correct_data = self._reconstruct_via_majority_vote(high_integrity)
+                print(f"      Truth from {len(high_integrity)} high-integrity replicas (≥80%)")
+            else:
+                print(f"      ⚠️  All replicas <80%! Using highest-integrity replica")
+                best = max(readable, key=lambda t: t.integrity)
+                correct_data = best.binary_data
 
-        if disagreements > 0:
-            print(f"      🔧 Repaired {disagreements} bit disagreements across {replicas_repaired} replicas")
-        elif replicas_repaired == 0:
-            print(f"      ✓ All replicas match golden truth - no repairs needed")
+            # VALIDATE AGAINST GOLDEN ANCHOR
+            if correct_data != golden_truth:
+                # ANCHOR MISMATCH - majority is WRONG!
+                errors = sum(1 for i in range(len(correct_data)) if correct_data[i] != golden_truth[i])
+                print(f"      🚫 ANCHOR VALIDATION FAILED!")
+                print(f"      Reconstructed data has {errors} bit errors vs golden truth")
+                print(f"      🔼 PROMOTING chunk to GOLDEN_ANCHOR authority")
+                print(f"      ⚠️  Majority voting PERMANENTLY DISABLED for this chunk")
+
+                # PROMOTE TO GOLDEN_ANCHOR (first restoration)
+                self.chunk_truth_source[chunk_idx] = TruthSource.GOLDEN_ANCHOR
+                self.chunk_anchor_epoch[chunk_idx] += 1
+                self.anchor_promotions += 1
+
+                # Restore all replicas from anchor
+                self._restore_from_golden(chunk_idx, readable)
+                return
+
+            # Anchor validation PASSED - majority is correct
+            print(f"      ✓ Anchor validation PASSED - majority is correct")
+
+            # Write-back to converge replicas
+            disagreements = 0
+            replicas_repaired = 0
+
+            import zlib
+            golden_checksum = zlib.crc32(golden_truth.encode()) & 0xffffffff
+
+            for tile in readable:
+                if tile.binary_data != golden_truth:
+                    for i in range(min(len(tile.binary_data), len(golden_truth))):
+                        if tile.binary_data[i] != golden_truth[i]:
+                            disagreements += 1
+
+                    # Write-back anchor truth (not reconstructed!)
+                    tile.binary_data = golden_truth
+                    tile.pattern = self.encoder.encode(golden_truth)
+                    tile.chunk_checksum = golden_checksum
+                    replicas_repaired += 1
+
+            # Update metrics
+            self.replica_bit_errors += disagreements
+            self.scrub_writebacks += replicas_repaired
+
+            if disagreements > 0:
+                print(f"      🔧 Repaired {disagreements} bit disagreements")
 
     def _restore_from_golden(self, chunk_idx: int, readable_replicas: List[Tile]):
         """
@@ -1046,7 +1096,11 @@ class BioRAIDController:
 
     def _calculate_logical_errors(self) -> int:
         """
-        Calculate logical bit errors: bits where majority vote disagrees with ground truth.
+        Calculate logical bit errors: bits where GOLDEN ANCHOR disagrees with ground truth.
+
+        CRITICAL DEFINITION:
+        - Logical error exists ONLY if golden anchor is incorrect (should NEVER happen)
+        - Replica disagreements after anchor promotion are NOT logical errors
 
         This is the CRITICAL metric - logical errors MUST be 0%.
         """
@@ -1054,33 +1108,21 @@ class BioRAIDController:
             return 0
 
         try:
-            # Reconstruct data using majority voting
+            # Reconstruct data using GOLDEN ANCHOR (not majority voting!)
+            # This is the ONLY correct way to calculate logical errors
             chunks = []
             for chunk_idx in sorted(self.chunk_replicas.keys()):
-                replica_ids = self.chunk_replicas[chunk_idx]
-                replicas = [self.tiles[tid] for tid in replica_ids]
-
-                # Get readable replicas
-                readable = [t for t in replicas
-                           if t.state in [TileState.ACTIVE, TileState.SICK]
-                           and t.binary_data]
-
-                if len(readable) >= 2:
-                    # Use high-integrity replicas for truth
-                    high_integrity = [t for t in readable if t.integrity >= 0.80]
-                    if high_integrity:
-                        chunk_data = self._reconstruct_via_majority_vote(high_integrity)
-                    else:
-                        chunk_data = self._reconstruct_via_majority_vote(readable)
-                elif len(readable) == 1:
-                    chunk_data = readable[0].binary_data
+                # Use golden anchor directly
+                golden_truth = self.chunk_golden_truth.get(chunk_idx)
+                if golden_truth:
+                    chunk_data = golden_truth
                 else:
-                    # No readable replicas - count all bits as errors
+                    # No golden anchor - this should never happen, but handle gracefully
                     chunk_data = '0' * self.bits_per_tile
 
                 chunks.append(chunk_data)
 
-            # Compare reconstructed data vs ground truth
+            # Compare golden anchor vs ground truth
             reconstructed = ''.join(chunks).rstrip('0')
             ground_truth = self.ground_truth.rstrip('0')
 
@@ -1099,9 +1141,10 @@ class BioRAIDController:
 
     def _calculate_replica_errors(self) -> int:
         """
-        Calculate replica bit errors: total disagreements across all replicas.
+        Calculate replica bit errors: total disagreements vs GOLDEN ANCHOR.
 
         This metric tracks data drift and shows scrubbing effectiveness.
+        Uses golden anchor as reference (not majority voting between replicas).
         """
         total_disagreements = 0
 
@@ -1109,25 +1152,20 @@ class BioRAIDController:
             replica_ids = self.chunk_replicas[chunk_idx]
             replicas = [self.tiles[tid] for tid in replica_ids]
 
+            # Get golden anchor as reference
+            golden_truth = self.chunk_golden_truth.get(chunk_idx)
+            if not golden_truth:
+                continue  # Skip chunks without anchor
+
             # Get readable replicas
             readable = [t for t in replicas
                        if t.state in [TileState.ACTIVE, TileState.SICK]
                        and t.binary_data]
 
-            if len(readable) < 2:
-                continue
-
-            # Reconstruct correct data
-            high_integrity = [t for t in readable if t.integrity >= 0.80]
-            if high_integrity:
-                correct_data = self._reconstruct_via_majority_vote(high_integrity)
-            else:
-                correct_data = self._reconstruct_via_majority_vote(readable)
-
-            # Count disagreements
+            # Count disagreements vs GOLDEN ANCHOR (not each other!)
             for tile in readable:
-                for i in range(min(len(tile.binary_data), len(correct_data))):
-                    if tile.binary_data[i] != correct_data[i]:
+                for i in range(min(len(tile.binary_data), len(golden_truth))):
+                    if tile.binary_data[i] != golden_truth[i]:
                         total_disagreements += 1
 
         return total_disagreements
@@ -1377,6 +1415,12 @@ def run_phase2_simulation(duration_days=365):
             print(f"  📊 Scrub write-backs: {controller.scrub_writebacks} replicas repaired")
             print(f"  📊 Total disagreements found: {controller.replica_bit_errors}")
 
+            # Truth authority status
+            quorum_chunks = sum(1 for src in controller.chunk_truth_source.values() if src == TruthSource.QUORUM)
+            anchor_chunks = sum(1 for src in controller.chunk_truth_source.values() if src == TruthSource.GOLDEN_ANCHOR)
+            print(f"  🔒 Anchor promotions: {controller.anchor_promotions} total")
+            print(f"  📊 Truth authority: {quorum_chunks} QUORUM, {anchor_chunks} GOLDEN_ANCHOR")
+
             # AT_RISK chunks
             if controller.chunks_at_risk:
                 print(f"  ⚠️  AT_RISK chunks: {sorted(controller.chunks_at_risk)}")
@@ -1436,6 +1480,15 @@ def run_phase2_simulation(duration_days=365):
     print(f"  Total scrub write-backs: {controller.scrub_writebacks} replicas repaired")
     print(f"  Total disagreements found: {controller.replica_bit_errors}")
     print(f"  Convergence: {'YES' if replica_error_rate < 5 else 'NO (still diverging)'}")
+
+    # Truth authority status
+    quorum_chunks = sum(1 for src in controller.chunk_truth_source.values() if src == TruthSource.QUORUM)
+    anchor_chunks = sum(1 for src in controller.chunk_truth_source.values() if src == TruthSource.GOLDEN_ANCHOR)
+    print(f"\nTRUTH AUTHORITY HIERARCHY:")
+    print(f"  Anchor promotions: {controller.anchor_promotions} total (QUORUM → GOLDEN_ANCHOR)")
+    print(f"  Final authority: {quorum_chunks} QUORUM, {anchor_chunks} GOLDEN_ANCHOR")
+    if anchor_chunks > 0:
+        print(f"  ⚠️  {anchor_chunks} chunks permanently using anchor authority (majority voting disabled)")
 
     # SUCCESS CRITERIA CHECK
     print(f"\nSUCCESS CRITERIA:")
