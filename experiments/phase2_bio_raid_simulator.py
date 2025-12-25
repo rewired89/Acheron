@@ -150,10 +150,14 @@ class BioRAIDController:
         self.logical_bit_errors = 0  # Majority wrong (vs ground truth)
         self.replica_bit_errors = 0  # Disagreements across replicas
         self.scrub_writebacks = 0  # Actual fixes performed
+        self.scrub_failed_to_converge = 0  # Scrubs that failed post-condition
         self.new_flips_per_day = []  # Track daily error injection rate
         self.ground_truth = None  # Original data for validation
         self.quarantined_chunks = set()  # Chunks that failed anchor validation
         self.anchor_promotions = 0  # Count of QUORUM → GOLDEN_ANCHOR promotions
+
+        # AT_RISK loop detection
+        self.chunk_at_risk_history = {}  # {chunk_idx: [day1, day2, ...]} - track occurrences
 
     def write_data(self, binary_data: str):
         """
@@ -894,6 +898,11 @@ class BioRAIDController:
                 print(f"      Reason: Insufficient replicas for quorum (truth_source=QUORUM)")
                 self.chunks_at_risk.add(chunk_idx)
                 self.chunk_at_risk_cooldown[chunk_idx] = self.uptime_days
+
+                # Track AT_RISK occurrences for loop detection
+                if chunk_idx not in self.chunk_at_risk_history:
+                    self.chunk_at_risk_history[chunk_idx] = []
+                self.chunk_at_risk_history[chunk_idx].append(self.uptime_days)
             # Do NOT scrub - wait for replica count to recover
             return
 
@@ -946,6 +955,18 @@ class BioRAIDController:
 
             if disagreements > 0:
                 print(f"      🔧 Repaired {disagreements} bit disagreements (anchor authority)")
+
+                # POST-CONDITION: Verify all replicas now match anchor
+                mismatches = []
+                for tile in readable:
+                    if tile.binary_data != golden_truth:
+                        mismatches.append(tile.id)
+
+                if mismatches:
+                    print(f"      ✗ SCRUB FAILED TO CONVERGE! Replicas {mismatches} still mismatch after write-back")
+                    self.scrub_failed_to_converge += 1
+                else:
+                    print(f"      ✓ Post-condition verified: all replicas match anchor")
             else:
                 print(f"      ✓ All replicas match anchor - no repairs needed")
 
@@ -1010,6 +1031,38 @@ class BioRAIDController:
 
             if disagreements > 0:
                 print(f"      🔧 Repaired {disagreements} bit disagreements")
+
+                # POST-CONDITION: Verify all replicas now match golden truth
+                mismatches = []
+                for tile in readable:
+                    if tile.binary_data != golden_truth:
+                        mismatches.append(tile.id)
+
+                if mismatches:
+                    print(f"      ✗ SCRUB FAILED TO CONVERGE! Replicas {mismatches} still mismatch after write-back")
+                    self.scrub_failed_to_converge += 1
+                else:
+                    print(f"      ✓ Post-condition verified: all replicas match golden truth")
+
+    def _detect_at_risk_loops(self) -> dict:
+        """
+        Detect chunks stuck in AT_RISK loops.
+
+        A loop is defined as: same chunk becomes AT_RISK N times in M days.
+        Returns: {chunk_idx: occurrence_count}
+        """
+        loop_window_days = 30  # Window to check for loops
+        loop_threshold = 3  # Number of occurrences to count as loop
+
+        loops = {}
+        for chunk_idx, history in self.chunk_at_risk_history.items():
+            # Filter to recent occurrences within window
+            recent = [day for day in history if self.uptime_days - day <= loop_window_days]
+
+            if len(recent) >= loop_threshold:
+                loops[chunk_idx] = len(recent)
+
+        return loops
 
     def _restore_from_golden(self, chunk_idx: int, readable_replicas: List[Tile]):
         """
@@ -1096,11 +1149,12 @@ class BioRAIDController:
 
     def _calculate_logical_errors(self) -> int:
         """
-        Calculate logical bit errors: bits where GOLDEN ANCHOR disagrees with ground truth.
+        Calculate logical bit errors: final reconstructed data vs ground truth.
 
         CRITICAL DEFINITION:
-        - Logical error exists ONLY if golden anchor is incorrect (should NEVER happen)
-        - Replica disagreements after anchor promotion are NOT logical errors
+        - Logical error = final reconstructed chunk data != golden original chunk data
+        - Must NOT count replica disagreements, pre-repair reads, or majority mismatches
+        - Reconstruct each chunk from ACTUAL replicas (simulates real read operation)
 
         This is the CRITICAL metric - logical errors MUST be 0%.
         """
@@ -1108,21 +1162,45 @@ class BioRAIDController:
             return 0
 
         try:
-            # Reconstruct data using GOLDEN ANCHOR (not majority voting!)
-            # This is the ONLY correct way to calculate logical errors
+            # Reconstruct data by ACTUALLY reading from replicas
+            # This simulates what a real read operation would return
             chunks = []
             for chunk_idx in sorted(self.chunk_replicas.keys()):
-                # Use golden anchor directly
+                replica_ids = self.chunk_replicas[chunk_idx]
+                replicas = [self.tiles[tid] for tid in replica_ids]
+
+                # Get readable replicas
+                readable = [t for t in replicas
+                           if t.state in [TileState.ACTIVE, TileState.SICK]
+                           and t.binary_data]
+
+                # Reconstruct based on truth authority
+                truth_source = self.chunk_truth_source.get(chunk_idx, TruthSource.QUORUM)
                 golden_truth = self.chunk_golden_truth.get(chunk_idx)
-                if golden_truth:
-                    chunk_data = golden_truth
+
+                if truth_source == TruthSource.GOLDEN_ANCHOR:
+                    # GOLDEN_ANCHOR mode: use anchor directly (replicas are informational)
+                    if golden_truth:
+                        chunk_data = golden_truth
+                    else:
+                        chunk_data = '0' * self.bits_per_tile
                 else:
-                    # No golden anchor - this should never happen, but handle gracefully
-                    chunk_data = '0' * self.bits_per_tile
+                    # QUORUM mode: use majority voting from readable replicas
+                    if len(readable) >= 2:
+                        high_integrity = [t for t in readable if t.integrity >= 0.80]
+                        if high_integrity:
+                            chunk_data = self._reconstruct_via_majority_vote(high_integrity)
+                        else:
+                            chunk_data = self._reconstruct_via_majority_vote(readable)
+                    elif len(readable) == 1:
+                        chunk_data = readable[0].binary_data
+                    else:
+                        # No readable replicas - use golden anchor as fallback
+                        chunk_data = golden_truth if golden_truth else '0' * self.bits_per_tile
 
                 chunks.append(chunk_data)
 
-            # Compare golden anchor vs ground truth
+            # Compare reconstructed data vs ground truth
             reconstructed = ''.join(chunks).rstrip('0')
             ground_truth = self.ground_truth.rstrip('0')
 
@@ -1425,6 +1503,17 @@ def run_phase2_simulation(duration_days=365):
             if controller.chunks_at_risk:
                 print(f"  ⚠️  AT_RISK chunks: {sorted(controller.chunks_at_risk)}")
 
+            # AT_RISK loops (same chunk repeatedly AT_RISK)
+            at_risk_loops = controller._detect_at_risk_loops()
+            if at_risk_loops:
+                print(f"  🔁 AT_RISK LOOPS detected:")
+                for chunk_idx, count in at_risk_loops.items():
+                    print(f"      Chunk {chunk_idx}: {count} occurrences in 30 days")
+
+            # Scrub convergence failures
+            if controller.scrub_failed_to_converge > 0:
+                print(f"  ⚠️  Scrub convergence failures: {controller.scrub_failed_to_converge}")
+
             # Quarantined chunks (anchor validation failed)
             if controller.quarantined_chunks:
                 print(f"  🚫 QUARANTINED chunks: {sorted(controller.quarantined_chunks)}")
@@ -1494,20 +1583,29 @@ def run_phase2_simulation(duration_days=365):
     print(f"\nSUCCESS CRITERIA:")
     success_logical = logical_errors == 0
     success_replica = replica_error_rate < 5
-    success_no_loops = len(controller.chunks_at_risk) == 0
+    at_risk_loops = controller._detect_at_risk_loops()
+    success_no_loops = len(at_risk_loops) == 0
     success_no_quarantine = len(controller.quarantined_chunks) == 0
+    success_scrub_converge = controller.scrub_failed_to_converge == 0
 
     print(f"  {'✓' if success_logical else '✗'} Logical bit errors = 0%")
     print(f"  {'✓' if success_replica else '✗'} Replica bit errors < 5%")
     print(f"  {'✓' if success_no_loops else '✗'} No AT_RISK chunk loops")
     print(f"  {'✓' if success_no_quarantine else '✗'} No quarantined chunks")
+    print(f"  {'✓' if success_scrub_converge else '✗'} Scrubs converge successfully")
 
     if controller.chunks_at_risk:
-        print(f"\n  AT_RISK chunks: {sorted(controller.chunks_at_risk)}")
+        print(f"\n  Current AT_RISK chunks: {sorted(controller.chunks_at_risk)}")
+    if at_risk_loops:
+        print(f"  AT_RISK LOOPS detected:")
+        for chunk_idx, count in at_risk_loops.items():
+            print(f"    Chunk {chunk_idx}: {count} occurrences in 30 days")
     if controller.quarantined_chunks:
         print(f"  QUARANTINED chunks: {sorted(controller.quarantined_chunks)}")
+    if controller.scrub_failed_to_converge > 0:
+        print(f"  Scrub convergence failures: {controller.scrub_failed_to_converge}")
 
-    if success_logical and success_replica and success_no_loops and success_no_quarantine:
+    if success_logical and success_replica and success_no_loops and success_no_quarantine and success_scrub_converge:
         print(f"\n🎉 ALL SUCCESS CRITERIA MET! 🎉")
     else:
         print(f"\n⚠️  Some success criteria not met - see above")
