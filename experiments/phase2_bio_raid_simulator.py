@@ -59,6 +59,7 @@ class Tile:
     regeneration_progress: float = 0.0  # For rebuilding tiles
     last_donor_day: int = -999  # Last day this tile was used as a donor
     needs_scrub: bool = False  # Flag for post-regeneration scrub
+    last_rebuild_attempt_day: int = -999  # Last day rebuild was attempted for this tile
 
 
 class BioRAIDController:
@@ -171,10 +172,13 @@ class BioRAIDController:
         Returns:
             Reconstructed binary string
         """
-        active_tiles = [t for t in self.tiles if t.state == TileState.ACTIVE and t.binary_data]
+        # READABLE tiles: ACTIVE + SICK (both can be read, ≥60% integrity)
+        active_tiles = [t for t in self.tiles
+                       if t.state in [TileState.ACTIVE, TileState.SICK]
+                       and t.binary_data]
 
         if len(active_tiles) == 0:
-            raise RuntimeError("No active tiles with data!")
+            raise RuntimeError("No readable tiles with data!")
 
         # Group tiles by chunk (every 3 tiles = 1 chunk with 3 replicas)
         chunks = []
@@ -364,11 +368,27 @@ class BioRAIDController:
                 print(f"⏸️  Proactive rebuild throttled (hit weekly limit: {self.rebuilds_this_week}/{self.max_rebuilds_per_week})")
                 return
 
+            # Filter out tiles that were recently attempted (prevent spam)
+            eligible_tiles = [t for t in sick_tiles
+                            if (self.uptime_days - t.last_rebuild_attempt_day) >= 7]
+
+            if not eligible_tiles:
+                return  # All SICK tiles attempted recently
+
             # Pick the sickest tile
-            tile_to_rebuild = min(sick_tiles, key=lambda t: t.integrity)
+            tile_to_rebuild = min(eligible_tiles, key=lambda t: t.integrity)
             print(f"\n🔧 PROACTIVE: Replacing SICK tile {tile_to_rebuild.id} before it fails")
-            self._proactive_rebuild(tile_to_rebuild, sterile[0])
-            self.rebuilds_this_week += 1
+
+            # Randomize sterile spare selection
+            import random
+            target_sterile = random.choice(sterile)
+
+            success = self._proactive_rebuild(tile_to_rebuild, target_sterile)
+            if success:
+                self.rebuilds_this_week += 1
+            else:
+                # Mark attempt to prevent spam
+                tile_to_rebuild.last_rebuild_attempt_day = self.uptime_days
 
     def _check_quorum_loss(self):
         """
@@ -391,13 +411,16 @@ class BioRAIDController:
 
         return None
 
-    def _proactive_rebuild(self, sick_tile: Tile, target_sterile: Tile):
+    def _proactive_rebuild(self, sick_tile: Tile, target_sterile: Tile) -> bool:
         """
         Proactive rebuild: Replace SICK tile replica onto healthy spare.
 
         Args:
             sick_tile: SICK tile (60-80%) to replace
             target_sterile: Empty chamber to seed
+
+        Returns:
+            True if rebuild succeeded, False otherwise
         """
         print(f"{'='*60}")
         print(f"Failing tile: {sick_tile.id} (integrity: {sick_tile.integrity:.2%}) [SICK]")
@@ -409,21 +432,33 @@ class BioRAIDController:
 
         if not chunk_replicas:
             print("⚠️  Could not find chunk for SICK tile!")
-            return
+            return False
 
-        healthy_replicas = [t for t in chunk_replicas if t.id != sick_tile.id and t.state == TileState.ACTIVE]
+        # Get other replicas (exclude the sick one)
+        other_replicas = [t for t in chunk_replicas if t.id != sick_tile.id]
 
-        # Donor selection: Prefer ≥95% (proactive threshold)
-        preferred_donors = [t for t in healthy_replicas
-                          if t.integrity >= 0.95
+        # TIERED DONOR SELECTION:
+        # 1. Prefer ≥88% integrity (lowered from 95%)
+        # 2. Fallback: choose best available if no one meets threshold
+        # 3. Respect donor cooldown
+
+        preferred_donors = [t for t in other_replicas
+                          if t.integrity >= 0.88
                           and (self.uptime_days - t.last_donor_day) >= self.donor_cooldown_days]
 
-        if not preferred_donors:
-            print("⚠️  No optimal donors available (need ≥95% integrity)")
-            return
+        available_donors = [t for t in other_replicas
+                          if (self.uptime_days - t.last_donor_day) >= self.donor_cooldown_days]
 
-        donor = max(preferred_donors, key=lambda t: t.integrity)
-        print(f"Donor: Tile {donor.id} (integrity: {donor.integrity:.2%}) [OPTIMAL]")
+        if preferred_donors:
+            donor = max(preferred_donors, key=lambda t: t.integrity)
+            print(f"Donor: Tile {donor.id} (integrity: {donor.integrity:.2%}) [OPTIMAL]")
+        elif available_donors:
+            # Fallback: choose best available, rely on scrub majority vote
+            donor = max(available_donors, key=lambda t: t.integrity)
+            print(f"Donor: Tile {donor.id} (integrity: {donor.integrity:.2%}) [FALLBACK - best available]")
+        else:
+            print("⚠️  No donors available (all on cooldown)")
+            return False
 
         # Fragment donor → seed target
         self._seed_tile(target_sterile, donor)
@@ -434,6 +469,7 @@ class BioRAIDController:
         self.rebuild_count += 1
         print(f"✓ Proactive rebuild #{self.rebuild_count} complete")
         print(f"{'='*60}\n")
+        return True
 
     def _reactive_rebuild(self, chunk_idx: int, target_sterile: Tile):
         """
@@ -451,22 +487,25 @@ class BioRAIDController:
         chunk_start = chunk_idx * self.replication_factor
         chunk_tiles = active_tiles[chunk_start:chunk_start+self.replication_factor]
 
-        # Find any surviving replica
+        # Find any surviving replica (≥60%)
         surviving = [t for t in chunk_tiles if t.integrity >= 0.60]
 
         if not surviving:
             print("✗ FATAL: No surviving replicas! Data lost for this chunk!")
             return
 
-        # Emergency donor selection: Allow ≥92% (emergency threshold)
-        emergency_donors = [t for t in surviving if t.integrity >= 0.92]
+        # TIERED EMERGENCY DONOR SELECTION:
+        # 1. Prefer ≥75% (lowered from 92%)
+        # 2. Fallback: choose best available (emergency!)
+        emergency_donors = [t for t in surviving if t.integrity >= 0.75]
 
-        if not emergency_donors:
-            print("⚠️  No emergency donors available (all <92%)")
-            return
-
-        donor = max(emergency_donors, key=lambda t: t.integrity)
-        print(f"Donor: Tile {donor.id} (integrity: {donor.integrity:.2%}) [EMERGENCY]")
+        if emergency_donors:
+            donor = max(emergency_donors, key=lambda t: t.integrity)
+            print(f"Donor: Tile {donor.id} (integrity: {donor.integrity:.2%}) [EMERGENCY]")
+        else:
+            # Fallback: choose best available (this is an emergency!)
+            donor = max(surviving, key=lambda t: t.integrity)
+            print(f"Donor: Tile {donor.id} (integrity: {donor.integrity:.2%}) [EMERGENCY - BEST AVAILABLE]")
 
         # Fragment donor → seed target
         self._seed_tile(target_sterile, donor, emergency=True)
@@ -515,6 +554,7 @@ class BioRAIDController:
         tile.regeneration_progress = 0.0
         tile.last_donor_day = -999
         tile.needs_scrub = False
+        tile.last_rebuild_attempt_day = -999
         print(f"  Flushed tile {tile.id} to STERILE")
 
     def _get_neighbors(self, tile_id: int) -> List[int]:
