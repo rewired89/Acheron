@@ -61,6 +61,7 @@ class Tile:
     needs_scrub: bool = False  # Flag for post-regeneration scrub
     last_rebuild_attempt_day: int = -999  # Last day rebuild was attempted for this tile
     regen_complete_day: int = -999  # Day when regeneration completed
+    chunk_checksum: int = 0  # CRC32 checksum of chunk data
 
 
 class BioRAIDController:
@@ -104,9 +105,15 @@ class BioRAIDController:
         self.encoder = BioelectricEncoder(grid_size=(30, 30), cells_per_bit=9)
 
         # Scrubbing configuration
-        self.scrub_interval_days = 7  # Scrub weekly
+        self.scrub_interval_days = 7  # Scrub weekly (normal mode)
         self.last_scrub_day = 0
         self.scrub_repairs = 0
+        self.disagreements_found = 0
+        self.bits_written_back = 0
+
+        # Adaptive scrubbing
+        self.adaptive_scrub_until_day = -1  # Scrub every 2 days if set
+        self.last_adaptive_scrub_day = 0
 
         # Rebuild throttling
         self.donor_cooldown_days = 7  # Donors rest 1 week after fragmenting
@@ -169,6 +176,13 @@ class BioRAIDController:
 
             # Store chunk->tile mapping
             self.chunk_replicas[chunk_idx] = chunk_tile_ids
+
+            # Calculate and store checksum for this chunk (CRC32)
+            import zlib
+            checksum = zlib.crc32(chunk.encode()) & 0xffffffff
+            # Store checksum as metadata (will be used during scrubbing)
+            for tid in chunk_tile_ids:
+                self.tiles[tid].chunk_checksum = checksum
 
         total_bits_stored = len(chunks) * self.bits_per_tile * self.replication_factor
         print(f"✓ Wrote {len(binary_data)} unique bits (3-way replication = {total_bits_stored} total bits stored)")
@@ -311,10 +325,25 @@ class BioRAIDController:
                     tile.needs_scrub = True  # Force immediate scrub post-regen
                     print(f"✓ Tile {tile.id} regeneration complete (Day {self.uptime_days})")
 
-        # Periodic scrubbing (weekly)
-        if self.uptime_days - self.last_scrub_day >= self.scrub_interval_days:
-            self._run_scrub()
-            self.last_scrub_day = self.uptime_days
+        # Adaptive scrubbing: if SICK tiles or recent rebuild, scrub every 2 days
+        sick_count = sum(1 for t in self.tiles if t.state == TileState.SICK)
+        if sick_count > 0 or self.rebuild_count > 0:
+            # Enable adaptive scrubbing for 14 days
+            if self.adaptive_scrub_until_day < self.uptime_days:
+                self.adaptive_scrub_until_day = self.uptime_days + 14
+                print(f"⚡ Adaptive scrubbing enabled (every 2 days for 14 days)")
+
+        # Adaptive scrubbing (every 2 days when enabled)
+        if self.uptime_days <= self.adaptive_scrub_until_day:
+            if self.uptime_days - self.last_adaptive_scrub_day >= 2:
+                print(f"🔍 Adaptive scrub (day {self.uptime_days})...")
+                self._run_scrub()
+                self.last_adaptive_scrub_day = self.uptime_days
+        else:
+            # Normal weekly scrubbing
+            if self.uptime_days - self.last_scrub_day >= self.scrub_interval_days:
+                self._run_scrub()
+                self.last_scrub_day = self.uptime_days
 
         # Immediate scrub for newly regenerated tiles
         tiles_needing_scrub = [t for t in self.tiles if t.needs_scrub]
@@ -598,10 +627,9 @@ class BioRAIDController:
 
     def _reconstruct_via_majority_vote(self, surviving_tiles: List[Tile]) -> str:
         """
-        Reconstruct correct bit state using majority voting across surviving replicas.
+        Reconstruct correct bit state using WEIGHTED majority voting by tile integrity.
 
-        This is the CRITICAL fix: integrity affects read reliability, but doesn't
-        corrupt the underlying data. We use majority voting to find the correct bits.
+        Higher-integrity tiles get more weight in the vote, improving accuracy.
 
         Args:
             surviving_tiles: List of tiles with this chunk's data
@@ -615,18 +643,28 @@ class BioRAIDController:
         if len(surviving_tiles) == 1:
             return surviving_tiles[0].binary_data
 
-        # Get all replicas
-        replicas = [t.binary_data for t in surviving_tiles]
-
-        # Majority vote bit-by-bit
-        max_len = max(len(r) for r in replicas)
+        # Weighted majority vote bit-by-bit (weight by integrity)
+        max_len = max(len(t.binary_data) for t in surviving_tiles)
         reconstructed = ""
 
         for bit_idx in range(max_len):
-            bits = [r[bit_idx] if bit_idx < len(r) else '0' for r in replicas]
-            ones = bits.count('1')
-            zeros = bits.count('0')
-            majority_bit = '1' if ones > zeros else '0'
+            # Calculate weighted votes for 0 and 1
+            weight_0 = 0.0
+            weight_1 = 0.0
+
+            for tile in surviving_tiles:
+                if bit_idx < len(tile.binary_data):
+                    bit = tile.binary_data[bit_idx]
+                    # Weight by integrity (higher integrity = more trusted)
+                    weight = max(tile.integrity, 0.1)  # Min weight 0.1 to avoid zero
+
+                    if bit == '0':
+                        weight_0 += weight
+                    else:
+                        weight_1 += weight
+
+            # Choose bit with higher weighted vote
+            majority_bit = '1' if weight_1 > weight_0 else '0'
             reconstructed += majority_bit
 
         return reconstructed
@@ -684,15 +722,19 @@ class BioRAIDController:
             target.needs_scrub = False
             target.integrity = 0.0
 
+            # Set checksum
+            import zlib
+            target.chunk_checksum = zlib.crc32(correct_data.encode()) & 0xffffffff
+
             # Add to chunk mapping
             self.chunk_replicas[chunk_idx].append(target.id)
             print(f"  ✓ Added replica on tile {target.id} (top-up #{i+1}/{missing_count})")
 
     def _scrub_chunk(self, chunk_idx: int):
         """
-        Scrub a specific chunk: read with majority voting, repair disagreements.
+        Scrub a specific chunk with weighted majority voting and write-back repair.
 
-        Runs immediately after rebuild/regen to ensure chunk consistency.
+        Uses checksum validation and integrity-weighted voting for accuracy.
         """
         print(f"  🔍 Scrubbing chunk {chunk_idx}...")
 
@@ -708,19 +750,45 @@ class BioRAIDController:
             print(f"  ⚠️  Cannot scrub chunk {chunk_idx} - only {len(readable)} readable replicas")
             return
 
-        # Reconstruct correct data via majority voting
+        # Reconstruct correct data via WEIGHTED majority voting
         correct_data = self._reconstruct_via_majority_vote(readable)
 
-        # Repair disagreeing replicas
-        repairs = 0
+        # Validate with checksum if available
+        import zlib
+        expected_checksum = readable[0].chunk_checksum if readable else 0
+        reconstructed_checksum = zlib.crc32(correct_data.encode()) & 0xffffffff
+
+        # If checksum fails, prefer data from highest-integrity replica
+        if expected_checksum != 0 and reconstructed_checksum != expected_checksum:
+            print(f"  ⚠️  Checksum mismatch! Using highest-integrity replica as tie-breaker")
+            best_replica = max(readable, key=lambda t: t.integrity)
+            correct_data = best_replica.binary_data
+            reconstructed_checksum = zlib.crc32(correct_data.encode()) & 0xffffffff
+
+        # Count disagreements and perform write-back repair
+        disagreements = 0
+        bits_written = 0
+
         for tile in readable:
+            # Check for bit-level disagreements
             if tile.binary_data != correct_data:
+                # Count total disagreeing bits
+                for i in range(min(len(tile.binary_data), len(correct_data))):
+                    if tile.binary_data[i] != correct_data[i]:
+                        disagreements += 1
+
+                # Write-back correct data
                 tile.binary_data = correct_data
                 tile.pattern = self.encoder.encode(correct_data)
-                repairs += 1
+                tile.chunk_checksum = reconstructed_checksum
+                bits_written += len(correct_data)
 
-        if repairs > 0:
-            print(f"  🔧 Repaired {repairs} replica disagreements in chunk {chunk_idx}")
+        # Update global counters
+        self.disagreements_found += disagreements
+        self.bits_written_back += bits_written
+
+        if disagreements > 0:
+            print(f"  🔧 Found {disagreements} bit disagreements, wrote back {bits_written} bits")
 
     def _validate_chunk_mappings(self):
         """
