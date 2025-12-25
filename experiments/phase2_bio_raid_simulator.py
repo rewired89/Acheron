@@ -1335,7 +1335,7 @@ class BioRAIDController:
             for tile in replicas:
                 if tile.state == TileState.REGENERATING:
                     offline_count += 1
-                elif tile.state not in [TileState.ACTIVE, TileState.SICK]:
+                elif tile.state not in [TileState.ACTIVE, TileState.SICK, TileState.CLEAN_LOCKED]:
                     offline_count += 1
                 elif tile.integrity < readable_threshold:
                     offline_count += 1
