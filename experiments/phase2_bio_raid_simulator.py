@@ -130,6 +130,14 @@ class BioRAIDController:
         # Chunk -> Tile mapping (for invariant enforcement)
         # chunk_replicas[chunk_idx] = [tile_id1, tile_id2, tile_id3]
         self.chunk_replicas = {}  # Will be initialized after write_data
+        self.chunks_at_risk = set()  # Chunks with <2 readable replicas
+
+        # Metrics separation (CRITICAL for analysis)
+        self.logical_bit_errors = 0  # Majority wrong (vs ground truth)
+        self.replica_bit_errors = 0  # Disagreements across replicas
+        self.scrub_writebacks = 0  # Actual fixes performed
+        self.new_flips_per_day = []  # Track daily error injection rate
+        self.ground_truth = None  # Original data for validation
 
     def write_data(self, binary_data: str):
         """
@@ -152,6 +160,9 @@ class BioRAIDController:
         # Pad to multiple of bits_per_tile
         padded_length = ((len(binary_data) + self.bits_per_tile - 1) // self.bits_per_tile) * self.bits_per_tile
         binary_data = binary_data.ljust(padded_length, '0')
+
+        # Store ground truth for validation
+        self.ground_truth = binary_data
 
         # Split into chunks
         chunks = [binary_data[i:i+self.bits_per_tile] for i in range(0, len(binary_data), self.bits_per_tile)]
@@ -314,16 +325,57 @@ class BioRAIDController:
                 tile.regeneration_progress += 0.2  # 20% per day
 
                 if tile.regeneration_progress >= 1.0:
-                    # Regeneration complete
+                    # Regeneration complete - MUST do hard informational scrub BEFORE marking Active
+                    print(f"✓ Tile {tile.id} regeneration complete (Day {self.uptime_days})")
+
+                    # Find which chunk this tile belongs to
+                    chunk_idx = None
+                    for cidx, tile_ids in self.chunk_replicas.items():
+                        if tile.id in tile_ids:
+                            chunk_idx = cidx
+                            break
+
+                    if chunk_idx is not None:
+                        # HARD INFORMATIONAL SCRUB (before marking Active)
+                        print(f"  🔧 Hard informational scrub for tile {tile.id} (chunk {chunk_idx})...")
+
+                        replica_ids = self.chunk_replicas[chunk_idx]
+                        replicas = [self.tiles[tid] for tid in replica_ids]
+
+                        # Get all readable replicas (excluding this tile which is still REGENERATING)
+                        other_replicas = [t for t in replicas
+                                         if t.id != tile.id
+                                         and t.state in [TileState.ACTIVE, TileState.SICK]
+                                         and t.binary_data]
+
+                        if len(other_replicas) >= 1:
+                            # Reconstruct correct data via majority vote
+                            if len(other_replicas) >= 2:
+                                correct_data = self._reconstruct_via_majority_vote(other_replicas)
+                                print(f"      Reconstructed truth from {len(other_replicas)} replicas")
+                            else:
+                                correct_data = other_replicas[0].binary_data
+                                print(f"      Using single replica as source")
+
+                            # FORCE OVERWRITE all bits in regenerated tile
+                            tile.binary_data = correct_data
+                            tile.pattern = self.encoder.encode(correct_data)
+
+                            # Update checksum
+                            import zlib
+                            tile.chunk_checksum = zlib.crc32(correct_data.encode()) & 0xffffffff
+
+                            print(f"      ✓ Forced write-back of {len(correct_data)} bits to tile {tile.id}")
+                        else:
+                            print(f"      ⚠️  No other replicas available - keeping current data")
+
+                    # NOW mark as Active
                     tile.state = TileState.ACTIVE
-                    # OPTIMIZED: Better regeneration fidelity (0.98, was 0.95)
-                    # Matches improved bioelectric persistence parameters
                     tile.integrity = 0.98  # Near-perfect regeneration
                     tile.age = 0
                     tile.regeneration_progress = 0.0
                     tile.regen_complete_day = self.uptime_days
-                    tile.needs_scrub = True  # Force immediate scrub post-regen
-                    print(f"✓ Tile {tile.id} regeneration complete (Day {self.uptime_days})")
+                    tile.needs_scrub = False  # Already did hard scrub above
 
         # Adaptive scrubbing: if SICK tiles or recent rebuild, scrub every 2 days
         sick_count = sum(1 for t in self.tiles if t.state == TileState.SICK)
@@ -344,14 +396,6 @@ class BioRAIDController:
             if self.uptime_days - self.last_scrub_day >= self.scrub_interval_days:
                 self._run_scrub()
                 self.last_scrub_day = self.uptime_days
-
-        # Immediate scrub for newly regenerated tiles
-        tiles_needing_scrub = [t for t in self.tiles if t.needs_scrub]
-        if tiles_needing_scrub:
-            print(f"🔍 Running immediate scrub for {len(tiles_needing_scrub)} regenerated tiles...")
-            self._run_scrub()
-            for tile in tiles_needing_scrub:
-                tile.needs_scrub = False
 
         # Check for rebuild triggers
         self._check_rebuild_needed()
@@ -387,13 +431,25 @@ class BioRAIDController:
         """
         Check for both proactive and reactive rebuild needs.
 
-        PROACTIVE: SICK tiles (60-80%) get replicas moved to healthy spares
-        REACTIVE: Chunks below quorum (<2 replicas) get emergency rebuild
+        PRIORITY ORDER:
+        1. AT_RISK chunks (<2 readable replicas) - FAST-TRACK
+        2. REACTIVE: Chunks below quorum - EMERGENCY
+        3. PROACTIVE: SICK tiles - ROUTINE
         """
         sterile = [t for t in self.tiles if t.state == TileState.STERILE]
 
         if not sterile:
             return  # No spare capacity for rebuilds
+
+        # 0) FAST-TRACK: AT_RISK chunks (highest priority!)
+        if self.chunks_at_risk:
+            chunk_idx = list(self.chunks_at_risk)[0]  # Get first AT_RISK chunk
+            print(f"\n🚨 FAST-TRACK: Chunk {chunk_idx} is AT_RISK (<2 replicas)")
+            print(f"   Creating new replica immediately (bypasses all throttling)...")
+
+            # Force top-up for this chunk
+            self._ensure_chunk_has_three_replicas(chunk_idx)
+            return  # Handle one AT_RISK chunk per day
 
         # 1) REACTIVE REBUILD: Check for lost quorum (critical!)
         quorum_lost = self._check_quorum_loss()
@@ -732,63 +788,88 @@ class BioRAIDController:
 
     def _scrub_chunk(self, chunk_idx: int):
         """
-        Scrub a specific chunk with weighted majority voting and write-back repair.
+        Scrub a specific chunk with STRICT quorum gate and write-back repair.
 
-        Uses checksum validation and integrity-weighted voting for accuracy.
+        MANDATORY RULES:
+        1. Never scrub if <2 readable replicas (mark AT_RISK instead)
+        2. WRITE-BACK to ALL replicas (force convergence)
+        3. Use integrity-weighted voting (<80% replicas can't define truth)
+        4. Track replica_bit_errors separately from logical errors
         """
-        print(f"  🔍 Scrubbing chunk {chunk_idx}...")
-
         replica_ids = self.chunk_replicas[chunk_idx]
         replicas = [self.tiles[tid] for tid in replica_ids]
 
-        # Get readable replicas
+        # Get readable replicas (ACTIVE or SICK, ≥60% integrity)
         readable = [t for t in replicas
                    if t.state in [TileState.ACTIVE, TileState.SICK]
                    and t.binary_data]
 
+        # QUORUM GATE: Require ≥2 readable replicas
         if len(readable) < 2:
-            print(f"  ⚠️  Cannot scrub chunk {chunk_idx} - only {len(readable)} readable replicas")
+            if chunk_idx not in self.chunks_at_risk:
+                print(f"  ⚠️  Chunk {chunk_idx} AT_RISK - only {len(readable)} readable replicas!")
+                print(f"      Fast-tracking replica creation BEFORE scrubbing...")
+                self.chunks_at_risk.add(chunk_idx)
+            # Do NOT scrub - wait for replica count to recover
             return
 
-        # Reconstruct correct data via WEIGHTED majority voting
-        correct_data = self._reconstruct_via_majority_vote(readable)
+        # Remove from AT_RISK if now safe
+        if chunk_idx in self.chunks_at_risk:
+            print(f"  ✓ Chunk {chunk_idx} recovered from AT_RISK ({len(readable)} replicas)")
+            self.chunks_at_risk.discard(chunk_idx)
+
+        print(f"  🔍 Scrubbing chunk {chunk_idx} ({len(readable)} readable replicas)...")
+
+        # STRICT INTEGRITY-WEIGHTED VOTING
+        # Replicas <80% can be read but CANNOT define truth
+        high_integrity = [t for t in readable if t.integrity >= 0.80]
+        low_integrity = [t for t in readable if t.integrity < 0.80]
+
+        if high_integrity:
+            # Use high-integrity replicas to define truth
+            correct_data = self._reconstruct_via_majority_vote(high_integrity)
+            print(f"      Truth from {len(high_integrity)} high-integrity replicas (≥80%)")
+        else:
+            # All replicas degraded - use best available
+            print(f"      ⚠️  All replicas <80%! Using highest-integrity replica as authority")
+            best = max(readable, key=lambda t: t.integrity)
+            correct_data = best.binary_data
 
         # Validate with checksum if available
         import zlib
         expected_checksum = readable[0].chunk_checksum if readable else 0
         reconstructed_checksum = zlib.crc32(correct_data.encode()) & 0xffffffff
 
-        # If checksum fails, prefer data from highest-integrity replica
+        # If checksum fails, use tie-breaker
         if expected_checksum != 0 and reconstructed_checksum != expected_checksum:
-            print(f"  ⚠️  Checksum mismatch! Using highest-integrity replica as tie-breaker")
+            print(f"      ⚠️  Checksum mismatch! Using highest-integrity replica as tie-breaker")
             best_replica = max(readable, key=lambda t: t.integrity)
             correct_data = best_replica.binary_data
             reconstructed_checksum = zlib.crc32(correct_data.encode()) & 0xffffffff
 
-        # Count disagreements and perform write-back repair
+        # WRITE-BACK TO ALL REPLICAS (force convergence)
         disagreements = 0
-        bits_written = 0
+        replicas_repaired = 0
 
         for tile in readable:
-            # Check for bit-level disagreements
+            # Count bit-level disagreements
             if tile.binary_data != correct_data:
-                # Count total disagreeing bits
                 for i in range(min(len(tile.binary_data), len(correct_data))):
                     if tile.binary_data[i] != correct_data[i]:
                         disagreements += 1
 
-                # Write-back correct data
+                # MANDATORY WRITE-BACK
                 tile.binary_data = correct_data
                 tile.pattern = self.encoder.encode(correct_data)
                 tile.chunk_checksum = reconstructed_checksum
-                bits_written += len(correct_data)
+                replicas_repaired += 1
 
-        # Update global counters
-        self.disagreements_found += disagreements
-        self.bits_written_back += bits_written
+        # Update metrics
+        self.replica_bit_errors += disagreements  # Track replica disagreements
+        self.scrub_writebacks += replicas_repaired  # Track actual repairs
 
         if disagreements > 0:
-            print(f"  🔧 Found {disagreements} bit disagreements, wrote back {bits_written} bits")
+            print(f"      🔧 Repaired {disagreements} bit disagreements across {replicas_repaired} replicas")
 
     def _validate_chunk_mappings(self):
         """
@@ -843,6 +924,94 @@ class BioRAIDController:
                 neighbors.append(nr * 5 + nc)
 
         return neighbors
+
+    def _calculate_logical_errors(self) -> int:
+        """
+        Calculate logical bit errors: bits where majority vote disagrees with ground truth.
+
+        This is the CRITICAL metric - logical errors MUST be 0%.
+        """
+        if not self.ground_truth:
+            return 0
+
+        try:
+            # Reconstruct data using majority voting
+            chunks = []
+            for chunk_idx in sorted(self.chunk_replicas.keys()):
+                replica_ids = self.chunk_replicas[chunk_idx]
+                replicas = [self.tiles[tid] for tid in replica_ids]
+
+                # Get readable replicas
+                readable = [t for t in replicas
+                           if t.state in [TileState.ACTIVE, TileState.SICK]
+                           and t.binary_data]
+
+                if len(readable) >= 2:
+                    # Use high-integrity replicas for truth
+                    high_integrity = [t for t in readable if t.integrity >= 0.80]
+                    if high_integrity:
+                        chunk_data = self._reconstruct_via_majority_vote(high_integrity)
+                    else:
+                        chunk_data = self._reconstruct_via_majority_vote(readable)
+                elif len(readable) == 1:
+                    chunk_data = readable[0].binary_data
+                else:
+                    # No readable replicas - count all bits as errors
+                    chunk_data = '0' * self.bits_per_tile
+
+                chunks.append(chunk_data)
+
+            # Compare reconstructed data vs ground truth
+            reconstructed = ''.join(chunks).rstrip('0')
+            ground_truth = self.ground_truth.rstrip('0')
+
+            errors = 0
+            max_len = max(len(reconstructed), len(ground_truth))
+            for i in range(max_len):
+                r_bit = reconstructed[i] if i < len(reconstructed) else '0'
+                g_bit = ground_truth[i] if i < len(ground_truth) else '0'
+                if r_bit != g_bit:
+                    errors += 1
+
+            return errors
+        except Exception as e:
+            print(f"⚠️  Error calculating logical errors: {e}")
+            return -1
+
+    def _calculate_replica_errors(self) -> int:
+        """
+        Calculate replica bit errors: total disagreements across all replicas.
+
+        This metric tracks data drift and shows scrubbing effectiveness.
+        """
+        total_disagreements = 0
+
+        for chunk_idx in self.chunk_replicas.keys():
+            replica_ids = self.chunk_replicas[chunk_idx]
+            replicas = [self.tiles[tid] for tid in replica_ids]
+
+            # Get readable replicas
+            readable = [t for t in replicas
+                       if t.state in [TileState.ACTIVE, TileState.SICK]
+                       and t.binary_data]
+
+            if len(readable) < 2:
+                continue
+
+            # Reconstruct correct data
+            high_integrity = [t for t in readable if t.integrity >= 0.80]
+            if high_integrity:
+                correct_data = self._reconstruct_via_majority_vote(high_integrity)
+            else:
+                correct_data = self._reconstruct_via_majority_vote(readable)
+
+            # Count disagreements
+            for tile in readable:
+                for i in range(min(len(tile.binary_data), len(correct_data))):
+                    if tile.binary_data[i] != correct_data[i]:
+                        total_disagreements += 1
+
+        return total_disagreements
 
     def _get_state_snapshot(self) -> dict:
         """Get current system state for history."""
@@ -1063,17 +1232,35 @@ def run_phase2_simulation(duration_days=365):
             print(f"  Total rebuilds: {controller.rebuild_count}")
             print(f"  Degradation events: {controller.total_degradation_events}")
 
-            # Verify data integrity
-            try:
-                read_data = controller.read_data()
-                if read_data == test_data:
-                    print("\n✓ DATA INTEGRITY: VERIFIED")
-                else:
-                    errors = sum(o != d for o, d in zip(test_data, read_data))
-                    error_rate = errors / len(test_data) * 100
-                    print(f"\n⚠️  DATA INTEGRITY: {errors} bit errors ({error_rate:.1f}%)")
-            except Exception as e:
-                print(f"\n✗ DATA READ FAILED: {e}")
+            # NEW METRICS SEPARATION (critical for analysis)
+            print(f"\nDATA INTEGRITY METRICS:")
+
+            # Logical bit errors (MUST be 0%)
+            logical_errors = controller._calculate_logical_errors()
+            logical_error_rate = (logical_errors / len(test_data) * 100) if logical_errors >= 0 else -1
+            if logical_errors == 0:
+                print(f"  ✓ Logical bit errors: 0 (0.0%) - PERFECT")
+            elif logical_errors > 0:
+                print(f"  ✗ Logical bit errors: {logical_errors} ({logical_error_rate:.2f}%) - FAILED")
+            else:
+                print(f"  ⚠️  Logical errors: calculation failed")
+
+            # Replica bit errors (convergence metric)
+            replica_errors = controller._calculate_replica_errors()
+            total_bits = len(test_data) * controller.replication_factor
+            replica_error_rate = (replica_errors / total_bits * 100) if replica_errors > 0 else 0
+            if replica_error_rate < 5:
+                print(f"  ✓ Replica bit errors: {replica_errors} ({replica_error_rate:.2f}%) - GOOD")
+            else:
+                print(f"  ⚠️  Replica bit errors: {replica_errors} ({replica_error_rate:.2f}%) - HIGH")
+
+            # Scrub effectiveness
+            print(f"  📊 Scrub write-backs: {controller.scrub_writebacks} replicas repaired")
+            print(f"  📊 Total disagreements found: {controller.replica_bit_errors}")
+
+            # AT_RISK chunks
+            if controller.chunks_at_risk:
+                print(f"  ⚠️  AT_RISK chunks: {sorted(controller.chunks_at_risk)}")
 
             print(f"{'='*70}\n")
 
@@ -1088,28 +1275,59 @@ def run_phase2_simulation(duration_days=365):
     print(f"Total runtime: {duration_days} days")
     print(f"Total rebuilds: {controller.rebuild_count}")
     print(f"Degradation events: {controller.total_degradation_events}")
-    print(f"Scrub repairs: {controller.scrub_repairs} bit disagreements corrected")
     print(f"Final active tiles: {sum(1 for t in controller.tiles if t.state == TileState.ACTIVE)}")
     print(f"Final sterile spares: {sum(1 for t in controller.tiles if t.state == TileState.STERILE)}")
 
-    # Final data verification
-    try:
-        final_data = controller.read_data()
-        if final_data == test_data:
-            print("\n✓ DATA INTEGRITY: PERFECT (No corruption)")
-            print("   3-way replication + weekly scrubbing = zero data loss!")
-        else:
-            errors = sum(o != d for o, d in zip(test_data, final_data))
-            error_rate = errors / len(test_data) * 100
-            print(f"\n⚠️  DATA INTEGRITY: {errors} bit errors ({error_rate:.1f}% error rate)")
-            if error_rate < 1:
-                print("   ✓ Excellent: <1% error rate with ECC in place")
-            elif error_rate < 5:
-                print("   ✓ Good: <5% error rate, scrubbing is working")
-            else:
-                print("   ⚠️  Higher than expected - may need more frequent scrubbing")
-    except Exception as e:
-        print(f"\n✗ DATA LOSS: {e}")
+    # FINAL METRICS (using separated tracking)
+    print(f"\nFINAL DATA INTEGRITY METRICS:")
+
+    # Logical bit errors (MUST be 0%)
+    logical_errors = controller._calculate_logical_errors()
+    logical_error_rate = (logical_errors / len(test_data) * 100) if logical_errors >= 0 else -1
+
+    if logical_errors == 0:
+        print(f"  ✓✓✓ LOGICAL BIT ERRORS: 0 (0.0%) - PERFECT ✓✓✓")
+        print(f"      3-way replication + majority voting = ZERO data loss!")
+    elif logical_errors > 0:
+        print(f"  ✗✗✗ LOGICAL BIT ERRORS: {logical_errors} ({logical_error_rate:.2f}%) - FAILED ✗✗✗")
+        print(f"      Goal was 0% - investigation needed!")
+    else:
+        print(f"  ⚠️  Logical error calculation failed")
+
+    # Replica bit errors (convergence metric)
+    replica_errors = controller._calculate_replica_errors()
+    total_bits = len(test_data) * controller.replication_factor
+    replica_error_rate = (replica_errors / total_bits * 100) if replica_errors > 0 else 0
+
+    if replica_error_rate == 0:
+        print(f"  ✓✓ REPLICA BIT ERRORS: 0 (0.0%) - PERFECT CONVERGENCE ✓✓")
+    elif replica_error_rate < 5:
+        print(f"  ✓ REPLICA BIT ERRORS: {replica_errors} ({replica_error_rate:.2f}%) - GOOD")
+        print(f"     Goal was <5% - achieved!")
+    else:
+        print(f"  ⚠️  REPLICA BIT ERRORS: {replica_errors} ({replica_error_rate:.2f}%) - HIGH")
+        print(f"     Goal was <5% - needs improvement")
+
+    # Scrub effectiveness
+    print(f"\nSCRUBBING EFFECTIVENESS:")
+    print(f"  Total scrub write-backs: {controller.scrub_writebacks} replicas repaired")
+    print(f"  Total disagreements found: {controller.replica_bit_errors}")
+    print(f"  Convergence: {'YES' if replica_error_rate < 5 else 'NO (still diverging)'}")
+
+    # SUCCESS CRITERIA CHECK
+    print(f"\nSUCCESS CRITERIA:")
+    success_logical = logical_errors == 0
+    success_replica = replica_error_rate < 5
+    success_no_loops = len(controller.chunks_at_risk) == 0
+
+    print(f"  {'✓' if success_logical else '✗'} Logical bit errors = 0%")
+    print(f"  {'✓' if success_replica else '✗'} Replica bit errors < 5%")
+    print(f"  {'✓' if success_no_loops else '✗'} No AT_RISK chunk loops")
+
+    if success_logical and success_replica and success_no_loops:
+        print(f"\n🎉 ALL SUCCESS CRITERIA MET! 🎉")
+    else:
+        print(f"\n⚠️  Some success criteria not met - see above")
 
     # Final visualization
     controller.visualize_cartridge(save_path=f'analysis/bioraid_final.png')
