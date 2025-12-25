@@ -922,7 +922,7 @@ class BioRAIDController:
             print(f"  Using GOLDEN ANCHOR for top-up (guaranteed correct)")
         else:
             # Fallback to majority voting if no anchor
-            readable_tiles = [self.tiles[tid] for tid in readable_ids]
+            readable_tiles = [self.tiles[tid] for tid in all_valid_ids]
             surviving = [t for t in readable_tiles
                         if t.state in [TileState.ACTIVE, TileState.SICK, TileState.CLEAN_LOCKED]
                         and t.binary_data]
@@ -1769,8 +1769,9 @@ def run_phase2_simulation(duration_days=365):
     for day in [0] + checkpoints:
         print(f"  - analysis/bioraid_day{day}.png")
     print(f"  - analysis/bioraid_final.png")
+    print("\nPlot windows will remain open. Close them manually to exit, or check the PNG files in analysis/")
 
-    plt.show()
+    plt.show(block=True)  # Keep windows open until user closes them
 
     return controller
 
