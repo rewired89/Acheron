@@ -573,8 +573,9 @@ class BioRAIDController:
         """
         print(f"🔍 Running scrub (Day {self.uptime_days})...")
         try:
-            # Read with repair_errors=True to fix bit drift
-            self.read_data(repair_errors=True)
+            # Scrub each chunk using correct chunk mappings and truth authority hierarchy
+            for chunk_idx in sorted(self.chunk_replicas.keys()):
+                self._scrub_chunk(chunk_idx)
         except Exception as e:
             print(f"⚠️  Scrub failed: {e}")
 
@@ -1169,10 +1170,12 @@ class BioRAIDController:
 
             for tile in readable:
                 # Count disagreements vs GOLDEN TRUTH only
+                tile_disagreements = 0
                 if tile.binary_data != golden_truth:
                     for i in range(min(len(tile.binary_data), len(golden_truth))):
                         if tile.binary_data[i] != golden_truth[i]:
                             disagreements += 1
+                            tile_disagreements += 1
 
                     # 2-PHASE WRITE-SETTLE: Use write-settle protocol instead of direct write
                     write_success = self._write_with_settle(tile, golden_truth, golden_checksum)
@@ -1189,11 +1192,14 @@ class BioRAIDController:
                                                 self.CONSOLIDATION_MAX_INTEGRITY)
                             # Note: Don't print individual boosts (too verbose), will track in aggregate
 
-                        # Reset maturation counter on repair (replica was unstable)
-                        tile.consecutive_successful_scrubs = 0
-                        if tile.maturity_level > 0:
-                            tile.maturity_level = 0  # Demote to unstable
-                            tile.matured_on_day = -999
+                        # LENIENT MATURATION: Only reset on MAJOR repairs (>10 bits)
+                        # Minor drift (<10 bits) is normal and shouldn't prevent maturation
+                        # This allows tiles to stabilize despite small fluctuations
+                        if tile_disagreements > 10:
+                            tile.consecutive_successful_scrubs = 0
+                            if tile.maturity_level > 0:
+                                tile.maturity_level = 0  # Demote to unstable
+                                tile.matured_on_day = -999
                     else:
                         # Write failed (tile too degraded or write-settle failed)
                         # Mark tile for rebuild by not counting it as repaired
@@ -1293,10 +1299,12 @@ class BioRAIDController:
             golden_checksum = zlib.crc32(golden_truth.encode()) & 0xffffffff
 
             for tile in readable:
+                tile_disagreements = 0
                 if tile.binary_data != golden_truth:
                     for i in range(min(len(tile.binary_data), len(golden_truth))):
                         if tile.binary_data[i] != golden_truth[i]:
                             disagreements += 1
+                            tile_disagreements += 1
 
                     # 2-PHASE WRITE-SETTLE: Use write-settle protocol
                     write_success = self._write_with_settle(tile, golden_truth, golden_checksum)
@@ -1309,11 +1317,14 @@ class BioRAIDController:
                             tile.integrity = min(tile.integrity + self.CONSOLIDATION_INTEGRITY_BOOST,
                                                 self.CONSOLIDATION_MAX_INTEGRITY)
 
-                        # Reset maturation counter on repair
-                        tile.consecutive_successful_scrubs = 0
-                        if tile.maturity_level > 0:
-                            tile.maturity_level = 0
-                            tile.matured_on_day = -999
+                        # LENIENT MATURATION: Only reset on MAJOR repairs (>10 bits)
+                        # Minor drift (<10 bits) is normal and shouldn't prevent maturation
+                        # This allows tiles to stabilize despite small fluctuations
+                        if tile_disagreements > 10:
+                            tile.consecutive_successful_scrubs = 0
+                            if tile.maturity_level > 0:
+                                tile.maturity_level = 0
+                                tile.matured_on_day = -999
                     else:
                         # Write failed (tile too degraded)
                         print(f"          ⚠️  Tile {tile.id} write failed (integrity {tile.integrity:.0%}) - skipping")
