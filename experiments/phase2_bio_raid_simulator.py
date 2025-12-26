@@ -76,6 +76,10 @@ class Tile:
     maturity_level: int = 0  # 0=new/unstable, 1=maturing, 2=mature/hardened
     matured_on_day: int = -999  # Day when reached MATURE status
 
+    # RISK-GATED REBUILDS: Track write failures
+    write_fail_count: int = 0  # Consecutive write failures (for risk assessment)
+    write_suspect: bool = False  # Marked as WRITE_SUSPECT after 2 consecutive failures
+
 
 class BioRAIDController:
     """
@@ -172,6 +176,10 @@ class BioRAIDController:
         # QUORUM RESTORATION: Track consecutive clean scrubs per chunk
         self.chunk_consecutive_clean_scrubs = {}  # {chunk_idx: int} - consecutive scrubs with no repairs
         self.quorum_restorations = 0  # Count of GOLDEN_ANCHOR → QUORUM demotions
+
+        # RISK-GATED REBUILDS: Track failed scrubs per chunk
+        self.chunk_failed_scrub_count = {}  # {chunk_idx: int} - consecutive failed scrubs (for risk assessment)
+        self.write_failures_total = 0  # Total write failures across all tiles
 
         # Metrics separation (CRITICAL for analysis)
         self.logical_bit_errors = 0  # Majority wrong (vs ground truth)
@@ -373,8 +381,9 @@ class BioRAIDController:
                     self.total_degradation_events += 1
 
                 # State transitions based on integrity (but respect CLEAN_LOCKED!)
-                # HYSTERESIS: Enter SICK at <75%, exit SICK at >85%
-                # This reduces flip-flopping and rebuild churn
+                # REBUILD HYSTERESIS: Enter SICK at <70%, exit SICK at >85%
+                # This prevents hair-trigger rebuilds for tiles in 70-85% range
+                # Tiles in this range are handled via scrubbing/refresh only
                 if tile.integrity < 0.60:
                     # FAILED: Below 60%, unusable (even if CLEAN_LOCKED)
                     if tile.state != TileState.FAILED:
@@ -382,17 +391,19 @@ class BioRAIDController:
                         tile.clean_locked_until_day = -999  # Clear lock
                         print(f"✗ Tile {tile.id} FAILED (integrity: {tile.integrity:.2%})")
                 elif tile.state != TileState.CLEAN_LOCKED:  # Don't transition if CLEAN_LOCKED
-                    if tile.integrity < 0.75:
-                        # SICK: <75%, needs proactive rebuild (hysteresis lower bound)
+                    if tile.integrity < 0.70:
+                        # SICK: <70%, MAY need rebuild (hysteresis lower bound)
+                        # But rebuild is NOT automatic - see risk-gated rebuild logic
                         if tile.state != TileState.SICK:
                             tile.state = TileState.SICK
-                            print(f"⚠️  Tile {tile.id} is SICK (integrity: {tile.integrity:.2%}) - proactive rebuild needed")
+                            print(f"⚠️  Tile {tile.id} is SICK (integrity: {tile.integrity:.2%}) - rebuild gated by risk")
                     elif tile.integrity > 0.85:
                         # ACTIVE: >85%, healthy (hysteresis upper bound)
                         if tile.state == TileState.SICK:
                             tile.state = TileState.ACTIVE
                             print(f"✓ Tile {tile.id} recovered to ACTIVE (integrity: {tile.integrity:.2%})")
-                    # Between 75% and 85%: maintain current state (hysteresis band)
+                    # Between 70% and 85%: maintain current state (hysteresis band)
+                    # Tiles in this range are NOT rebuilt, only scrubbed/refreshed
 
         # Process regenerating tiles
         for tile in self.tiles:
@@ -630,9 +641,13 @@ class BioRAIDController:
             self._reactive_rebuild(chunk_idx, sterile[0])
             return
 
-        # 2) PROACTIVE REBUILD: Replace SICK tiles before they fail
-        # CRITICAL: Skip CLEAN_LOCKED tiles (stabilization window)
-        # CLEAN_LOCKED tiles are IMMUNE to proactive rebuild unless integrity < 60% (which triggers FAILED state instead)
+        # 2) RISK-GATED PROACTIVE REBUILD: Replace SICK tiles ONLY if at risk
+        # SICK tiles (70-85% integrity) are NOT automatically rebuilt
+        # They are only rebuilt if one of these risk conditions is met:
+        #   a) Chunk would drop below 2 readable replicas
+        #   b) Tile is marked WRITE_SUSPECT (2 consecutive write failures)
+        #   c) Chunk failed to converge after 3 consecutive scrubs
+        # Otherwise, prefer scrub + repair over rebuild (reduces churn)
         sick_tiles = [t for t in self.tiles
                      if t.state == TileState.SICK
                      and t.binary_data
@@ -644,34 +659,68 @@ class BioRAIDController:
                 print(f"⏸️  Proactive rebuild throttled (hit weekly limit: {self.rebuilds_this_week}/{self.max_rebuilds_per_week})")
                 return
 
-            # Filter out tiles that were recently attempted (prevent spam)
-            # REBUILD COOLDOWN: 14 days unless integrity <60% (emergency)
-            # CLEAN_LOCKED tiles: ABSOLUTELY IMMUNE to proactive rebuild (even at low integrity)
-            eligible_tiles = []
+            # RISK-GATED: Filter to only tiles that meet risk criteria
+            risky_tiles = []
             for t in sick_tiles:
                 # ABSOLUTE IMMUNITY: Never proactively rebuild CLEAN_LOCKED tiles
-                # They are in stabilization window - let them stabilize or fail naturally
                 if t.state == TileState.CLEAN_LOCKED:
                     continue
                 if t.clean_locked_until_day >= self.uptime_days:
                     continue
-                # EMERGENCY: If integrity <60%, bypass cooldown (impending failure)
-                # BUT: CLEAN_LOCKED tiles should transition to FAILED instead (not SICK)
-                if t.integrity < 0.60:
-                    eligible_tiles.append(t)
-                # NORMAL: Require 14-day cooldown for proactive rebuilds
-                elif (self.uptime_days - t.last_rebuild_attempt_day) >= 14:
-                    eligible_tiles.append(t)
 
-            if not eligible_tiles:
-                locked_count = sum(1 for t in sick_tiles if t.clean_locked_until_day >= self.uptime_days)
-                if locked_count > 0:
-                    print(f"⏸️  {locked_count} SICK tiles are CLEAN_LOCKED (stabilization window)")
-                return  # All SICK tiles attempted recently or locked
+                # RISK GATE: Check if this tile meets rebuild criteria
+                rebuild_needed = False
+                reason = ""
 
-            # Pick the sickest tile
-            tile_to_rebuild = min(eligible_tiles, key=lambda t: t.integrity)
-            print(f"\n🔧 PROACTIVE: Replacing SICK tile {tile_to_rebuild.id} before it fails")
+                # Risk condition (a): Chunk would drop below 2 readable replicas
+                # Find which chunks this tile participates in
+                for chunk_idx, tile_ids in self.chunk_replicas.items():
+                    if t.id not in tile_ids:
+                        continue
+
+                    replicas = [self.tiles[tid] for tid in tile_ids]
+                    readable = [r for r in replicas
+                               if r.state in [TileState.ACTIVE, TileState.SICK, TileState.CLEAN_LOCKED]
+                               and r.integrity >= 0.60]
+
+                    # If removing this tile would leave <2 readable, it's risky
+                    if len(readable) <= 2:
+                        rebuild_needed = True
+                        reason = f"chunk {chunk_idx} would drop to {len(readable)-1} readable"
+                        break
+
+                # Risk condition (b): Tile is WRITE_SUSPECT
+                if t.write_suspect:
+                    rebuild_needed = True
+                    reason = "WRITE_SUSPECT (2 consecutive write failures)"
+
+                # Risk condition (c): Chunk failed to converge after 3 scrubs
+                for chunk_idx, tile_ids in self.chunk_replicas.items():
+                    if t.id not in tile_ids:
+                        continue
+                    failed_scrubs = self.chunk_failed_scrub_count.get(chunk_idx, 0)
+                    if failed_scrubs >= 3:
+                        rebuild_needed = True
+                        reason = f"chunk {chunk_idx} failed {failed_scrubs} consecutive scrubs"
+                        break
+
+                # Apply cooldown even for risky tiles (prevent spam)
+                if rebuild_needed:
+                    if t.integrity < 0.60:
+                        # Emergency: bypass cooldown
+                        risky_tiles.append((t, reason))
+                    elif (self.uptime_days - t.last_rebuild_attempt_day) >= 14:
+                        # Normal: 14-day cooldown
+                        risky_tiles.append((t, reason))
+
+            if not risky_tiles:
+                if sick_tiles:
+                    print(f"⏸️  {len(sick_tiles)} SICK tiles present but none meet risk criteria (safe to scrub/repair only)")
+                return
+
+            # Pick the riskiest tile (lowest integrity among risky tiles)
+            tile_to_rebuild, reason = min(risky_tiles, key=lambda x: x[0].integrity)
+            print(f"\n🔧 RISK-GATED REBUILD: Replacing SICK tile {tile_to_rebuild.id} ({reason})")
 
             # Randomize sterile spare selection
             import random
@@ -1167,6 +1216,10 @@ class BioRAIDController:
                     print(f"      ✗ SCRUB FAILED TO CONVERGE! Replicas {mismatches} still mismatch after write-back")
                     self.scrub_failed_to_converge += 1
 
+                    # RISK-GATED REBUILDS: Track failed scrub for this chunk
+                    current_fails = self.chunk_failed_scrub_count.get(chunk_idx, 0)
+                    self.chunk_failed_scrub_count[chunk_idx] = current_fails + 1
+
                     # BIOLOGICAL HARDENING: Reset maturation on failure
                     for tile in readable:
                         tile.consecutive_successful_scrubs = 0
@@ -1176,6 +1229,9 @@ class BioRAIDController:
                 else:
                     print(f"      ✓ Post-condition verified: all replicas match anchor")
 
+                    # RISK-GATED REBUILDS: Reset failed scrub counter on success
+                    self.chunk_failed_scrub_count[chunk_idx] = 0
+
                     # BIOLOGICAL HARDENING: Maturation after successful scrub
                     self._advance_maturation(readable)
 
@@ -1183,6 +1239,9 @@ class BioRAIDController:
                     self._track_clean_scrub_for_quorum_restoration(chunk_idx, readable)
             else:
                 print(f"      ✓ All replicas match anchor - no repairs needed")
+
+                # RISK-GATED REBUILDS: Reset failed scrub counter (no repairs needed = success)
+                self.chunk_failed_scrub_count[chunk_idx] = 0
 
                 # BIOLOGICAL HARDENING: Maturation for stable replicas (no repair needed)
                 self._advance_maturation(readable)
@@ -1276,6 +1335,10 @@ class BioRAIDController:
                     print(f"      ✗ SCRUB FAILED TO CONVERGE! Replicas {mismatches} still mismatch after write-back")
                     self.scrub_failed_to_converge += 1
 
+                    # RISK-GATED REBUILDS: Track failed scrub for this chunk
+                    current_fails = self.chunk_failed_scrub_count.get(chunk_idx, 0)
+                    self.chunk_failed_scrub_count[chunk_idx] = current_fails + 1
+
                     # BIOLOGICAL HARDENING: Reset maturation on failure
                     for tile in readable:
                         tile.consecutive_successful_scrubs = 0
@@ -1288,6 +1351,9 @@ class BioRAIDController:
                 else:
                     print(f"      ✓ Post-condition verified: all replicas match golden truth")
 
+                    # RISK-GATED REBUILDS: Reset failed scrub counter on success
+                    self.chunk_failed_scrub_count[chunk_idx] = 0
+
                     # BIOLOGICAL HARDENING: Maturation after successful scrub
                     self._advance_maturation(readable)
 
@@ -1297,6 +1363,9 @@ class BioRAIDController:
                     self.chunk_consecutive_clean_scrubs[chunk_idx] = current_count + 1
             else:
                 # No disagreements - all replicas already match
+                # RISK-GATED REBUILDS: Reset failed scrub counter (no repairs needed = success)
+                self.chunk_failed_scrub_count[chunk_idx] = 0
+
                 # BIOLOGICAL HARDENING: Maturation for stable replicas
                 self._advance_maturation(readable)
 
@@ -1404,9 +1473,19 @@ class BioRAIDController:
 
         # Final verification
         if tile.binary_data == data:
+            # Write succeeded - reset failure count
+            tile.write_fail_count = 0
             return True
         else:
             # Write failed even after 2-pass
+            tile.write_fail_count += 1
+            self.write_failures_total += 1
+
+            # RISK-GATED REBUILDS: Mark as WRITE_SUSPECT after 2 consecutive failures
+            if tile.write_fail_count >= 2:
+                tile.write_suspect = True
+                print(f"          ⚠️  Tile {tile.id} marked WRITE_SUSPECT (2 consecutive write failures)")
+
             return False
 
     def _advance_maturation(self, tiles: List[Tile]):
@@ -2172,6 +2251,35 @@ def run_phase2_simulation(duration_days=365):
         print(f"  📌 {anchor_chunks} chunks using anchor authority (may restore to QUORUM if stable)")
     if quorum_chunks > 0 and controller.quorum_restorations > 0:
         print(f"  ✓ System can heal: {controller.quorum_restorations} chunks restored to QUORUM mode")
+
+    # DURABILITY METRICS (new metrics for rebuild frequency)
+    print(f"\nDURABILITY METRICS:")
+    days_simulated = controller.uptime_days
+    months_simulated = days_simulated / 30.0
+    years_simulated = days_simulated / 365.0
+
+    # Rebuilds per month
+    rebuilds_per_month = controller.rebuild_count / months_simulated if months_simulated > 0 else 0
+    if rebuilds_per_month <= 1.0:
+        print(f"  ✓ Rebuilds per month: {rebuilds_per_month:.2f} - EXCELLENT")
+    elif rebuilds_per_month <= 2.0:
+        print(f"  ✓ Rebuilds per month: {rebuilds_per_month:.2f} - GOOD")
+    else:
+        print(f"  ⚠️  Rebuilds per month: {rebuilds_per_month:.2f} - TOO HIGH (goal: ≤1/month)")
+
+    # Rebuilds per tile per year
+    rebuilds_per_tile_per_year = (controller.rebuild_count / controller.n_tiles) / years_simulated if years_simulated > 0 else 0
+    print(f"  📊 Rebuilds per tile per year: {rebuilds_per_tile_per_year:.2f}")
+
+    # Write fail rate
+    total_scrub_writes = controller.scrub_writebacks
+    write_fail_rate = (controller.write_failures_total / total_scrub_writes * 100) if total_scrub_writes > 0 else 0
+    print(f"  📊 Write fail rate: {write_fail_rate:.2f}% ({controller.write_failures_total}/{total_scrub_writes} writes)")
+
+    # Mature tile percentage
+    mature_tiles = sum(1 for t in controller.tiles if t.maturity_level >= 2)
+    mature_percentage = (mature_tiles / controller.n_tiles * 100) if controller.n_tiles > 0 else 0
+    print(f"  📊 Mature tile percentage: {mature_percentage:.1f}% ({mature_tiles}/{controller.n_tiles} tiles)")
 
     # SUCCESS CRITERIA CHECK
     print(f"\nSUCCESS CRITERIA:")
