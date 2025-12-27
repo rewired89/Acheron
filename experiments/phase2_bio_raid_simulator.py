@@ -224,14 +224,32 @@ class BioRAIDController:
 
         # PROACTIVE_REBUILD: Replace degrading tiles BEFORE they fail
         # This makes self-healing explicit and measurable
-        self.PROACTIVE_REBUILD_THRESHOLD = 0.80  # Trigger if tile <80% for N consecutive days
-        self.PROACTIVE_REBUILD_MIN_DAYS = 3  # Require 3 consecutive days <80%
+        self.PROACTIVE_REBUILD_THRESHOLD = 0.70  # Only trigger for repeat offenders or <70%
+        self.PROACTIVE_REBUILD_MIN_DAYS = 3  # Require 3 consecutive days <70%
         self.PROACTIVE_REBUILD_BUDGET_PER_YEAR = 55  # Max rebuilds per year (throttle if exceeded)
-        self.PROACTIVE_REBUILD_THROTTLE_THRESHOLD = 0.78  # If >budget, require <78% for 5 days
+        self.PROACTIVE_REBUILD_THROTTLE_THRESHOLD = 0.68  # If >budget, require <68% for 5 days
         self.PROACTIVE_REBUILD_THROTTLE_DAYS = 5  # Stricter requirement when throttled
         self.proactive_rebuild_count = 0  # Count of proactive rebuilds
         self.tiles_saved_before_failure = 0  # Tiles replaced before crossing <60%
         self.tile_degraded_since_day = {}  # {tile_id: day} - when tile dropped below threshold
+
+        # REGEN-IN-PLACE: Regenerate sick tiles in situ (Stage A - primary response)
+        self.REGEN_IN_PLACE_THRESHOLD = 0.80  # Trigger if tile <80% (SICK range)
+        self.REGEN_IN_PLACE_MIN_SICK_DAYS = 5  # Require 5 consecutive days SICK
+        self.REGEN_DURATION_MIN = 5  # Minimum regeneration duration
+        self.REGEN_DURATION_MAX = 7  # Maximum regeneration duration
+        self.REGEN_INTEGRITY_MIN = 0.90  # Minimum integrity after regeneration
+        self.REGEN_INTEGRITY_MAX = 0.97  # Maximum integrity after regeneration
+        self.REPEAT_OFFENDER_WINDOW = 60  # Days to track repeat regenerations
+        self.REPEAT_OFFENDER_THRESHOLD = 2  # Max regenerations before permanent swap
+        self.regen_in_place_count = 0  # Count of in-place regenerations
+        self.temp_shadow_count = 0  # Count of temporary shadow replicas created
+        self.repeat_offender_swaps = 0  # Count of swaps due to repeat offenders
+        self.tile_sick_since_day = {}  # {tile_id: day} - when tile became SICK
+        self.tile_regen_history = {}  # {tile_id: [day1, day2, ...]} - regeneration events
+        self.tiles_regenerating = set()  # Set of tile IDs currently regenerating
+        self.tile_temp_shadow = {}  # {tile_id: shadow_tile_id} - maps regenerating tile to its shadow
+        self.days_with_regen_active = 0  # Days when at least one tile was regenerating
 
         # SPARE_POOL_HEALTH: Maintain healthy spare pool
         self.SPARE_TARGET = 4  # Target number of healthy sterile spares
@@ -799,11 +817,17 @@ class BioRAIDController:
         # THREE-MODE TOP-UP: Track time at 2-live vs 3-live and check for top-up opportunities
         self._track_live_replica_time()
 
+        # Complete any ongoing REGEN-IN-PLACE operations (check before starting new ones)
+        self._complete_regen_in_place()
+
         # MUST-HEAL RULES (highest priority - bypass risk gates)
         self._check_failed_slots()  # Rule 1: Mandatory rebuild of FAILED slots
         self._enforce_pending_deadline()  # Rule 2: Force action on stuck PENDING chunks
 
-        # PROACTIVE_REBUILD: Replace degrading tiles BEFORE they fail (explicit self-healing)
+        # STAGE A: REGEN-IN-PLACE (primary self-healing - regenerate sick tiles in situ)
+        self._check_regen_in_place()
+
+        # STAGE B: PROACTIVE_REBUILD (repeat offenders only - permanent swap)
         self._check_proactive_rebuild()
 
         # SPARE_POOL_HEALTH: Maintain healthy spare pool (flush orphaned FAILED tiles)
@@ -2413,16 +2437,196 @@ class BioRAIDController:
                 self.pending_deadline_heals += 1
                 return  # Only one action per day
 
+    def _check_regen_in_place(self):
+        """
+        STAGE A: REGEN-IN-PLACE (primary self-healing response)
+
+        Regenerate sick tiles in situ without permanent swap. Triggers when:
+        - A live tile serving a chunk is SICK (60-80%) for >=5 consecutive days
+        - AND sterile spare available (for TEMP_SHADOW)
+        - AND won't reduce readable replicas below 2
+
+        Process:
+        1. Create TEMP_SHADOW replica on sterile spare using QUORUM truth
+        2. Mark sick tile as REGENERATING (unreadable during regen)
+        3. After 5-7 days, restore integrity to 90-97% and return to ACTIVE
+        4. Remove TEMP_SHADOW (keep exactly 3 replicas per chunk)
+
+        This allows tiles to heal without permanent replacement.
+        """
+        # Track if any tiles are regenerating today
+        if len(self.tiles_regenerating) > 0:
+            self.days_with_regen_active += 1
+
+        sterile = [t for t in self.tiles if t.state == TileState.STERILE]
+        if not sterile:
+            return  # No spare capacity for TEMP_SHADOW
+
+        # Find tiles serving chunks that are SICK for >= MIN_SICK_DAYS
+        candidates = []
+        for chunk_idx, tile_ids in self.chunk_replicas.items():
+            tiles = [self.tiles[tid] for tid in tile_ids if tid is not None]
+
+            for tile in tiles:
+                # Skip if not live (ACTIVE/SICK) or clean-locked
+                if tile.state not in [TileState.ACTIVE, TileState.SICK]:
+                    continue
+                if tile.clean_locked_until_day >= self.uptime_days:
+                    continue
+
+                # Check if tile is SICK (<80% but >=60%)
+                if tile.integrity >= self.REGEN_IN_PLACE_THRESHOLD:
+                    # Above threshold - clear sick timer
+                    if tile.id in self.tile_sick_since_day:
+                        del self.tile_sick_since_day[tile.id]
+                    continue
+
+                if tile.integrity < 0.60:
+                    # Below SICK range - will be handled by FAILED logic
+                    continue
+
+                # Tile is SICK (60-80%) - track how long
+                if tile.id not in self.tile_sick_since_day:
+                    self.tile_sick_since_day[tile.id] = self.uptime_days
+
+                days_sick = self.uptime_days - self.tile_sick_since_day[tile.id]
+
+                if days_sick < self.REGEN_IN_PLACE_MIN_SICK_DAYS:
+                    continue  # Not sick long enough
+
+                # Check if this is a repeat offender (>2 regens in 60 days)
+                if tile.id in self.tile_regen_history:
+                    recent_regens = [d for d in self.tile_regen_history[tile.id]
+                                    if self.uptime_days - d <= self.REPEAT_OFFENDER_WINDOW]
+                    if len(recent_regens) >= self.REPEAT_OFFENDER_THRESHOLD:
+                        print(f"🔁 Tile {tile.id} is a repeat offender ({len(recent_regens)} regens in {self.REPEAT_OFFENDER_WINDOW} days) - escalating to permanent swap")
+                        continue  # Skip REGEN-IN-PLACE, let PROACTIVE_REBUILD handle it
+
+                # Safety check: ensure we won't drop below 2 readable replicas
+                # (TEMP_SHADOW will count as readable during regen)
+                readable = [t for t in tiles
+                           if t.state in [TileState.ACTIVE, TileState.SICK, TileState.CLEAN_LOCKED]
+                           and t.integrity >= 0.60]
+
+                if len(readable) <= 2:
+                    continue  # Too risky - need TEMP_SHADOW to maintain 2+ readable
+
+                # Candidate for REGEN-IN-PLACE
+                candidates.append((tile, chunk_idx, days_sick))
+
+        if not candidates:
+            return  # No tiles need REGEN-IN-PLACE
+
+        # Pick the most degraded tile (lowest integrity)
+        tile_to_regen, chunk_idx, days_sick = min(candidates, key=lambda x: x[0].integrity)
+
+        # Get QUORUM truth from other replicas
+        tile_ids = self.chunk_replicas[chunk_idx]
+        tiles = [self.tiles[tid] for tid in tile_ids if tid is not None]
+        live_correct_tiles = [t for t in tiles
+                             if t.id != tile_to_regen.id  # Exclude the one we're regenerating
+                             and self._is_live_correct(t)]
+
+        if len(live_correct_tiles) < 2:
+            print(f"⚠️  REGEN-IN-PLACE: Cannot regenerate tile {tile_to_regen.id} - insufficient quorum ({len(live_correct_tiles)}/2)")
+            return
+
+        # Execute REGEN-IN-PLACE
+        print(f"\n🔄 REGEN-IN-PLACE: Regenerating tile {tile_to_regen.id} (integrity: {tile_to_regen.integrity:.2%}, sick for {days_sick} days)")
+
+        # Step 1: Create TEMP_SHADOW replica on sterile spare (standalone safety backup)
+        # TEMP_SHADOW is NOT added to chunk - chunk keeps exactly 3 slots filled
+        # During regen, chunk has 2 live replicas + 1 REGENERATING (safety threshold met)
+        shadow = sterile[0]
+        best_tile = max(live_correct_tiles, key=lambda t: t.integrity)
+        correct_data = best_tile.binary_data
+
+        shadow.state = TileState.ACTIVE  # TEMP_SHADOW is ACTIVE (standalone backup)
+        shadow.binary_data = correct_data
+        shadow.pattern = self.encoder.encode(correct_data)
+        self._track_write(shadow, success=True)
+        shadow.integrity = 0.98  # High integrity
+        shadow.needs_scrub = False
+
+        import zlib
+        shadow.chunk_checksum = zlib.crc32(correct_data.encode()) & 0xffffffff
+
+        # TEMP_SHADOW remains standalone (not added to chunk)
+        # This allows regen-in-place without inflating replica count
+        self.temp_shadow_count += 1
+        self.tile_temp_shadow[tile_to_regen.id] = shadow.id
+        print(f"   ✓ Created TEMP_SHADOW replica on tile {shadow.id} (standalone safety backup)")
+        print(f"   📊 Chunk {chunk_idx} during regen: 2 live + 1 REGENERATING (safety threshold met)")
+
+        # Step 2: Mark sick tile as REGENERATING
+        tile_to_regen.state = TileState.REGENERATING
+        tile_to_regen.regeneration_progress = 0.0
+        tile_to_regen.needs_scrub = False
+        regen_duration = np.random.randint(self.REGEN_DURATION_MIN, self.REGEN_DURATION_MAX + 1)
+        tile_to_regen.regeneration_complete_day = self.uptime_days + regen_duration
+        self.tiles_regenerating.add(tile_to_regen.id)
+
+        # Track regeneration event
+        if tile_to_regen.id not in self.tile_regen_history:
+            self.tile_regen_history[tile_to_regen.id] = []
+        self.tile_regen_history[tile_to_regen.id].append(self.uptime_days)
+
+        # Clear sick timer
+        if tile_to_regen.id in self.tile_sick_since_day:
+            del self.tile_sick_since_day[tile_to_regen.id]
+
+        self.regen_in_place_count += 1
+        print(f"   ✓ Tile {tile_to_regen.id} entering REGENERATING state for {regen_duration} days")
+        print(f"   📊 REGEN-IN-PLACE #{self.regen_in_place_count}, chunk {chunk_idx} temporarily has 4 replicas (3 + TEMP_SHADOW)")
+
+    def _complete_regen_in_place(self):
+        """
+        Complete in-place regeneration for tiles that have finished regenerating.
+
+        Process:
+        1. Restore tile integrity to 90-97%
+        2. Return tile to ACTIVE state
+        3. Remove TEMP_SHADOW replica (restore to exactly 3 replicas)
+        """
+        for tile_id in list(self.tiles_regenerating):
+            tile = self.tiles[tile_id]
+
+            if self.uptime_days >= tile.regeneration_complete_day:
+                print(f"\n✅ REGEN-IN-PLACE COMPLETE: Tile {tile_id} regeneration finished")
+
+                # Step 1: Restore integrity
+                new_integrity = np.random.uniform(self.REGEN_INTEGRITY_MIN, self.REGEN_INTEGRITY_MAX)
+                tile.integrity = new_integrity
+                tile.state = TileState.ACTIVE
+                tile.regeneration_progress = 1.0
+                tile.clean_locked_until_day = self.uptime_days + 7  # Protection period
+                print(f"   ✓ Tile {tile_id} restored to ACTIVE with integrity {new_integrity:.2%}")
+
+                # Step 2: Remove TEMP_SHADOW (standalone backup, not in chunk)
+                if tile_id in self.tile_temp_shadow:
+                    shadow_id = self.tile_temp_shadow[tile_id]
+                    shadow = self.tiles[shadow_id]
+
+                    # TEMP_SHADOW was never added to chunk, so just flush it
+                    self._flush_tile(shadow)
+                    print(f"   ✓ Removed TEMP_SHADOW tile {shadow_id} (standalone backup flushed to STERILE)")
+                    del self.tile_temp_shadow[tile_id]
+
+                # Remove from regenerating set
+                self.tiles_regenerating.remove(tile_id)
+
     def _check_proactive_rebuild(self):
         """
-        PROACTIVE_REBUILD: Replace degrading tiles BEFORE they fail.
+        STAGE B: PROACTIVE_REBUILD (repeat offender swaps only)
 
-        This makes self-healing explicit and measurable. Triggers when:
-        - A live tile serving a chunk has integrity <80% for N consecutive days
+        Permanently replace tiles that are repeat offenders or critically degraded.
+        Triggers when:
+        - Tile is a repeat offender (>2 regens in 60 days), OR
+        - Tile has integrity <70% for N consecutive days
         - AND sterile spare available
         - AND won't reduce readable replicas below 2
 
-        Budget guard: If >55 rebuilds/year pace, throttle to <78% for 5 days.
+        Budget guard: If >55 rebuilds/year pace, throttle to <68% for 5 days.
 
         Action: Create new replica from QUORUM truth, swap into chunk, retire sick tile.
         """
@@ -2476,6 +2680,18 @@ class BioRAIDController:
                 if days_degraded < min_days:
                     continue  # Not degraded long enough
 
+                # Check if this is a repeat offender (>2 regens in 60 days)
+                is_repeat_offender = False
+                if tile.id in self.tile_regen_history:
+                    recent_regens = [d for d in self.tile_regen_history[tile.id]
+                                    if self.uptime_days - d <= self.REPEAT_OFFENDER_WINDOW]
+                    if len(recent_regens) >= self.REPEAT_OFFENDER_THRESHOLD:
+                        is_repeat_offender = True
+
+                # Only proceed if repeat offender OR below 70%
+                if not is_repeat_offender and tile.integrity >= 0.70:
+                    continue  # Let REGEN-IN-PLACE handle non-repeat-offenders above 70%
+
                 # Safety check: ensure we won't drop below 2 readable replicas
                 readable = [t for t in tiles
                            if t.state in [TileState.ACTIVE, TileState.SICK, TileState.CLEAN_LOCKED]
@@ -2485,13 +2701,19 @@ class BioRAIDController:
                     continue  # Too risky - would leave <2 readable
 
                 # Candidate for proactive rebuild
-                candidates.append((tile, chunk_idx, days_degraded))
+                reason = "repeat offender" if is_repeat_offender else f"<70% ({tile.integrity:.2%})"
+                candidates.append((tile, chunk_idx, days_degraded, reason))
 
         if not candidates:
             return  # No tiles need proactive rebuild
 
         # Pick the most degraded tile (lowest integrity)
-        tile_to_rebuild, chunk_idx, days_degraded = min(candidates, key=lambda x: x[0].integrity)
+        tile_to_rebuild, chunk_idx, days_degraded, reason = min(candidates, key=lambda x: x[0].integrity)
+
+        # Check if this is a repeat offender (for tracking)
+        is_repeat_offender = "repeat offender" in reason
+        if is_repeat_offender:
+            self.repeat_offender_swaps += 1
 
         # Check if this tile would have failed (integrity <60%)
         will_save_before_failure = tile_to_rebuild.integrity < 0.70  # In SICK range or close to failure
@@ -2508,7 +2730,8 @@ class BioRAIDController:
             return
 
         # Execute proactive rebuild
-        print(f"\n🔧 PROACTIVE_REBUILD: Replacing tile {tile_to_rebuild.id} (integrity: {tile_to_rebuild.integrity:.2%}, degraded for {days_degraded} days)")
+        print(f"\n🔧 PROACTIVE_REBUILD: Replacing tile {tile_to_rebuild.id} ({reason})")
+        print(f"   Integrity: {tile_to_rebuild.integrity:.2%}, degraded for {days_degraded} days")
         print(f"   Threshold: {threshold:.0%}, Budget status: {'THROTTLED' if is_over_budget else 'OK'} ({rebuilds_per_year:.1f}/{self.PROACTIVE_REBUILD_BUDGET_PER_YEAR} per year)")
 
         # Get QUORUM truth
@@ -3483,12 +3706,23 @@ def run_phase2_simulation(duration_days=365):
     print(f"  🚨 MUST-HEAL: FAILED slot rebuilds: {controller.failed_slot_rebuilds} ({failed_slot_per_month:.2f}/month)")
     print(f"  🚨 MUST-HEAL: PENDING deadline heals: {controller.pending_deadline_heals} ({pending_deadline_per_month:.2f}/month)")
 
-    # PROACTIVE_REBUILD: Explicit self-healing metrics
+    # REGEN-IN-PLACE: Stage A self-healing (primary response)
+    regen_in_place_per_month = controller.regen_in_place_count / months_simulated if months_simulated > 0 else 0
+    regen_in_place_per_year = regen_in_place_per_month * 12.0
+    pct_time_regenerating = (controller.days_with_regen_active / days_simulated * 100) if days_simulated > 0 else 0
+    avg_regen_duration = (controller.REGEN_DURATION_MIN + controller.REGEN_DURATION_MAX) / 2.0
+    print(f"  🔄 REGEN-IN-PLACE (Stage A): {controller.regen_in_place_count} total ({regen_in_place_per_month:.2f}/month, {regen_in_place_per_year:.1f}/year)")
+    print(f"     Temp shadow replicas created: {controller.temp_shadow_count}")
+    print(f"     Avg regen duration: {avg_regen_duration:.1f} days")
+    print(f"     % time with regen active: {pct_time_regenerating:.1f}%")
+
+    # PROACTIVE_REBUILD: Stage B self-healing (repeat offenders/critical only)
     proactive_rebuilds_per_month = controller.proactive_rebuild_count / months_simulated if months_simulated > 0 else 0
     proactive_rebuilds_per_year = proactive_rebuilds_per_month * 12.0
     budget_status = "✓ WITHIN BUDGET" if proactive_rebuilds_per_year <= controller.PROACTIVE_REBUILD_BUDGET_PER_YEAR else "⚠️  OVER BUDGET"
-    print(f"  🔧 PROACTIVE_REBUILD: {controller.proactive_rebuild_count} total ({proactive_rebuilds_per_month:.2f}/month, {proactive_rebuilds_per_year:.1f}/year)")
+    print(f"  🔧 PROACTIVE_REBUILD (Stage B): {controller.proactive_rebuild_count} total ({proactive_rebuilds_per_month:.2f}/month, {proactive_rebuilds_per_year:.1f}/year)")
     print(f"     Budget: {proactive_rebuilds_per_year:.1f}/{controller.PROACTIVE_REBUILD_BUDGET_PER_YEAR} per year - {budget_status}")
+    print(f"     Repeat offender swaps: {controller.repeat_offender_swaps}")
     print(f"     Tiles saved before failure (<70%): {controller.tiles_saved_before_failure}")
 
     # Count tiles that crossed <60% without being replaced
