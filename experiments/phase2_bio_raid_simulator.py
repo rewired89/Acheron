@@ -97,15 +97,22 @@ class BioRAIDController:
 
     # BIOLOGICAL HARDENING CONSTANTS
     MATURATION_THRESHOLD = 3  # Consecutive successful scrubs needed to mature
-    MATURE_DEGRADATION_REDUCTION = 0.85  # Mature replicas degrade 85% slower (0.045%/day vs 0.3%/day)
+    MATURE_DEGRADATION_REDUCTION = 1.0  # Mature replicas degrade at same rate as immature (realistic chronic aging)
     CONSOLIDATION_INTEGRITY_BOOST = 0.02  # Anchor write-back increases integrity by 2%
     CONSOLIDATION_MAX_INTEGRITY = 0.98  # Cap for integrity boost from consolidation
 
-    # REST & RECOVERY CONSTANTS (health-only, does NOT change data)
-    RECOVERY_ENABLED = True  # Enable passive integrity recovery for stable tiles
-    RECOVERY_RATE = 0.0025  # +0.25% per day for stable tiles (aggressive recovery)
-    RECOVERY_MAX = 0.95  # Cap integrity recovery at 95% (realistic biological limit)
-    RECOVERY_MIN_CALM_DAYS = 3  # Require 3 days without shocks (quick enable)
+    # BIOLOGICAL DEGRADATION: Realistic chronic decay (decoupled from data correctness)
+    # Physical integrity degrades continuously even when data remains correct
+    BASE_DEGRADATION_RATE = 0.0005  # 0.05% per day baseline (slower, but chronic hits add pressure)
+    CHRONIC_DEGRADATION_PROB = 0.01  # 1% chance per day for chronic degradation hit
+    CHRONIC_DEGRADATION_MAG_MIN = 0.04  # Minimum 4% integrity loss from chronic hit
+    CHRONIC_DEGRADATION_MAG_MAX = 0.08  # Maximum 8% integrity loss from chronic hit
+
+    # REST & RECOVERY CONSTANTS (disabled to ensure regular regeneration pressure)
+    RECOVERY_ENABLED = False  # Disable passive recovery to allow chronic degradation to accumulate
+    RECOVERY_RATE = 0.0  # No recovery (tiles must regenerate to restore integrity)
+    RECOVERY_MAX = 0.95  # (Unused when RECOVERY_ENABLED = False)
+    RECOVERY_MIN_CALM_DAYS = 3  # (Unused when RECOVERY_ENABLED = False)
 
     # WRITE-SETTLE PROTOCOL CONSTANTS
     WRITE_SETTLE_DELAY_CYCLES = 2  # Simulated settling cycles after write
@@ -550,16 +557,29 @@ class BioRAIDController:
                 was_healthy = (tile.integrity >= 0.80)
                 integrity_before = tile.integrity
 
-                # REALISTIC DEGRADATION: 0.3% per day baseline
-                # BIOLOGICAL HARDENING: Mature replicas (maturity_level >= 2) degrade much slower
-                # This models memory consolidation - well-established replicas are more stable
+                # BIOLOGICAL DEGRADATION: Continuous integrity loss (decoupled from data correctness)
+                # Physical substrate degrades even when data remains perfectly correct via ECC
                 if tile.maturity_level >= 2:
-                    # Mature replicas degrade 75% slower (0.075% per day instead of 0.3%)
-                    degradation_rate = 1.0 - (0.003 * self.MATURE_DEGRADATION_REDUCTION)
+                    # Mature tiles: same degradation rate (chronic aging model)
+                    degradation_rate = 1.0 - (self.BASE_DEGRADATION_RATE * self.MATURE_DEGRADATION_REDUCTION)
                     tile.integrity *= degradation_rate
                 else:
-                    # Normal degradation for new/maturing replicas
-                    tile.integrity *= 0.997
+                    # Immature tiles: baseline degradation
+                    degradation_rate = 1.0 - self.BASE_DEGRADATION_RATE
+                    tile.integrity *= degradation_rate
+
+                # CHRONIC DEGRADATION: Non-lethal integrity hits (regular pressure toward regeneration)
+                # Models cumulative molecular damage, substrate fatigue, environmental stress
+                # This ensures tiles regularly drift into 70-80% integrity range
+                if np.random.random() < self.CHRONIC_DEGRADATION_PROB:
+                    chronic_magnitude = np.random.uniform(self.CHRONIC_DEGRADATION_MAG_MIN, self.CHRONIC_DEGRADATION_MAG_MAX)
+                    tile.integrity *= (1.0 - chronic_magnitude)
+                    self.total_degradation_events += 1
+                    if tile.integrity < 0.80:
+                        print(f"🧬 Chronic degradation: Tile {tile.id} dropped to {tile.integrity:.2%} (molecular fatigue)")
+                    # Track if this caused drop below 80%
+                    if was_healthy and tile.integrity < 0.80:
+                        self.tiles_dropped_below_80_baseline += 1
 
                 # REST & RECOVERY: Passive integrity recovery for stable tiles
                 # Only if tile has been calm (no recent shocks) AND mature
@@ -1828,7 +1848,7 @@ class BioRAIDController:
 
                     if tile.maturity_level == 2:
                         print(f"          🌱 Tile {tile.id} MATURED (after {tile.consecutive_successful_scrubs} successful scrubs)")
-                        print(f"              Degradation rate reduced by {self.MATURE_DEGRADATION_REDUCTION*100:.0f}%, shock resistance increased")
+                        print(f"              Shock resistance increased (chronic degradation pressure continues)")
 
     def _record_shock(self, tile_id: int):
         """
