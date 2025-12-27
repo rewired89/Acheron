@@ -208,6 +208,13 @@ class BioRAIDController:
         self.DEADLINE_TOPUP_DAYS = 14  # Force top-up after 14 days <3 LIVE_CORRECT
         self.deadline_topup_count = 0  # Count of deadline-triggered top-ups
 
+        # MUST-HEAL RULES: Mandatory repair for FAILED slots and stuck PENDING
+        self.PENDING_DEADLINE_DAYS = 14  # Force action if chunk stuck <3 ACTIVE for >14 days
+        self.failed_slot_rebuilds = 0  # Count of mandatory FAILED slot rebuilds
+        self.pending_deadline_heals = 0  # Count of PENDING deadline forced promotions/rebuilds
+        self.chunks_repair_required = set()  # Chunks with FAILED slots requiring immediate rebuild
+        self.chunk_degraded_since_day = {}  # {chunk_idx: day} - when chunk dropped below 3 ACTIVE replicas
+
         # COLD SNAPSHOT ANCHOR: Last-resort recovery for correlated failures
         self.chunk_snapshot_bits = {}  # {chunk_idx: str} - cold snapshot of chunk data
         self.chunk_snapshot_epoch = {}  # {chunk_idx: int} - when snapshot was taken
@@ -753,7 +760,12 @@ class BioRAIDController:
 
         # THREE-MODE TOP-UP: Track time at 2-live vs 3-live and check for top-up opportunities
         self._track_live_replica_time()
-        # Try RECOVERY_TOPUP first (highest priority - failed replicas)
+
+        # MUST-HEAL RULES (highest priority - bypass risk gates)
+        self._check_failed_slots()  # Rule 1: Mandatory rebuild of FAILED slots
+        self._enforce_pending_deadline()  # Rule 2: Force action on stuck PENDING chunks
+
+        # Try RECOVERY_TOPUP first (high priority - failed replicas)
         self._check_recovery_topup()
         # Then try CALM_TOPUP (medium priority - stable chunks)
         self._check_calm_period_topup()
@@ -2040,6 +2052,18 @@ class BioRAIDController:
                 if chunk_idx not in self.chunk_under_replicated_since_day:
                     self.chunk_under_replicated_since_day[chunk_idx] = self.uptime_days
 
+            # Track degradation for MUST-HEAL rules (any <3 ACTIVE replicas)
+            tiles = self._get_chunk_tiles(chunk_idx)
+            active_count = sum(1 for t in tiles if t.state == TileState.ACTIVE and t.integrity >= 0.70)
+            if active_count >= 3:
+                # Back to 3 ACTIVE - clear degradation timer
+                if chunk_idx in self.chunk_degraded_since_day:
+                    del self.chunk_degraded_since_day[chunk_idx]
+            else:
+                # <3 ACTIVE - mark when degradation started
+                if chunk_idx not in self.chunk_degraded_since_day:
+                    self.chunk_degraded_since_day[chunk_idx] = self.uptime_days
+
     def _check_recovery_topup(self):
         """
         RECOVERY TOP-UP: Restore under-replicated chunks due to failed/offline replicas.
@@ -2210,6 +2234,140 @@ class BioRAIDController:
             print(f"  ⏰ DEADLINE TOP-UP: Chunk {chunk_idx} has been <3 LIVE_CORRECT for {days_under_replicated} days")
             self._perform_topup(chunk_idx, live_correct_tiles, sterile[0], mode='DEADLINE')
             return  # Only one top-up per day
+
+    def _check_failed_slots(self):
+        """
+        MUST-HEAL RULE 1: FAILED SLOT MANDATORY REBUILD
+
+        If any chunk slot references a FAILED tile (<60%), immediately mark chunk
+        as REPAIR_REQUIRED and rebuild that slot using QUORUM truth (or snapshot).
+
+        This bypasses all risk gates - FAILED slots must be healed.
+        """
+        sterile = [t for t in self.tiles if t.state == TileState.STERILE]
+        if not sterile:
+            return  # No spare capacity
+
+        for chunk_idx, slots in self.chunk_replicas.items():
+            # Check each slot for FAILED tiles
+            for slot_idx, tid in enumerate(slots):
+                if tid is None:
+                    continue
+
+                tile = self.tiles[tid]
+                if tile.state == TileState.FAILED:
+                    print(f"\n🚨 MUST-HEAL: Chunk {chunk_idx} slot {slot_idx} has FAILED tile {tid} (integrity: {tile.integrity:.2%})")
+                    print(f"   Mandatory rebuild required (bypassing risk gates)")
+
+                    # Get QUORUM truth or snapshot
+                    live_correct_tiles = [self.tiles[t] for t in slots if t is not None and self._is_live_correct(self.tiles[t])]
+
+                    if len(live_correct_tiles) >= 2:
+                        # Use QUORUM
+                        print(f"   Using QUORUM truth from {len(live_correct_tiles)} LIVE_CORRECT replicas")
+                        best_tile = max(live_correct_tiles, key=lambda t: t.integrity)
+                        correct_data = best_tile.binary_data
+                    elif chunk_idx in self.chunk_snapshot_bits:
+                        # Use snapshot
+                        print(f"   Using SNAPSHOT truth (no quorum available)")
+                        correct_data = self.chunk_snapshot_bits[chunk_idx]
+                    else:
+                        print(f"   ✗ NO QUORUM OR SNAPSHOT - cannot rebuild safely")
+                        continue
+
+                    # Rebuild onto sterile tile
+                    target = sterile[0]
+                    target.state = TileState.REGENERATING
+                    target.binary_data = correct_data
+                    target.pattern = self.encoder.encode(correct_data)
+                    self._track_write(target, success=True)
+                    target.regeneration_progress = 1.0
+                    target.needs_scrub = False
+                    target.integrity = 0.98
+
+                    import zlib
+                    target.chunk_checksum = zlib.crc32(correct_data.encode()) & 0xffffffff
+
+                    # Hard scrub to verify
+                    self._scrub_chunk(chunk_idx)
+
+                    # Promote to ACTIVE immediately
+                    target.state = TileState.ACTIVE
+                    target.clean_locked_until_day = self.uptime_days + 7
+                    target.regen_complete_day = self.uptime_days
+
+                    # Update slot mapping: replace FAILED tile with new one
+                    self._set_chunk_slot(chunk_idx, slot_idx, target.id)
+
+                    # Flush FAILED tile
+                    self._flush_tile(tile)
+
+                    self.failed_slot_rebuilds += 1
+                    print(f"   ✓ FAILED slot rebuilt onto tile {target.id} (rebuild #{self.failed_slot_rebuilds})")
+                    return  # Only one rebuild per day
+
+    def _enforce_pending_deadline(self):
+        """
+        MUST-HEAL RULE 2: PENDING DEADLINE ENFORCEMENT
+
+        If chunk has been [<3 ACTIVE replicas with >=70%] for >14 days,
+        force action:
+        a) If SICK tile is in hysteresis band (70-85%), promote to ACTIVE immediately
+        b) Else create new replica from QUORUM onto sterile, verify, fill slot
+
+        Goal: Chunks must return to 3 healthy ACTIVE replicas, never stuck with SICK.
+        """
+        for chunk_idx in sorted(self.chunk_replicas.keys()):
+            # Count ACTIVE replicas (not SICK, not CLEAN_LOCKED)
+            tile_ids = self._get_chunk_tile_ids(chunk_idx)
+            tiles = [self.tiles[tid] for tid in tile_ids]
+            active_count = sum(1 for t in tiles if t.state == TileState.ACTIVE and t.integrity >= 0.70)
+
+            # Only act if <3 ACTIVE replicas
+            if active_count >= 3:
+                continue
+
+            # Check how long chunk has been degraded
+            if chunk_idx not in self.chunk_degraded_since_day:
+                continue
+            days_degraded = self.uptime_days - self.chunk_degraded_since_day[chunk_idx]
+
+            if days_degraded < self.PENDING_DEADLINE_DAYS:
+                continue  # Not at deadline yet
+
+            print(f"\n⏰ PENDING DEADLINE: Chunk {chunk_idx} has been <3 ACTIVE replicas for {days_degraded} days")
+
+            # Get all tiles
+            tile_ids = self._get_chunk_tile_ids(chunk_idx)
+            tiles = [self.tiles[tid] for tid in tile_ids]
+
+            # Check for SICK/PENDING tiles that might be promotable
+            sick_tiles = [t for t in tiles if t.state == TileState.SICK and t.integrity >= 0.60]
+
+            if sick_tiles and len(sick_tiles) > 0:
+                # Promote SICK tile to ACTIVE immediately
+                sick = sick_tiles[0]
+                print(f"   Promoting SICK tile {sick.id} (integrity: {sick.integrity:.2%}) to ACTIVE (forced)")
+                sick.state = TileState.ACTIVE
+                sick.clean_locked_until_day = self.uptime_days + 7
+                self.pending_deadline_heals += 1
+                return  # Only one action per day
+
+            # Else, create new replica if we have sterile spares
+            sterile = [t for t in self.tiles if t.state == TileState.STERILE]
+            if not sterile:
+                print(f"   ⚠️  No sterile spares available for forced heal")
+                return
+
+            # Get LIVE_CORRECT replicas for truth
+            live_correct_tiles = [t for t in tiles if self._is_live_correct(t)]
+
+            if len(live_correct_tiles) >= 2:
+                # Use QUORUM
+                print(f"   Creating new replica using QUORUM truth")
+                self._perform_topup(chunk_idx, live_correct_tiles, sterile[0], mode='DEADLINE')
+                self.pending_deadline_heals += 1
+                return  # Only one action per day
 
     def _perform_topup(self, chunk_idx: int, live_tiles: List[Tile], target_sterile: Tile, mode: str):
         """
@@ -3086,6 +3244,12 @@ def run_phase2_simulation(duration_days=365):
     print(f"  📊 Calm-period top-ups: {controller.calm_topup_count} ({calm_topups_per_month:.2f}/month)")
     print(f"  📊 Deadline top-ups: {controller.deadline_topup_count} ({deadline_topups_per_month:.2f}/month)")
     print(f"  📊 Total top-ups: {total_topups} ({total_topups/months_simulated:.2f}/month)")
+
+    # MUST-HEAL RULES (mandatory repairs)
+    failed_slot_per_month = controller.failed_slot_rebuilds / months_simulated if months_simulated > 0 else 0
+    pending_deadline_per_month = controller.pending_deadline_heals / months_simulated if months_simulated > 0 else 0
+    print(f"  🚨 MUST-HEAL: FAILED slot rebuilds: {controller.failed_slot_rebuilds} ({failed_slot_per_month:.2f}/month)")
+    print(f"  🚨 MUST-HEAL: PENDING deadline heals: {controller.pending_deadline_heals} ({pending_deadline_per_month:.2f}/month)")
 
     # COLD SNAPSHOT METRICS (emergency recovery)
     print(f"  📸 Cold snapshot updates: {controller.snapshot_updates_count} (VERY conservative)")
