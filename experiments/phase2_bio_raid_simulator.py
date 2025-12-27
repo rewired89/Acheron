@@ -215,6 +215,17 @@ class BioRAIDController:
         self.chunks_repair_required = set()  # Chunks with FAILED slots requiring immediate rebuild
         self.chunk_degraded_since_day = {}  # {chunk_idx: day} - when chunk dropped below 3 ACTIVE replicas
 
+        # PROACTIVE_REBUILD: Replace degrading tiles BEFORE they fail
+        # This makes self-healing explicit and measurable
+        self.PROACTIVE_REBUILD_THRESHOLD = 0.80  # Trigger if tile <80% for N consecutive days
+        self.PROACTIVE_REBUILD_MIN_DAYS = 3  # Require 3 consecutive days <80%
+        self.PROACTIVE_REBUILD_BUDGET_PER_YEAR = 55  # Max rebuilds per year (throttle if exceeded)
+        self.PROACTIVE_REBUILD_THROTTLE_THRESHOLD = 0.78  # If >budget, require <78% for 5 days
+        self.PROACTIVE_REBUILD_THROTTLE_DAYS = 5  # Stricter requirement when throttled
+        self.proactive_rebuild_count = 0  # Count of proactive rebuilds
+        self.tiles_saved_before_failure = 0  # Tiles replaced before crossing <60%
+        self.tile_degraded_since_day = {}  # {tile_id: day} - when tile dropped below threshold
+
         # COLD SNAPSHOT ANCHOR: Last-resort recovery for correlated failures
         self.chunk_snapshot_bits = {}  # {chunk_idx: str} - cold snapshot of chunk data
         self.chunk_snapshot_epoch = {}  # {chunk_idx: int} - when snapshot was taken
@@ -764,6 +775,9 @@ class BioRAIDController:
         # MUST-HEAL RULES (highest priority - bypass risk gates)
         self._check_failed_slots()  # Rule 1: Mandatory rebuild of FAILED slots
         self._enforce_pending_deadline()  # Rule 2: Force action on stuck PENDING chunks
+
+        # PROACTIVE_REBUILD: Replace degrading tiles BEFORE they fail (explicit self-healing)
+        self._check_proactive_rebuild()
 
         # Try RECOVERY_TOPUP first (high priority - failed replicas)
         self._check_recovery_topup()
@@ -2369,6 +2383,156 @@ class BioRAIDController:
                 self.pending_deadline_heals += 1
                 return  # Only one action per day
 
+    def _check_proactive_rebuild(self):
+        """
+        PROACTIVE_REBUILD: Replace degrading tiles BEFORE they fail.
+
+        This makes self-healing explicit and measurable. Triggers when:
+        - A live tile serving a chunk has integrity <80% for N consecutive days
+        - AND sterile spare available
+        - AND won't reduce readable replicas below 2
+
+        Budget guard: If >55 rebuilds/year pace, throttle to <78% for 5 days.
+
+        Action: Create new replica from QUORUM truth, swap into chunk, retire sick tile.
+        """
+        sterile = [t for t in self.tiles if t.state == TileState.STERILE]
+        if not sterile:
+            return  # No spare capacity
+
+        # Calculate rebuild budget (annualized from current pace)
+        months_elapsed = self.uptime_days / 30.0
+        if months_elapsed < 0.5:
+            return  # Wait at least 15 days before starting proactive rebuilds (let system stabilize)
+
+        rebuilds_per_year = (self.proactive_rebuild_count / months_elapsed) * 12.0
+        is_over_budget = rebuilds_per_year > self.PROACTIVE_REBUILD_BUDGET_PER_YEAR
+
+        # Adjust thresholds if over budget
+        if is_over_budget:
+            threshold = self.PROACTIVE_REBUILD_THROTTLE_THRESHOLD  # 78%
+            min_days = self.PROACTIVE_REBUILD_THROTTLE_DAYS  # 5 days
+        else:
+            threshold = self.PROACTIVE_REBUILD_THRESHOLD  # 80%
+            min_days = self.PROACTIVE_REBUILD_MIN_DAYS  # 3 days
+
+        # Find tiles serving chunks that are below threshold
+        candidates = []
+        for chunk_idx, tile_ids in self.chunk_replicas.items():
+            tiles = [self.tiles[tid] for tid in tile_ids if tid is not None]
+
+            for tile in tiles:
+                # Skip if not serving chunk (not ACTIVE, SICK, or CLEAN_LOCKED)
+                if tile.state not in [TileState.ACTIVE, TileState.SICK, TileState.CLEAN_LOCKED]:
+                    continue
+
+                # Skip if clean-locked (just rebuilt, give it time)
+                if tile.clean_locked_until_day >= self.uptime_days:
+                    continue
+
+                # Check if below threshold
+                if tile.integrity >= threshold:
+                    # Above threshold - clear degradation timer
+                    if tile.id in self.tile_degraded_since_day:
+                        del self.tile_degraded_since_day[tile.id]
+                    continue
+
+                # Below threshold - track how long
+                if tile.id not in self.tile_degraded_since_day:
+                    self.tile_degraded_since_day[tile.id] = self.uptime_days
+
+                days_degraded = self.uptime_days - self.tile_degraded_since_day[tile.id]
+
+                if days_degraded < min_days:
+                    continue  # Not degraded long enough
+
+                # Safety check: ensure we won't drop below 2 readable replicas
+                readable = [t for t in tiles
+                           if t.state in [TileState.ACTIVE, TileState.SICK, TileState.CLEAN_LOCKED]
+                           and t.integrity >= 0.60]
+
+                if len(readable) <= 2:
+                    continue  # Too risky - would leave <2 readable
+
+                # Candidate for proactive rebuild
+                candidates.append((tile, chunk_idx, days_degraded))
+
+        if not candidates:
+            return  # No tiles need proactive rebuild
+
+        # Pick the most degraded tile (lowest integrity)
+        tile_to_rebuild, chunk_idx, days_degraded = min(candidates, key=lambda x: x[0].integrity)
+
+        # Check if this tile would have failed (integrity <60%)
+        will_save_before_failure = tile_to_rebuild.integrity < 0.70  # In SICK range or close to failure
+
+        # Get QUORUM truth from other replicas
+        tile_ids = self.chunk_replicas[chunk_idx]
+        tiles = [self.tiles[tid] for tid in tile_ids if tid is not None]
+        live_correct_tiles = [t for t in tiles
+                             if t.id != tile_to_rebuild.id  # Exclude the one we're replacing
+                             and self._is_live_correct(t)]
+
+        if len(live_correct_tiles) < 2:
+            print(f"⚠️  PROACTIVE_REBUILD: Cannot rebuild tile {tile_to_rebuild.id} - insufficient quorum ({len(live_correct_tiles)}/2)")
+            return
+
+        # Execute proactive rebuild
+        print(f"\n🔧 PROACTIVE_REBUILD: Replacing tile {tile_to_rebuild.id} (integrity: {tile_to_rebuild.integrity:.2%}, degraded for {days_degraded} days)")
+        print(f"   Threshold: {threshold:.0%}, Budget status: {'THROTTLED' if is_over_budget else 'OK'} ({rebuilds_per_year:.1f}/{self.PROACTIVE_REBUILD_BUDGET_PER_YEAR} per year)")
+
+        # Get QUORUM truth
+        best_tile = max(live_correct_tiles, key=lambda t: t.integrity)
+        correct_data = best_tile.binary_data
+
+        # Create new replica in sterile tile
+        target = sterile[0]
+        target.state = TileState.REGENERATING
+        target.binary_data = correct_data
+        target.pattern = self.encoder.encode(correct_data)
+        self._track_write(target, success=True)
+        target.regeneration_progress = 1.0
+        target.needs_scrub = False
+        target.integrity = 0.98
+
+        import zlib
+        target.chunk_checksum = zlib.crc32(correct_data.encode()) & 0xffffffff
+
+        # Hard scrub to verify
+        self._scrub_chunk(chunk_idx)
+
+        # Promote to ACTIVE immediately
+        target.state = TileState.ACTIVE
+        target.clean_locked_until_day = self.uptime_days + 7
+        target.regen_complete_day = self.uptime_days
+
+        # Find which slot the old tile occupied and swap it
+        slot_idx = None
+        for idx, tid in enumerate(self.chunk_replicas[chunk_idx]):
+            if tid == tile_to_rebuild.id:
+                slot_idx = idx
+                break
+
+        if slot_idx is not None:
+            self._set_chunk_slot(chunk_idx, slot_idx, target.id)
+            print(f"   ✓ Swapped tile {tile_to_rebuild.id} → {target.id} in chunk {chunk_idx} slot {slot_idx}")
+        else:
+            print(f"   ⚠️  Could not find slot for tile {tile_to_rebuild.id} in chunk {chunk_idx}")
+
+        # Retire the old tile (mark as STERILE for reuse)
+        self._flush_tile(tile_to_rebuild)
+
+        # Clear degradation timer
+        if tile_to_rebuild.id in self.tile_degraded_since_day:
+            del self.tile_degraded_since_day[tile_to_rebuild.id]
+
+        # Update metrics
+        self.proactive_rebuild_count += 1
+        if will_save_before_failure:
+            self.tiles_saved_before_failure += 1
+
+        print(f"   ✓ PROACTIVE_REBUILD complete (#{self.proactive_rebuild_count}, saved {self.tiles_saved_before_failure} tiles before failure)")
+
     def _perform_topup(self, chunk_idx: int, live_tiles: List[Tile], target_sterile: Tile, mode: str):
         """
         THREE-MODE TOP-UP: Add third replica to under-replicated chunk.
@@ -3250,6 +3414,18 @@ def run_phase2_simulation(duration_days=365):
     pending_deadline_per_month = controller.pending_deadline_heals / months_simulated if months_simulated > 0 else 0
     print(f"  🚨 MUST-HEAL: FAILED slot rebuilds: {controller.failed_slot_rebuilds} ({failed_slot_per_month:.2f}/month)")
     print(f"  🚨 MUST-HEAL: PENDING deadline heals: {controller.pending_deadline_heals} ({pending_deadline_per_month:.2f}/month)")
+
+    # PROACTIVE_REBUILD: Explicit self-healing metrics
+    proactive_rebuilds_per_month = controller.proactive_rebuild_count / months_simulated if months_simulated > 0 else 0
+    proactive_rebuilds_per_year = proactive_rebuilds_per_month * 12.0
+    budget_status = "✓ WITHIN BUDGET" if proactive_rebuilds_per_year <= controller.PROACTIVE_REBUILD_BUDGET_PER_YEAR else "⚠️  OVER BUDGET"
+    print(f"  🔧 PROACTIVE_REBUILD: {controller.proactive_rebuild_count} total ({proactive_rebuilds_per_month:.2f}/month, {proactive_rebuilds_per_year:.1f}/year)")
+    print(f"     Budget: {proactive_rebuilds_per_year:.1f}/{controller.PROACTIVE_REBUILD_BUDGET_PER_YEAR} per year - {budget_status}")
+    print(f"     Tiles saved before failure (<70%): {controller.tiles_saved_before_failure}")
+
+    # Count tiles that crossed <60% without being replaced
+    tiles_that_failed = sum(1 for t in controller.tiles if t.state == TileState.FAILED)
+    print(f"     Tiles that crossed <60% without replacement: {tiles_that_failed}")
 
     # COLD SNAPSHOT METRICS (emergency recovery)
     print(f"  📸 Cold snapshot updates: {controller.snapshot_updates_count} (VERY conservative)")
