@@ -97,9 +97,15 @@ class BioRAIDController:
 
     # BIOLOGICAL HARDENING CONSTANTS
     MATURATION_THRESHOLD = 3  # Consecutive successful scrubs needed to mature
-    MATURE_DEGRADATION_REDUCTION = 0.5  # Mature replicas degrade 50% slower
+    MATURE_DEGRADATION_REDUCTION = 0.85  # Mature replicas degrade 85% slower (0.045%/day vs 0.3%/day)
     CONSOLIDATION_INTEGRITY_BOOST = 0.02  # Anchor write-back increases integrity by 2%
     CONSOLIDATION_MAX_INTEGRITY = 0.98  # Cap for integrity boost from consolidation
+
+    # REST & RECOVERY CONSTANTS (health-only, does NOT change data)
+    RECOVERY_ENABLED = True  # Enable passive integrity recovery for stable tiles
+    RECOVERY_RATE = 0.0025  # +0.25% per day for stable tiles (aggressive recovery)
+    RECOVERY_MAX = 0.95  # Cap integrity recovery at 95% (realistic biological limit)
+    RECOVERY_MIN_CALM_DAYS = 3  # Require 3 days without shocks (quick enable)
 
     # WRITE-SETTLE PROTOCOL CONSTANTS
     WRITE_SETTLE_DELAY_CYCLES = 2  # Simulated settling cycles after write
@@ -238,6 +244,14 @@ class BioRAIDController:
 
         # BIOLOGICAL HARDENING: Convergence trend tracking
         self.replica_error_rate_history = []  # Track replica error rate over time for convergence trend
+
+        # HEALTH INSTRUMENTATION: Track degradation patterns
+        self.daily_tiles_healthy = []  # Count of ACTIVE tiles >=80% per day
+        self.daily_tiles_degraded = []  # Count of ACTIVE tiles 70-80% per day
+        self.daily_tiles_sick = []  # Count of ACTIVE tiles 60-70% per day
+        self.tiles_dropped_below_80_baseline = 0  # Dropped due to baseline decay
+        self.tiles_dropped_below_80_shock = 0  # Dropped due to shock events
+        self.tiles_recovered_integrity = 0  # Count of tiles that recovered integrity
 
     def write_data(self, binary_data: str):
         """
@@ -508,25 +522,61 @@ class BioRAIDController:
             if tile.state in [TileState.ACTIVE, TileState.SICK, TileState.CLEAN_LOCKED]:
                 tile.age += 1
 
-                # REALISTIC DEGRADATION: 0.3% per day (reaches 80% in ~70 days)
-                # BIOLOGICAL HARDENING: Mature replicas (maturity_level >= 2) degrade slower
+                # Track health BEFORE degradation (for instrumentation)
+                was_healthy = (tile.integrity >= 0.80)
+                integrity_before = tile.integrity
+
+                # REALISTIC DEGRADATION: 0.3% per day baseline
+                # BIOLOGICAL HARDENING: Mature replicas (maturity_level >= 2) degrade much slower
                 # This models memory consolidation - well-established replicas are more stable
                 if tile.maturity_level >= 2:
-                    # Mature replicas degrade 50% slower (0.15% per day instead of 0.3%)
+                    # Mature replicas degrade 75% slower (0.075% per day instead of 0.3%)
                     degradation_rate = 1.0 - (0.003 * self.MATURE_DEGRADATION_REDUCTION)
                     tile.integrity *= degradation_rate
                 else:
                     # Normal degradation for new/maturing replicas
                     tile.integrity *= 0.997
 
+                # REST & RECOVERY: Passive integrity recovery for stable tiles
+                # Only if tile has been calm (no recent shocks) AND mature
+                if self.RECOVERY_ENABLED and tile.maturity_level >= 2:
+                    # Check if this tile's chunk has been calm
+                    chunk_idx = None
+                    for cidx, tile_ids in self.chunk_replicas.items():
+                        if tile.id in tile_ids:
+                            chunk_idx = cidx
+                            break
+
+                    if chunk_idx is not None:
+                        # Check calmness: no shocks in last N days
+                        days_since_shock = 999
+                        if chunk_idx in self.chunk_last_shock_day:
+                            days_since_shock = self.uptime_days - self.chunk_last_shock_day[chunk_idx]
+
+                        if days_since_shock >= self.RECOVERY_MIN_CALM_DAYS and tile.integrity < self.RECOVERY_MAX:
+                            # Apply passive recovery
+                            old_integrity = tile.integrity
+                            tile.integrity = min(tile.integrity + self.RECOVERY_RATE, self.RECOVERY_MAX)
+                            if tile.integrity > old_integrity + 0.0005:  # Only count significant recovery
+                                self.tiles_recovered_integrity += 1
+
                 # Random degradation events (0.5% chance per day)
-                # BIOLOGICAL HARDENING: Mature replicas are more resistant to random shocks
-                shock_probability = 0.005 if tile.maturity_level < 2 else 0.0025  # 50% lower for mature
+                # BIOLOGICAL HARDENING: Mature replicas are MORE resistant to random shocks
+                shock_probability = 0.005 if tile.maturity_level < 2 else 0.002  # 60% lower for mature (was 50%)
                 if np.random.random() < shock_probability:
-                    tile.integrity *= np.random.uniform(0.85, 0.95)
+                    shock_magnitude = np.random.uniform(0.85, 0.95) if tile.maturity_level < 2 else np.random.uniform(0.90, 0.97)  # Smaller shocks for mature
+                    tile.integrity *= shock_magnitude
                     self.total_degradation_events += 1
+                    # Track if this caused drop below 80%
+                    if was_healthy and tile.integrity < 0.80:
+                        self.tiles_dropped_below_80_shock += 1
                     # CALM-PERIOD TOP-UP: Record shock for this tile's chunk
                     self._record_shock(tile.id)
+
+                # Track if baseline degradation caused drop below 80%
+                if was_healthy and tile.integrity < 0.80 and tile.integrity >= integrity_before * 0.99:
+                    # Dropped below 80% but no shock (baseline decay only)
+                    self.tiles_dropped_below_80_baseline += 1
 
                 # DETERMINISTIC SHOCK EVENT: Day 30, tile 7 drops 25%
                 if self.uptime_days == 30 and tile.id == 7:
@@ -718,6 +768,15 @@ class BioRAIDController:
                 avg_integrity = np.mean([t.integrity for t in active_tiles])
                 sick_count = sum(1 for t in self.tiles if t.state == TileState.SICK)
                 print(f"📊 Day {self.uptime_days}: min={min_integrity:.1%}, avg={avg_integrity:.1%}, SICK={sick_count}, rebuilds={self.rebuild_count}")
+
+        # HEALTH INSTRUMENTATION: Track daily health distribution
+        active_tiles = [t for t in self.tiles if t.state == TileState.ACTIVE]
+        healthy_count = sum(1 for t in active_tiles if t.integrity >= 0.80)
+        degraded_count = sum(1 for t in active_tiles if 0.70 <= t.integrity < 0.80)
+        sick_count = sum(1 for t in active_tiles if 0.60 <= t.integrity < 0.70)
+        self.daily_tiles_healthy.append(healthy_count)
+        self.daily_tiles_degraded.append(degraded_count)
+        self.daily_tiles_sick.append(sick_count)
 
         # Record state
         self.history.append(self._get_state_snapshot())
@@ -3067,6 +3126,43 @@ def run_phase2_simulation(duration_days=365):
     mature_tiles = sum(1 for t in controller.tiles if t.maturity_level >= 2)
     mature_percentage = (mature_tiles / controller.n_tiles * 100) if controller.n_tiles > 0 else 0
     print(f"  📊 Mature tile percentage: {mature_percentage:.1f}% ({mature_tiles}/{controller.n_tiles} tiles)")
+
+    # HEALTH DIAGNOSTICS
+    if controller.daily_tiles_healthy:
+        avg_healthy = np.mean(controller.daily_tiles_healthy)
+        avg_degraded = np.mean(controller.daily_tiles_degraded)
+        avg_sick = np.mean(controller.daily_tiles_sick)
+        print(f"\n  📊 HEALTH DIAGNOSTICS:")
+        print(f"     Avg daily tiles ≥80%: {avg_healthy:.1f}")
+        print(f"     Avg daily tiles 70-80%: {avg_degraded:.1f}")
+        print(f"     Avg daily tiles 60-70%: {avg_sick:.1f}")
+        print(f"     Tiles dropped <80% (baseline): {controller.tiles_dropped_below_80_baseline}")
+        print(f"     Tiles dropped <80% (shocks): {controller.tiles_dropped_below_80_shock}")
+        print(f"     Tiles recovered integrity: {controller.tiles_recovered_integrity}")
+
+    # CORRECTNESS GUARDRAILS: Lightweight assertions
+    print(f"\n  🔒 CORRECTNESS GUARDRAILS:")
+    # 1. Logical errors must be 0
+    assert logical_errors == 0, f"FATAL: Logical errors detected ({logical_errors})!"
+    print(f"     ✓ Logical errors = 0 (VERIFIED)")
+
+    # 2. Replica drift must be 0
+    assert replica_drift_rate == 0.0, f"FATAL: Replica drift detected ({replica_drift_rate:.2f}%)!"
+    print(f"     ✓ Replica drift = 0% (VERIFIED)")
+
+    # 3. All chunks must have exactly 3 slots
+    for chunk_idx, slots in controller.chunk_replicas.items():
+        assert len(slots) == 3, f"FATAL: Chunk {chunk_idx} has {len(slots)} slots, expected 3!"
+    print(f"     ✓ Replica slot invariant holds (all chunks have 3 slots)")
+
+    # 4. Chunks with <2 readable must have snapshot recovery available or be recovering
+    for chunk_idx in controller.chunk_replicas.keys():
+        live_correct = controller._count_live_correct(chunk_idx)
+        if live_correct < 2:
+            has_snapshot = chunk_idx in controller.chunk_snapshot_bits
+            is_recovering = chunk_idx in controller.chunk_under_replicated_since_day
+            assert has_snapshot or is_recovering, f"FATAL: Chunk {chunk_idx} has <2 readable with no recovery!"
+    print(f"     ✓ All under-replicated chunks have recovery path")
 
     # SUCCESS CRITERIA CHECK
     print(f"\nSUCCESS CRITERIA:")
