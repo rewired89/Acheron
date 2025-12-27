@@ -226,6 +226,12 @@ class BioRAIDController:
         self.tiles_saved_before_failure = 0  # Tiles replaced before crossing <60%
         self.tile_degraded_since_day = {}  # {tile_id: day} - when tile dropped below threshold
 
+        # SPARE_POOL_HEALTH: Maintain healthy spare pool
+        self.SPARE_TARGET = 4  # Target number of healthy sterile spares
+        self.spare_failures = 0  # Count of tiles that transitioned to FAILED state
+        self.spare_regenerations = 0  # Count of orphaned FAILED tiles flushed to STERILE
+        self.days_below_spare_target = 0  # Days when healthy sterile count < SPARE_TARGET
+
         # COLD SNAPSHOT ANCHOR: Last-resort recovery for correlated failures
         self.chunk_snapshot_bits = {}  # {chunk_idx: str} - cold snapshot of chunk data
         self.chunk_snapshot_epoch = {}  # {chunk_idx: int} - when snapshot was taken
@@ -613,6 +619,7 @@ class BioRAIDController:
                     if tile.state != TileState.FAILED:
                         tile.state = TileState.FAILED
                         tile.clean_locked_until_day = -999  # Clear lock
+                        self.spare_failures += 1  # Track tile failures
                         print(f"✗ Tile {tile.id} FAILED (integrity: {tile.integrity:.2%})")
                 elif tile.state != TileState.CLEAN_LOCKED:  # Don't transition if CLEAN_LOCKED
                     if tile.integrity < 0.70:
@@ -778,6 +785,9 @@ class BioRAIDController:
 
         # PROACTIVE_REBUILD: Replace degrading tiles BEFORE they fail (explicit self-healing)
         self._check_proactive_rebuild()
+
+        # SPARE_POOL_HEALTH: Maintain healthy spare pool (flush orphaned FAILED tiles)
+        self._maintain_spare_pool()
 
         # Try RECOVERY_TOPUP first (high priority - failed replicas)
         self._check_recovery_topup()
@@ -2533,6 +2543,44 @@ class BioRAIDController:
 
         print(f"   ✓ PROACTIVE_REBUILD complete (#{self.proactive_rebuild_count}, saved {self.tiles_saved_before_failure} tiles before failure)")
 
+    def _maintain_spare_pool(self):
+        """
+        SPARE_POOL_HEALTH: Maintain healthy spare pool.
+
+        Ensures we have enough healthy sterile spares for future recovery operations.
+        - Flushes orphaned FAILED tiles (not in any chunk) back to STERILE
+        - Tracks spare pool health metrics
+        - Never touches live chunk mappings or data bits
+        """
+        # Find tiles currently in use (in chunk mappings)
+        tiles_in_use = set()
+        for tile_ids in self.chunk_replicas.values():
+            for tid in tile_ids:
+                if tid is not None:
+                    tiles_in_use.add(tid)
+
+        # Find orphaned FAILED tiles (not in any chunk)
+        orphaned_failed = []
+        for tile in self.tiles:
+            if tile.state == TileState.FAILED and tile.id not in tiles_in_use:
+                orphaned_failed.append(tile)
+
+        # Flush orphaned FAILED tiles back to STERILE for reuse
+        for tile in orphaned_failed:
+            print(f"\n🔄 SPARE_POOL_HEALTH: Flushing orphaned FAILED tile {tile.id} (integrity: {tile.integrity:.2%}) to STERILE")
+            self._flush_tile(tile)
+            self.spare_regenerations += 1
+            print(f"   ✓ Spare regeneration #{self.spare_regenerations}: tile {tile.id} returned to spare pool")
+
+        # Count healthy sterile spares (STERILE state, ready for use)
+        healthy_sterile = sum(1 for t in self.tiles if t.state == TileState.STERILE)
+
+        # Track days below spare target
+        if healthy_sterile < self.SPARE_TARGET:
+            self.days_below_spare_target += 1
+            if self.uptime_days % 30 == 0:  # Report monthly
+                print(f"⚠️  SPARE_POOL_HEALTH: Only {healthy_sterile}/{self.SPARE_TARGET} sterile spares available (day {self.uptime_days})")
+
     def _perform_topup(self, chunk_idx: int, live_tiles: List[Tile], target_sterile: Tile, mode: str):
         """
         THREE-MODE TOP-UP: Add third replica to under-replicated chunk.
@@ -3426,6 +3474,16 @@ def run_phase2_simulation(duration_days=365):
     # Count tiles that crossed <60% without being replaced
     tiles_that_failed = sum(1 for t in controller.tiles if t.state == TileState.FAILED)
     print(f"     Tiles that crossed <60% without replacement: {tiles_that_failed}")
+
+    # SPARE_POOL_HEALTH: Spare pool maintenance metrics
+    spare_regenerations_per_month = controller.spare_regenerations / months_simulated if months_simulated > 0 else 0
+    final_sterile_count = sum(1 for t in controller.tiles if t.state == TileState.STERILE)
+    pct_days_below_target = (controller.days_below_spare_target / days_simulated * 100) if days_simulated > 0 else 0
+    print(f"  🔄 SPARE_POOL_HEALTH:")
+    print(f"     Spare failures (tiles → FAILED): {controller.spare_failures}")
+    print(f"     Spare regenerations (orphaned FAILED → STERILE): {controller.spare_regenerations} ({spare_regenerations_per_month:.2f}/month)")
+    print(f"     Final sterile count: {final_sterile_count}/{controller.SPARE_TARGET} (target: {controller.SPARE_TARGET})")
+    print(f"     Days below spare target: {controller.days_below_spare_target}/{days_simulated} ({pct_days_below_target:.1f}%)")
 
     # COLD SNAPSHOT METRICS (emergency recovery)
     print(f"  📸 Cold snapshot updates: {controller.snapshot_updates_count} (VERY conservative)")
