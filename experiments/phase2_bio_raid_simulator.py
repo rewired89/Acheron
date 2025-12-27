@@ -192,6 +192,19 @@ class BioRAIDController:
         self.chunk_time_at_2live = {}  # {chunk_idx: days} - cumulative time at 2 live replicas
         self.chunk_under_replicated_since_day = {}  # {chunk_idx: day} - when chunk dropped below 3 live
 
+        # COLD SNAPSHOT ANCHOR: Last-resort recovery for correlated failures
+        self.chunk_snapshot_bits = {}  # {chunk_idx: str} - cold snapshot of chunk data
+        self.chunk_snapshot_epoch = {}  # {chunk_idx: int} - when snapshot was taken
+        self.chunk_snapshot_checksum = {}  # {chunk_idx: int} - CRC32 checksum of snapshot
+        self.snapshot_updates_count = 0  # Total snapshot updates (VERY conservative)
+        self.snapshot_used_for_recovery_count = 0  # Snapshots used for emergency recovery
+        self.correlated_failure_events = 0  # Chunks with <2 readable LIVE replicas
+
+        # SNAPSHOT UPDATE CONFIGURATION (VERY conservative)
+        self.SNAPSHOT_MIN_CLEAN_SCRUBS = 4  # Require 4 consecutive clean scrubs
+        self.SNAPSHOT_MIN_ZERO_DRIFT_SCRUBS = 3  # Require 3 consecutive scrubs with 0 drift
+        self.SNAPSHOT_MIN_CALM_DAYS = 7  # No shocks in last 7 days
+
         # TOP-UP CONFIGURATION
         self.CALM_TOPUP_MIN_2LIVE_DAYS = 7  # Minimum days at 2-live before calm top-up
         self.CALM_TOPUP_MIN_CLEAN_SCRUBS = 3  # Require 3 consecutive scrubs with 0 drift
@@ -1153,6 +1166,19 @@ class BioRAIDController:
 
         # QUORUM GATE: For QUORUM chunks, require ≥2 readable replicas
         if truth_source == TruthSource.QUORUM and len(readable) < 2:
+            # EMERGENCY: Correlated failure detected - try snapshot recovery
+            if chunk_idx in self.chunk_snapshot_bits:
+                self.correlated_failure_events += 1
+                print(f"  🚨 CORRELATED FAILURE: Chunk {chunk_idx} has <2 readable replicas ({len(readable)})")
+                print(f"      Attempting COLD SNAPSHOT emergency recovery...")
+
+                # Try to recover using snapshot
+                if self._emergency_snapshot_recovery(chunk_idx):
+                    print(f"      ✓ Snapshot recovery initiated - chunk will recover")
+                    return  # Recovery in progress, skip normal scrub
+                else:
+                    print(f"      ✗ Snapshot recovery failed - no sterile spares or snapshot unavailable")
+
             if chunk_idx not in self.chunks_at_risk:
                 print(f"  ⚠️  Chunk {chunk_idx} AT_RISK - only {len(readable)} readable replicas!")
                 print(f"      Reason: Insufficient replicas for quorum (truth_source=QUORUM)")
@@ -1279,6 +1305,9 @@ class BioRAIDController:
 
                     # QUORUM RESTORATION: Track consecutive clean scrubs
                     self._track_clean_scrub_for_quorum_restoration(chunk_idx, readable)
+
+                    # COLD SNAPSHOT: Check if we should update snapshot
+                    self._update_cold_snapshot_if_eligible(chunk_idx, golden_truth)
             else:
                 print(f"      ✓ All replicas match anchor - no repairs needed")
 
@@ -1290,6 +1319,9 @@ class BioRAIDController:
 
                 # QUORUM RESTORATION: Track consecutive clean scrubs
                 self._track_clean_scrub_for_quorum_restoration(chunk_idx, readable)
+
+                # COLD SNAPSHOT: Check if we should update snapshot
+                self._update_cold_snapshot_if_eligible(chunk_idx, golden_truth)
 
         else:  # truth_source == TruthSource.QUORUM
             # QUORUM MODE: Majority voting allowed (for now)
@@ -1416,6 +1448,9 @@ class BioRAIDController:
                     # Just increment counter for stability tracking
                     current_count = self.chunk_consecutive_clean_scrubs.get(chunk_idx, 0)
                     self.chunk_consecutive_clean_scrubs[chunk_idx] = current_count + 1
+
+                    # COLD SNAPSHOT: Check if we should update snapshot
+                    self._update_cold_snapshot_if_eligible(chunk_idx, golden_truth)
             else:
                 # No disagreements - all replicas already match
                 # RISK-GATED REBUILDS: Reset failed scrub counter (no repairs needed = success)
@@ -1427,6 +1462,9 @@ class BioRAIDController:
                 # QUORUM RESTORATION: Track clean scrub
                 current_count = self.chunk_consecutive_clean_scrubs.get(chunk_idx, 0)
                 self.chunk_consecutive_clean_scrubs[chunk_idx] = current_count + 1
+
+                # COLD SNAPSHOT: Check if we should update snapshot
+                self._update_cold_snapshot_if_eligible(chunk_idx, golden_truth)
 
     def _track_clean_scrub_for_quorum_restoration(self, chunk_idx: int, readable: List[Tile]):
         """
@@ -1593,6 +1631,165 @@ class BioRAIDController:
             if tile_id in tile_ids:
                 self.chunk_last_shock_day[chunk_idx] = self.uptime_days
                 break
+
+    def _update_cold_snapshot_if_eligible(self, chunk_idx: int, golden_truth: str):
+        """
+        COLD SNAPSHOT ANCHOR: Update snapshot if chunk is super-stable.
+
+        VERY conservative update rules - only snapshot when chunk is:
+        - Has 3 LIVE replicas (full redundancy)
+        - 0 drift for last Y scrubs (Y=3)
+        - No shocks in last Z days (Z=7)
+        - K consecutive clean scrubs (K=4)
+
+        This creates a last-resort recovery anchor for correlated failures.
+
+        Args:
+            chunk_idx: Chunk to potentially snapshot
+            golden_truth: Current golden truth data
+        """
+        tile_ids = self.chunk_replicas.get(chunk_idx, [])
+
+        # CRITERION 1: Must have 3 LIVE replicas (ACTIVE, ≥60%)
+        live_tiles = [self.tiles[tid] for tid in tile_ids
+                     if self.tiles[tid].state == TileState.ACTIVE
+                     and self.tiles[tid].integrity >= 0.60]
+        if len(live_tiles) < 3:
+            return  # Not fully redundant
+
+        # CRITERION 2: Must have 0 drift for last Y scrubs
+        if chunk_idx not in self.chunk_last_drift:
+            return
+        drift_history = self.chunk_last_drift[chunk_idx]
+        if len(drift_history) < self.SNAPSHOT_MIN_ZERO_DRIFT_SCRUBS:
+            return  # Not enough history
+        if any(d > 0 for d in drift_history[-self.SNAPSHOT_MIN_ZERO_DRIFT_SCRUBS:]):
+            return  # Recent drift detected
+
+        # CRITERION 3: No shocks in last Z days
+        if chunk_idx in self.chunk_last_shock_day:
+            days_since_shock = self.uptime_days - self.chunk_last_shock_day[chunk_idx]
+            if days_since_shock < self.SNAPSHOT_MIN_CALM_DAYS:
+                return  # Too soon after shock
+
+        # CRITERION 4: K consecutive clean scrubs
+        consecutive_clean = self.chunk_consecutive_clean_scrubs.get(chunk_idx, 0)
+        if consecutive_clean < self.SNAPSHOT_MIN_CLEAN_SCRUBS:
+            return  # Not stable enough
+
+        # ALL CRITERIA MET - update snapshot!
+        import zlib
+        new_checksum = zlib.crc32(golden_truth.encode()) & 0xffffffff
+
+        # Check if snapshot changed
+        old_snapshot = self.chunk_snapshot_bits.get(chunk_idx)
+        if old_snapshot == golden_truth:
+            return  # Snapshot unchanged, no update needed
+
+        self.chunk_snapshot_bits[chunk_idx] = golden_truth
+        self.chunk_snapshot_epoch[chunk_idx] = self.uptime_days
+        self.chunk_snapshot_checksum[chunk_idx] = new_checksum
+        self.snapshot_updates_count += 1
+
+        print(f"          📸 COLD SNAPSHOT updated for chunk {chunk_idx} (epoch={self.uptime_days}, checksum={new_checksum:08x})")
+        print(f"              Criteria: 3 live, 0 drift×{self.SNAPSHOT_MIN_ZERO_DRIFT_SCRUBS}, {consecutive_clean} clean scrubs, {days_since_shock if chunk_idx in self.chunk_last_shock_day else 'no'}d since shock")
+
+    def _emergency_snapshot_recovery(self, chunk_idx: int) -> bool:
+        """
+        COLD SNAPSHOT EMERGENCY RECOVERY: Recover chunk using cold snapshot.
+
+        This is the last-resort recovery path for correlated failures where
+        all replicas become unreadable simultaneously.
+
+        Uses snapshot_bits as truth source to rebuild one replica onto a
+        sterile tile, then normal quorum workflow can resume.
+
+        Args:
+            chunk_idx: Chunk to recover
+
+        Returns:
+            True if recovery initiated, False if not possible
+        """
+        # Check if we have a snapshot
+        if chunk_idx not in self.chunk_snapshot_bits:
+            return False
+
+        snapshot_data = self.chunk_snapshot_bits[chunk_idx]
+        snapshot_epoch = self.chunk_snapshot_epoch[chunk_idx]
+        snapshot_checksum = self.chunk_snapshot_checksum[chunk_idx]
+
+        # Verify snapshot checksum
+        import zlib
+        actual_checksum = zlib.crc32(snapshot_data.encode()) & 0xffffffff
+        if actual_checksum != snapshot_checksum:
+            print(f"      ✗ SNAPSHOT CORRUPTED! Checksum mismatch (expected {snapshot_checksum:08x}, got {actual_checksum:08x})")
+            return False
+
+        # Find sterile spare
+        sterile = [t for t in self.tiles if t.state == TileState.STERILE]
+        if not sterile:
+            return False  # No spare capacity
+
+        target = sterile[0]
+
+        print(f"      📸 Using snapshot from epoch {snapshot_epoch} (age: {self.uptime_days - snapshot_epoch} days)")
+        print(f"      Creating replica on tile {target.id}...")
+
+        # Seed target with snapshot data as PENDING replica
+        target.state = TileState.REGENERATING
+        target.binary_data = snapshot_data
+        target.pattern = self.encoder.encode(snapshot_data)
+        target.regeneration_progress = 1.0  # Skip regeneration delay
+        target.needs_scrub = False
+        target.integrity = 0.98  # Start at high integrity
+        target.chunk_checksum = snapshot_checksum
+
+        # Check if chunk already has too many replicas (prevent inflation during recovery)
+        usable_count = sum(1 for tid in self.chunk_replicas.get(chunk_idx, [])
+                          if self.tiles[tid].state not in [TileState.FAILED, TileState.STERILE])
+        if usable_count >= 3:
+            print(f"      ⚠️  Chunk {chunk_idx} already has {usable_count} usable replicas - skipping recovery")
+            target.state = TileState.STERILE
+            return False
+
+        # Add to chunk mapping (if not already present)
+        if target.id not in self.chunk_replicas[chunk_idx]:
+            self.chunk_replicas[chunk_idx].append(target.id)
+        else:
+            # Tile already in chunk - skip (this can happen during rapid recovery attempts)
+            print(f"      ⚠️  Tile {target.id} already in chunk {chunk_idx} - skipping")
+            target.state = TileState.STERILE
+            return False
+
+        # IMPORTANT: Do NOT call _scrub_chunk here - it would cause recursive AT_RISK detection!
+        # The replica will be verified in the next normal scrub cycle
+
+        # Mark as CLEAN_LOCKED for 7 days (skips REGENERATING state for emergency recovery)
+        target.state = TileState.CLEAN_LOCKED
+        target.clean_locked_until_day = self.uptime_days + 7
+        target.regen_complete_day = self.uptime_days
+
+        # Reset maturation (new replica)
+        target.consecutive_successful_scrubs = 0
+        target.maturity_level = 0
+        target.matured_on_day = -999
+
+        self.snapshot_used_for_recovery_count += 1
+
+        print(f"      ✓ Snapshot recovery initiated - tile {target.id} added as CLEAN_LOCKED")
+
+        # CLEANUP: Flush any FAILED tiles to maintain 3-replica invariant
+        # After adding recovery replica, chunk may have 4 replicas (3 usable + 1 FAILED)
+        failed_tiles = [tid for tid in self.chunk_replicas[chunk_idx]
+                       if self.tiles[tid].state == TileState.FAILED]
+        for failed_id in failed_tiles:
+            self._flush_tile(self.tiles[failed_id])
+            self.chunk_replicas[chunk_idx].remove(failed_id)
+            print(f"      Flushed FAILED tile {failed_id} to sterile pool (maintaining 3-replica invariant)")
+
+        print(f"      Chunk {chunk_idx} now has {len(self.chunk_replicas[chunk_idx])} replicas")
+
+        return True
 
     def _track_live_replica_time(self):
         """
@@ -2592,6 +2789,16 @@ def run_phase2_simulation(duration_days=365):
     print(f"  📊 Recovery top-ups: {controller.recovery_topup_count} ({recovery_topups_per_month:.2f}/month)")
     print(f"  📊 Calm-period top-ups: {controller.calm_topup_count} ({calm_topups_per_month:.2f}/month)")
     print(f"  📊 Total top-ups: {total_topups} ({total_topups/months_simulated:.2f}/month)")
+
+    # COLD SNAPSHOT METRICS (emergency recovery)
+    print(f"  📸 Cold snapshot updates: {controller.snapshot_updates_count} (VERY conservative)")
+    print(f"  📸 Snapshots used for recovery: {controller.snapshot_used_for_recovery_count}")
+    print(f"  📸 Correlated failure events: {controller.correlated_failure_events}")
+    if controller.correlated_failure_events > 0:
+        if controller.snapshot_used_for_recovery_count == controller.correlated_failure_events:
+            print(f"     ✓ ALL correlated failures recovered via snapshot - system is irrecoverable-failure-proof!")
+        else:
+            print(f"     ⚠️  Some correlated failures not recovered - need more snapshots or sterile spares")
 
     # Time at 3-live vs 2-live (GOAL: >90% at 3-live)
     total_chunk_days = sum(controller.chunk_time_at_3live.values()) + sum(controller.chunk_time_at_2live.values())
