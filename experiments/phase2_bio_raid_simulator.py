@@ -314,6 +314,73 @@ class BioRAIDController:
         # Validate chunk mappings
         self._validate_chunk_mappings()
 
+    # ===== FIXED 3-SLOT CHUNK REPLICA HELPERS =====
+    def _get_chunk_tile_ids(self, chunk_idx: int) -> List[int]:
+        """
+        Get non-None tile IDs for a chunk (skipping empty slots).
+
+        Returns:
+            List of tile IDs (excludes None slots)
+        """
+        slots = self.chunk_replicas.get(chunk_idx, [None, None, None])
+        return [tid for tid in slots if tid is not None]
+
+    def _get_chunk_tiles(self, chunk_idx: int) -> List[Tile]:
+        """
+        Get non-None tiles for a chunk.
+
+        Returns:
+            List of Tile objects (excludes None slots)
+        """
+        tile_ids = self._get_chunk_tile_ids(chunk_idx)
+        return [self.tiles[tid] for tid in tile_ids]
+
+    def _find_empty_slot(self, chunk_idx: int) -> Optional[int]:
+        """
+        Find first empty (None) slot in chunk's replica array.
+
+        Returns:
+            Slot index (0-2) or None if all slots full
+        """
+        slots = self.chunk_replicas.get(chunk_idx, [None, None, None])
+        for i, tid in enumerate(slots):
+            if tid is None:
+                return i
+        return None
+
+    def _set_chunk_slot(self, chunk_idx: int, slot: int, tile_id: Optional[int]):
+        """
+        Set a specific slot in chunk's replica array.
+
+        Args:
+            chunk_idx: Chunk index
+            slot: Slot index (0-2)
+            tile_id: Tile ID or None
+        """
+        if chunk_idx not in self.chunk_replicas:
+            self.chunk_replicas[chunk_idx] = [None, None, None]
+        self.chunk_replicas[chunk_idx][slot] = tile_id
+
+    def _clear_chunk_slot_by_tile_id(self, chunk_idx: int, tile_id: int) -> bool:
+        """
+        Clear the slot containing a specific tile ID (set to None).
+
+        Args:
+            chunk_idx: Chunk index
+            tile_id: Tile ID to remove
+
+        Returns:
+            True if tile was found and cleared, False otherwise
+        """
+        if chunk_idx not in self.chunk_replicas:
+            return False
+
+        for i, tid in enumerate(self.chunk_replicas[chunk_idx]):
+            if tid == tile_id:
+                self.chunk_replicas[chunk_idx][i] = None
+                return True
+        return False
+
     def _is_live_correct(self, tile: Tile) -> bool:
         """
         Check if a replica is LIVE_CORRECT (verified and readable).
@@ -341,12 +408,12 @@ class BioRAIDController:
 
     def _count_live_correct(self, chunk_idx: int) -> int:
         """Count LIVE_CORRECT replicas for a chunk."""
-        tile_ids = self.chunk_replicas.get(chunk_idx, [])
+        tile_ids = self._get_chunk_tile_ids(chunk_idx)
         return sum(1 for tid in tile_ids if self._is_live_correct(self.tiles[tid]))
 
     def _count_live_healthy(self, chunk_idx: int) -> int:
         """Count LIVE_HEALTHY replicas for a chunk."""
-        tile_ids = self.chunk_replicas.get(chunk_idx, [])
+        tile_ids = self._get_chunk_tile_ids(chunk_idx)
         return sum(1 for tid in tile_ids if self._is_live_healthy(self.tiles[tid]))
 
     def _track_write(self, tile: Tile, success: bool):
@@ -771,7 +838,7 @@ class BioRAIDController:
                     if t.id not in tile_ids:
                         continue
 
-                    replicas = [self.tiles[tid] for tid in tile_ids]
+                    replicas = [self.tiles[tid] for tid in tile_ids if tid is not None]
                     readable = [r for r in replicas
                                if r.state in [TileState.ACTIVE, TileState.SICK, TileState.CLEAN_LOCKED]
                                and r.integrity >= 0.60]
@@ -834,7 +901,7 @@ class BioRAIDController:
         Uses chunk_replicas mapping to ensure accurate tracking.
         """
         for chunk_idx, tile_ids in self.chunk_replicas.items():
-            replicas = [self.tiles[tid] for tid in tile_ids]
+            replicas = [self.tiles[tid] for tid in tile_ids if tid is not None]
 
             # Count healthy replicas (ACTIVE or SICK or CLEAN_LOCKED, not FAILED, not REGENERATING)
             healthy = [t for t in replicas
@@ -1184,12 +1251,13 @@ class BioRAIDController:
             import zlib
             target.chunk_checksum = zlib.crc32(correct_data.encode()) & 0xffffffff
 
-            # Add to chunk mapping (only if not already present)
-            if target.id not in self.chunk_replicas[chunk_idx]:
-                self.chunk_replicas[chunk_idx].append(target.id)
-                print(f"  ✓ Added PENDING replica on tile {target.id} (top-up #{i+1}/{missing_count})")
+            # Add to chunk mapping (find empty slot)
+            empty_slot = self._find_empty_slot(chunk_idx)
+            if empty_slot is not None:
+                self._set_chunk_slot(chunk_idx, empty_slot, target.id)
+                print(f"  ✓ Added PENDING replica on tile {target.id} to slot {empty_slot} (top-up #{i+1}/{missing_count})")
             else:
-                print(f"  ⚠️  Tile {target.id} already in chunk {chunk_idx} mapping - skipping!")
+                print(f"  ⚠️  Chunk {chunk_idx} has no empty slots - skipping!")
 
     def _scrub_chunk(self, chunk_idx: int):
         """
@@ -1699,7 +1767,7 @@ class BioRAIDController:
             chunk_idx: Chunk to potentially snapshot
             golden_truth: Current golden truth data
         """
-        tile_ids = self.chunk_replicas.get(chunk_idx, [])
+        tile_ids = self._get_chunk_tile_ids(chunk_idx)  # Get non-None tile IDs
 
         # CRITERION 1: Must have 3 LIVE replicas (ACTIVE, ≥60%)
         live_tiles = [self.tiles[tid] for tid in tile_ids
@@ -1804,12 +1872,14 @@ class BioRAIDController:
             target.state = TileState.STERILE
             return False
 
-        # Add to chunk mapping (if not already present)
-        if target.id not in self.chunk_replicas[chunk_idx]:
-            self.chunk_replicas[chunk_idx].append(target.id)
+        # Add to chunk mapping (find empty slot)
+        empty_slot = self._find_empty_slot(chunk_idx)
+        if empty_slot is not None:
+            self._set_chunk_slot(chunk_idx, empty_slot, target.id)
+            print(f"      ✓ Added snapshot recovery replica to slot {empty_slot}")
         else:
-            # Tile already in chunk - skip (this can happen during rapid recovery attempts)
-            print(f"      ⚠️  Tile {target.id} already in chunk {chunk_idx} - skipping")
+            # No empty slot - chunk already full
+            print(f"      ⚠️  Chunk {chunk_idx} has no empty slots - skipping snapshot recovery")
             target.state = TileState.STERILE
             return False
 
@@ -1842,11 +1912,11 @@ class BioRAIDController:
 
         # CLEANUP: Flush any FAILED tiles to maintain 3-replica invariant
         # After adding recovery replica, chunk may have 4 replicas (3 usable + 1 FAILED)
-        failed_tiles = [tid for tid in self.chunk_replicas[chunk_idx]
-                       if self.tiles[tid].state == TileState.FAILED]
-        for failed_id in failed_tiles:
+        failed_tile_ids = [tid for tid in self._get_chunk_tile_ids(chunk_idx)
+                          if self.tiles[tid].state == TileState.FAILED]
+        for failed_id in failed_tile_ids:
             self._flush_tile(self.tiles[failed_id])
-            self.chunk_replicas[chunk_idx].remove(failed_id)
+            self._clear_chunk_slot_by_tile_id(chunk_idx, failed_id)
             print(f"      Flushed FAILED tile {failed_id} to sterile pool (maintaining 3-replica invariant)")
 
         print(f"      Chunk {chunk_idx} now has {len(self.chunk_replicas[chunk_idx])} replicas")
@@ -1928,7 +1998,7 @@ class BioRAIDController:
             return  # No spare capacity
 
         for chunk_idx in sorted(self.chunk_replicas.keys()):
-            tile_ids = self.chunk_replicas[chunk_idx]
+            tile_ids = self._get_chunk_tile_ids(chunk_idx)  # Get non-None tile IDs
 
             # Count usable replicas (exclude FAILED/STERILE which are offline)
             usable_tiles = [self.tiles[tid] for tid in tile_ids
@@ -1980,7 +2050,7 @@ class BioRAIDController:
             return  # No spare capacity
 
         for chunk_idx in sorted(self.chunk_replicas.keys()):
-            tile_ids = self.chunk_replicas[chunk_idx]
+            tile_ids = self._get_chunk_tile_ids(chunk_idx)  # Get non-None tile IDs
 
             # Count usable replicas (exclude FAILED/STERILE which are offline)
             usable_tiles = [self.tiles[tid] for tid in tile_ids
@@ -2045,7 +2115,7 @@ class BioRAIDController:
             return  # No spare capacity
 
         for chunk_idx in sorted(self.chunk_replicas.keys()):
-            tile_ids = self.chunk_replicas[chunk_idx]
+            tile_ids = self._get_chunk_tile_ids(chunk_idx)  # Get non-None tile IDs
 
             # Count LIVE_CORRECT replicas
             live_correct_count = self._count_live_correct(chunk_idx)
@@ -2122,20 +2192,31 @@ class BioRAIDController:
         import zlib
         target_sterile.chunk_checksum = zlib.crc32(correct_data.encode()) & 0xffffffff
 
+        # CLEANUP FIRST: Flush any FAILED tiles to free up slots
+        # This ensures we have empty slots available before adding new replica
+        failed_tile_ids = [tid for tid in self._get_chunk_tile_ids(chunk_idx)
+                          if self.tiles[tid].state == TileState.FAILED]
+        for failed_id in failed_tile_ids:
+            self._flush_tile(self.tiles[failed_id])
+            self._clear_chunk_slot_by_tile_id(chunk_idx, failed_id)
+            print(f"   Pre-cleanup: Flushed FAILED tile {failed_id} to free slot")
+
         # SAFETY CHECK: Enforce 3-replica maximum before adding (count USABLE replicas only)
-        usable_count = sum(1 for tid in self.chunk_replicas[chunk_idx]
-                          if self.tiles[tid].state not in [TileState.FAILED, TileState.STERILE])
+        usable_count = len([tid for tid in self._get_chunk_tile_ids(chunk_idx)
+                           if self.tiles[tid].state not in [TileState.FAILED, TileState.STERILE]])
         if usable_count >= 3:
             print(f"   ⚠️  ABORT: Chunk {chunk_idx} already has {usable_count} usable replicas! Cannot top-up.")
             # Return target to sterile pool
             target_sterile.state = TileState.STERILE
             return
 
-        # Add to chunk mapping
-        if target_sterile.id not in self.chunk_replicas[chunk_idx]:
-            self.chunk_replicas[chunk_idx].append(target_sterile.id)
+        # Add to chunk mapping (find empty slot)
+        empty_slot = self._find_empty_slot(chunk_idx)
+        if empty_slot is not None:
+            self._set_chunk_slot(chunk_idx, empty_slot, target_sterile.id)
+            print(f"   ✓ Added top-up replica to slot {empty_slot}")
         else:
-            print(f"   ⚠️  ABORT: Tile {target_sterile.id} already in chunk {chunk_idx} mapping!")
+            print(f"   ⚠️  ABORT: Chunk {chunk_idx} has no empty slots!")
             target_sterile.state = TileState.STERILE
             return
 
@@ -2163,17 +2244,10 @@ class BioRAIDController:
             self.deadline_topup_count += 1
             print(f"✓ Deadline top-up #{self.deadline_topup_count} complete (tile {target_sterile.id} ACTIVE with 7-day protection)")
 
-        # CLEANUP: Flush any FAILED tiles to maintain 3-replica invariant
-        # After adding new replica, chunk may temporarily have 4 replicas (3 usable + 1 FAILED)
-        # Flush FAILED tiles to sterile pool to restore invariant
-        failed_tiles = [tid for tid in self.chunk_replicas[chunk_idx]
-                       if self.tiles[tid].state == TileState.FAILED]
-        for failed_id in failed_tiles:
-            self._flush_tile(self.tiles[failed_id])
-            self.chunk_replicas[chunk_idx].remove(failed_id)
-            print(f"   Flushed FAILED tile {failed_id} to sterile pool (maintaining 3-replica invariant)")
-
-        print(f"   Chunk {chunk_idx} now has {len(self.chunk_replicas[chunk_idx])} replicas\n")
+        # Final status
+        usable_count = len([tid for tid in self._get_chunk_tile_ids(chunk_idx)
+                           if self.tiles[tid].state not in [TileState.FAILED, TileState.STERILE]])
+        print(f"   Chunk {chunk_idx} now has {usable_count} usable replicas\n")
 
     def _detect_at_risk_loops(self) -> dict:
         """
@@ -2226,33 +2300,44 @@ class BioRAIDController:
 
     def _validate_chunk_mappings(self):
         """
-        Validate chunk->tile mapping invariants.
+        Validate chunk->tile mapping invariants with FIXED 3-SLOT ARRAYS.
 
-        CRITICAL: Every chunk must have exactly 3 UNIQUE replicas at all times.
-        Enforces uniqueness (no duplicates) and separates LIVE vs PENDING counts.
+        CRITICAL INVARIANTS:
+        1. Every chunk must have exactly 3 slots (some may be None)
+        2. No duplicate tile IDs across non-None slots
+        3. Warn (don't fatal) if <3 readable replicas during recovery
+
+        This allows atomic multi-step operations (flush + top-up) without crashes.
         """
-        for chunk_idx, tile_ids in self.chunk_replicas.items():
-            # ENFORCE UNIQUENESS: Remove duplicates if any
-            unique_ids = list(dict.fromkeys(tile_ids))  # Preserves order, removes duplicates
-            if len(unique_ids) != len(tile_ids):
-                print(f"⚠️  WARNING: Chunk {chunk_idx} had duplicate replica IDs: {tile_ids}")
-                print(f"    Deduplicating to: {unique_ids}")
-                self.chunk_replicas[chunk_idx] = unique_ids
-                tile_ids = unique_ids
-
-            # ENFORCE REPLICA COUNT: Exactly 3 unique tile IDs per chunk
-            if len(tile_ids) != 3:
+        for chunk_idx, slots in self.chunk_replicas.items():
+            # ENFORCE 3-SLOT ARRAY: Must have exactly 3 slots (not necessarily filled)
+            if not isinstance(slots, list) or len(slots) != 3:
                 raise RuntimeError(
-                    f"FATAL: Chunk {chunk_idx} has {len(tile_ids)} replicas, expected 3! "
-                    f"Tile IDs: {tile_ids}. "
-                    f"This violates the 3-replica invariant!"
+                    f"FATAL: Chunk {chunk_idx} has {len(slots) if isinstance(slots, list) else 'invalid'} slots, expected 3! "
+                    f"Slots: {slots}. "
+                    f"This violates the 3-slot invariant!"
                 )
 
-            # Separate LIVE vs PENDING vs OFFLINE counts
-            # CRITICAL: Categories must be mutually exclusive (no overlaps!)
-            # Priority order: FAILED/STERILE -> REGENERATING/SICK/CLEAN_LOCKED -> ACTIVE
+            # Get non-None tile IDs
+            tile_ids = [tid for tid in slots if tid is not None]
+
+            # ENFORCE UNIQUENESS: No duplicate tile IDs in non-None slots
+            if len(tile_ids) != len(set(tile_ids)):
+                duplicates = [tid for tid in tile_ids if tile_ids.count(tid) > 1]
+                raise RuntimeError(
+                    f"FATAL: Chunk {chunk_idx} has duplicate tile IDs: {duplicates}! "
+                    f"All slots: {slots}. "
+                    f"This violates uniqueness invariant!"
+                )
+
+            # Get actual tiles (skip None slots)
             tiles = [self.tiles[tid] for tid in tile_ids]
 
+            # Count LIVE_CORRECT replicas (readable + verified)
+            live_correct = [t for t in tiles if self._is_live_correct(t)]
+            live_correct_count = len(live_correct)
+
+            # Separate for informational display
             live = []
             pending = []
             offline = []
@@ -2271,23 +2356,29 @@ class BioRAIDController:
                 else:
                     offline.append(t)
 
-            # Verify no overlaps (sanity check - should be impossible with new logic)
-            live_ids = set(t.id for t in live)
-            pending_ids = set(t.id for t in pending)
-            offline_ids = set(t.id for t in offline)
+            # WARN (don't fatal) if <3 usable replicas - may be mid-recovery
+            usable_count = len([t for t in tiles if t.state not in [TileState.FAILED, TileState.STERILE]])
+            empty_slots = sum(1 for tid in slots if tid is None)
 
-            overlap = (live_ids & pending_ids) | (live_ids & offline_ids) | (pending_ids & offline_ids)
-            if overlap:
-                print(f"⚠️  CRITICAL BUG: Chunk {chunk_idx} has overlapping replica states: {overlap}")
-                print(f"    This should be impossible with mutually exclusive categorization!")
-
-            # Sanity check: total should be 3
-            if len(live) + len(pending) + len(offline) != 3:
-                print(f"⚠️  WARNING: Chunk {chunk_idx} replica count mismatch!")
+            if usable_count < 3 or empty_slots > 0:
+                print(f"⚠️  Chunk {chunk_idx}: {usable_count} usable, {empty_slots} empty slots (recovery may be needed)")
+                print(f"    Slots: {slots}")
                 print(f"    Live: {len(live)}, Pending: {len(pending)}, Offline: {len(offline)}")
-                print(f"    Total: {len(live) + len(pending) + len(offline)} (expected 3)")
 
-            # Warn if no readable replicas
+                # ENSURE RECOVERY: Schedule top-up if needed
+                if live_correct_count >= 2:
+                    # Has quorum - can safely top-up
+                    if chunk_idx not in self.chunk_under_replicated_since_day:
+                        self.chunk_under_replicated_since_day[chunk_idx] = self.uptime_days
+                        print(f"    → Scheduled for top-up (has {live_correct_count} LIVE_CORRECT replicas)")
+                elif chunk_idx in self.chunk_snapshot_bits:
+                    # No quorum but has snapshot - can recover
+                    print(f"    → Snapshot available for recovery")
+                else:
+                    # Critical: no quorum and no snapshot
+                    print(f"    ✗ CRITICAL: Only {live_correct_count} LIVE_CORRECT, no snapshot!")
+
+            # Warn if no readable replicas at all
             if len(live) == 0 and len(pending) == 0:
                 print(f"⚠️  WARNING: Chunk {chunk_idx} has no readable replicas!")
                 for t in tiles:
