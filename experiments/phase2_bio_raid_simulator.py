@@ -251,6 +251,17 @@ class BioRAIDController:
         self.tile_temp_shadow = {}  # {tile_id: shadow_tile_id} - maps regenerating tile to its shadow
         self.days_with_regen_active = 0  # Days when at least one tile was regenerating
 
+        # CORRELATED_SHOCK_WEEKS: Periodic stress testing to force Stage B (PROACTIVE_REBUILD)
+        self.SHOCK_WEEKS_PER_YEAR_MIN = 2  # Minimum shock weeks per year
+        self.SHOCK_WEEKS_PER_YEAR_MAX = 4  # Maximum shock weeks per year
+        self.SHOCK_WEEK_DEGRADATION_MULTIPLIER = 2.5  # Degradation multiplier during shock weeks
+        self.SHOCK_WEEK_AFFECTED_TILES_MIN = 3  # Minimum tiles affected per shock week
+        self.SHOCK_WEEK_AFFECTED_TILES_MAX = 6  # Maximum tiles affected per shock week
+        self.shock_weeks = []  # List of shock week numbers
+        self.shock_week_tiles = {}  # {week_num: [tile_ids]} - tiles affected during each shock week
+        self.shock_weeks_triggered = 0  # Count of shock weeks that occurred
+        self.current_shock_week_tiles = set()  # Tiles currently affected by shock week
+
         # SPARE_POOL_HEALTH: Maintain healthy spare pool
         self.SPARE_TARGET = 4  # Target number of healthy sterile spares
         self.spare_failures = 0  # Count of tiles that transitioned to FAILED state
@@ -566,6 +577,22 @@ class BioRAIDController:
             self.week_number = current_week
             self.rebuilds_this_week = 0
 
+        # CORRELATED_SHOCK_WEEKS: Check if we're entering/exiting a shock week
+        current_week_1indexed = (self.uptime_days + 6) // 7  # Week 1 = days 1-7
+        if current_week_1indexed in self.shock_weeks:
+            # We're in a shock week
+            if current_week_1indexed not in [w for w in self.shock_weeks if w in self.shock_week_tiles]:
+                # First day of this shock week - skip initialization
+                pass
+            # Update current shock tiles
+            self.current_shock_week_tiles = set(self.shock_week_tiles.get(current_week_1indexed, []))
+            # Only print on first day of shock week
+            if self.uptime_days % 7 == 1:
+                print(f"\n🌩️  SHOCK WEEK {current_week_1indexed} ACTIVE: {len(self.current_shock_week_tiles)} tiles will receive {self.SHOCK_WEEK_DEGRADATION_MULTIPLIER}x degradation (tiles: {sorted(self.current_shock_week_tiles)})")
+                self.shock_weeks_triggered += 1
+        else:
+            self.current_shock_week_tiles = set()
+
         # Age all tiles and update states
         for tile in self.tiles:
             if tile.state in [TileState.ACTIVE, TileState.SICK, TileState.CLEAN_LOCKED]:
@@ -589,12 +616,19 @@ class BioRAIDController:
                 # CHRONIC DEGRADATION: Non-lethal integrity hits (regular pressure toward regeneration)
                 # Models cumulative molecular damage, substrate fatigue, environmental stress
                 # This ensures tiles regularly drift into 70-80% integrity range
-                if np.random.random() < self.CHRONIC_DEGRADATION_PROB:
+                # CORRELATED_SHOCK_WEEKS: Apply elevated degradation stress to selected tiles
+                chronic_prob = self.CHRONIC_DEGRADATION_PROB
+                if tile.id in self.current_shock_week_tiles:
+                    # Shock week: elevated degradation probability
+                    chronic_prob *= self.SHOCK_WEEK_DEGRADATION_MULTIPLIER
+
+                if np.random.random() < chronic_prob:
                     chronic_magnitude = np.random.uniform(self.CHRONIC_DEGRADATION_MAG_MIN, self.CHRONIC_DEGRADATION_MAG_MAX)
                     tile.integrity *= (1.0 - chronic_magnitude)
                     self.total_degradation_events += 1
+                    shock_marker = " [SHOCK WEEK]" if tile.id in self.current_shock_week_tiles else ""
                     if tile.integrity < 0.80:
-                        print(f"🧬 Chronic degradation: Tile {tile.id} dropped to {tile.integrity:.2%} (molecular fatigue)")
+                        print(f"🧬 Chronic degradation{shock_marker}: Tile {tile.id} dropped to {tile.integrity:.2%} (molecular fatigue)")
                     # Track if this caused drop below 80%
                     if was_healthy and tile.integrity < 0.80:
                         self.tiles_dropped_below_80_baseline += 1
@@ -2818,11 +2852,19 @@ class BioRAIDController:
         # Count healthy sterile spares (STERILE state, ready for use)
         healthy_sterile = sum(1 for t in self.tiles if t.state == TileState.STERILE)
 
-        # Track days below spare target
-        if healthy_sterile < self.SPARE_TARGET:
+        # TEMP_SHADOW tiles are temporarily using sterile capacity but are still available
+        # (they're standalone backups, not consuming long-term spare pool capacity)
+        temp_shadow_ids = set(self.tile_temp_shadow.values())
+        temp_shadow_count_now = len(temp_shadow_ids)
+
+        # Effective spare capacity = STERILE + TEMP_SHADOW (temporary assignments don't consume pool)
+        effective_spare_capacity = healthy_sterile + temp_shadow_count_now
+
+        # Track days below spare target (corrected for TEMP_SHADOW)
+        if effective_spare_capacity < self.SPARE_TARGET:
             self.days_below_spare_target += 1
             if self.uptime_days % 30 == 0:  # Report monthly
-                print(f"⚠️  SPARE_POOL_HEALTH: Only {healthy_sterile}/{self.SPARE_TARGET} sterile spares available (day {self.uptime_days})")
+                print(f"⚠️  SPARE_POOL_HEALTH: Only {effective_spare_capacity}/{self.SPARE_TARGET} effective spares (STERILE: {healthy_sterile}, TEMP_SHADOW: {temp_shadow_count_now}) (day {self.uptime_days})")
 
     def _perform_topup(self, chunk_idx: int, live_tiles: List[Tile], target_sterile: Tile, mode: str):
         """
@@ -3400,6 +3442,24 @@ def run_phase2_simulation(duration_days=365):
     controller.visualize_cartridge(save_path='analysis/bioraid_day0.png')
     plt.pause(0.1)
 
+    # Initialize CORRELATED_SHOCK_WEEKS: Select 2-4 random weeks for elevated degradation stress
+    total_weeks = duration_days // 7
+    num_shock_weeks = np.random.randint(controller.SHOCK_WEEKS_PER_YEAR_MIN, controller.SHOCK_WEEKS_PER_YEAR_MAX + 1)
+    controller.shock_weeks = sorted(np.random.choice(range(1, total_weeks + 1), min(num_shock_weeks, total_weeks), replace=False).tolist())
+
+    # For each shock week, select 3-6 random ACTIVE tiles to stress
+    active_tile_ids = [t.id for t in controller.tiles if t.state == TileState.ACTIVE]
+    for week_num in controller.shock_weeks:
+        num_affected = np.random.randint(controller.SHOCK_WEEK_AFFECTED_TILES_MIN,
+                                        min(controller.SHOCK_WEEK_AFFECTED_TILES_MAX + 1, len(active_tile_ids) + 1))
+        affected_tiles = np.random.choice(active_tile_ids, num_affected, replace=False).tolist()
+        controller.shock_week_tiles[week_num] = affected_tiles
+
+    print(f"\n🌩️  CORRELATED SHOCK WEEKS scheduled: {len(controller.shock_weeks)} weeks out of {total_weeks}")
+    for week_num in controller.shock_weeks:
+        affected = controller.shock_week_tiles[week_num]
+        print(f"   Week {week_num}: {len(affected)} tiles will receive {controller.SHOCK_WEEK_DEGRADATION_MULTIPLIER}x degradation (tiles: {affected})")
+
     # Simulate
     print(f"\nSimulating {duration_days} days of operation...")
     print("(Tiles will degrade, rebuild automatically)\n")
@@ -3729,15 +3789,30 @@ def run_phase2_simulation(duration_days=365):
     tiles_that_failed = sum(1 for t in controller.tiles if t.state == TileState.FAILED)
     print(f"     Tiles that crossed <60% without replacement: {tiles_that_failed}")
 
+    # CORRELATED_SHOCK_WEEKS: Stress testing metrics
+    total_weeks = days_simulated // 7
+    shock_weeks_per_year = (len(controller.shock_weeks) / days_simulated * 365) if days_simulated > 0 else 0
+    print(f"  🌩️  CORRELATED_SHOCK_WEEKS:")
+    print(f"     Shock weeks triggered: {controller.shock_weeks_triggered}/{len(controller.shock_weeks)} scheduled")
+    print(f"     Shock weeks per year: {shock_weeks_per_year:.1f} ({len(controller.shock_weeks)}/{total_weeks} weeks)")
+    print(f"     Degradation multiplier: {controller.SHOCK_WEEK_DEGRADATION_MULTIPLIER}x")
+    print(f"     Tiles affected per shock week: {controller.SHOCK_WEEK_AFFECTED_TILES_MIN}-{controller.SHOCK_WEEK_AFFECTED_TILES_MAX}")
+
     # SPARE_POOL_HEALTH: Spare pool maintenance metrics
     spare_regenerations_per_month = controller.spare_regenerations / months_simulated if months_simulated > 0 else 0
     final_sterile_count = sum(1 for t in controller.tiles if t.state == TileState.STERILE)
+    final_temp_shadow_count = len(controller.tile_temp_shadow)
+    final_failed_spares = sum(1 for t in controller.tiles if t.state == TileState.FAILED and t.id >= controller.n_active)
     pct_days_below_target = (controller.days_below_spare_target / days_simulated * 100) if days_simulated > 0 else 0
     print(f"  🔄 SPARE_POOL_HEALTH:")
     print(f"     Spare failures (tiles → FAILED): {controller.spare_failures}")
     print(f"     Spare regenerations (orphaned FAILED → STERILE): {controller.spare_regenerations} ({spare_regenerations_per_month:.2f}/month)")
-    print(f"     Final sterile count: {final_sterile_count}/{controller.SPARE_TARGET} (target: {controller.SPARE_TARGET})")
-    print(f"     Days below spare target: {controller.days_below_spare_target}/{days_simulated} ({pct_days_below_target:.1f}%)")
+    print(f"     Final spare breakdown:")
+    print(f"       - STERILE (free): {final_sterile_count}")
+    print(f"       - TEMP_SHADOW (in use): {final_temp_shadow_count}")
+    print(f"       - FAILED (quarantined): {final_failed_spares}")
+    print(f"       - Effective capacity: {final_sterile_count + final_temp_shadow_count}/{controller.SPARE_TARGET}")
+    print(f"     Days below spare target (corrected): {controller.days_below_spare_target}/{days_simulated} ({pct_days_below_target:.1f}%)")
 
     # COLD SNAPSHOT METRICS (emergency recovery)
     print(f"  📸 Cold snapshot updates: {controller.snapshot_updates_count} (VERY conservative)")
@@ -3791,6 +3866,10 @@ def run_phase2_simulation(duration_days=365):
         print(f"     Tiles dropped <80% (baseline): {controller.tiles_dropped_below_80_baseline}")
         print(f"     Tiles dropped <80% (shocks): {controller.tiles_dropped_below_80_shock}")
         print(f"     Tiles recovered integrity: {controller.tiles_recovered_integrity}")
+        if not controller.RECOVERY_ENABLED:
+            print(f"     ℹ️  Natural recovery disabled; integrity restored only via regen pipeline")
+        else:
+            print(f"     ℹ️  Natural recovery enabled: {controller.RECOVERY_RATE*100:.2f}%/day for tiles ≥{controller.RECOVERY_MIN_CALM_DAYS} calm days")
 
     # CORRECTNESS GUARDRAILS: Lightweight assertions
     print(f"\n  🔒 CORRECTNESS GUARDRAILS:")
