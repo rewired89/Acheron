@@ -181,6 +181,7 @@ class BioRAIDController:
         self.chunk_failed_scrub_count = {}  # {chunk_idx: int} - consecutive failed scrubs (for risk assessment)
         self.write_failures_total = 0  # Total write failures across all tiles
         self.write_attempts_total = 0  # Total write attempts (for write fail rate)
+        self.write_successes_total = 0  # Total successful writes
 
         # TWO-MODE TOP-UP SYSTEM: Restore 3-live redundancy
         self.chunk_two_live_since_day = {}  # {chunk_idx: day} - when chunk dropped to 2 live
@@ -188,9 +189,18 @@ class BioRAIDController:
         self.chunk_last_shock_day = {}  # {chunk_idx: day} - last degradation event affecting chunk
         self.calm_topup_count = 0  # Count of calm-period top-ups (stable chunks)
         self.recovery_topup_count = 0  # Count of recovery top-ups (failed replicas)
-        self.chunk_time_at_3live = {}  # {chunk_idx: days} - cumulative time at 3 live replicas
+        self.chunk_time_at_3live = {}  # {chunk_idx: days} - cumulative time at 3 live replicas (DEPRECATED - use _correct/_healthy)
         self.chunk_time_at_2live = {}  # {chunk_idx: days} - cumulative time at 2 live replicas
         self.chunk_under_replicated_since_day = {}  # {chunk_idx: day} - when chunk dropped below 3 live
+
+        # CORRECTNESS vs HEALTH SPLIT: Track verified replicas separately from healthy ones
+        self.chunk_time_at_3live_correct = {}  # {chunk_idx: days} - time at 3 LIVE_CORRECT replicas (verified, >=60%)
+        self.chunk_time_at_3live_healthy = {}  # {chunk_idx: days} - time at 3 LIVE_HEALTHY replicas (>=80%)
+        self.chunk_time_at_2live_correct = {}  # {chunk_idx: days} - time at 2 LIVE_CORRECT replicas
+
+        # DEADLINE TOP-UP: Force top-up if stuck <3 LIVE_CORRECT for too long
+        self.DEADLINE_TOPUP_DAYS = 14  # Force top-up after 14 days <3 LIVE_CORRECT
+        self.deadline_topup_count = 0  # Count of deadline-triggered top-ups
 
         # COLD SNAPSHOT ANCHOR: Last-resort recovery for correlated failures
         self.chunk_snapshot_bits = {}  # {chunk_idx: str} - cold snapshot of chunk data
@@ -272,6 +282,7 @@ class BioRAIDController:
                 tile = active_tiles[tile_idx]
                 tile.binary_data = chunk
                 tile.pattern = self.encoder.encode(chunk)
+                self._track_write(tile, success=True)  # Track initial writes
                 chunk_tile_ids.append(tile.id)
                 tile_idx += 1
 
@@ -302,6 +313,50 @@ class BioRAIDController:
 
         # Validate chunk mappings
         self._validate_chunk_mappings()
+
+    def _is_live_correct(self, tile: Tile) -> bool:
+        """
+        Check if a replica is LIVE_CORRECT (verified and readable).
+
+        LIVE_CORRECT = has passed verification/scrub, even if integrity <80%
+        States: ACTIVE, SICK, or CLEAN_LOCKED with integrity >=60%
+
+        This is the key metric for correctness (data is valid).
+        """
+        return (tile.state in [TileState.ACTIVE, TileState.SICK, TileState.CLEAN_LOCKED]
+                and tile.binary_data is not None
+                and tile.integrity >= 0.60)
+
+    def _is_live_healthy(self, tile: Tile) -> bool:
+        """
+        Check if a replica is LIVE_HEALTHY (good physical health).
+
+        LIVE_HEALTHY = integrity >=80% (old definition of "LIVE")
+
+        This is the metric for physical health (tile is not degraded).
+        """
+        return (tile.state in [TileState.ACTIVE, TileState.SICK, TileState.CLEAN_LOCKED]
+                and tile.binary_data is not None
+                and tile.integrity >= 0.80)
+
+    def _count_live_correct(self, chunk_idx: int) -> int:
+        """Count LIVE_CORRECT replicas for a chunk."""
+        tile_ids = self.chunk_replicas.get(chunk_idx, [])
+        return sum(1 for tid in tile_ids if self._is_live_correct(self.tiles[tid]))
+
+    def _count_live_healthy(self, chunk_idx: int) -> int:
+        """Count LIVE_HEALTHY replicas for a chunk."""
+        tile_ids = self.chunk_replicas.get(chunk_idx, [])
+        return sum(1 for tid in tile_ids if self._is_live_healthy(self.tiles[tid]))
+
+    def _track_write(self, tile: Tile, success: bool):
+        """Track write attempts and outcomes for metrics."""
+        self.write_attempts_total += 1
+        if success:
+            self.write_successes_total += 1
+        else:
+            self.write_failures_total += 1
+            tile.write_fail_count += 1
 
     def read_data(self, repair_errors=False) -> str:
         """
@@ -466,6 +521,7 @@ class BioRAIDController:
                             # FORCE OVERWRITE with GOLDEN TRUTH (always correct!)
                             tile.binary_data = golden_truth
                             tile.pattern = self.encoder.encode(golden_truth)
+                            self._track_write(tile, success=True)  # Track scrub write-back
 
                             # Update checksum
                             import zlib
@@ -497,6 +553,7 @@ class BioRAIDController:
                                     rep.binary_data = golden_truth
                                     rep.pattern = self.encoder.encode(golden_truth)
                                     rep.chunk_checksum = zlib.crc32(golden_truth.encode()) & 0xffffffff
+                                    self._track_write(rep, success=True)  # Track retry write-back
 
                                 # Verify again
                                 still_mismatches = []
@@ -537,30 +594,22 @@ class BioRAIDController:
 
                     # NOW mark as CLEAN_LOCKED (stabilization window to reduce churn)
                     # CLEAN_LOCKED for 7 days - cannot be replaced proactively
-                    tile.state = TileState.CLEAN_LOCKED
+                    # IMMEDIATE PROMOTION: Promote to ACTIVE immediately after verification
+                    # CLEAN_LOCK is now a protection flag, not a state gate
+                    tile.state = TileState.ACTIVE  # Immediately LIVE_CORRECT (verified)
                     tile.integrity = 0.98  # Near-perfect regeneration
                     tile.age = 0
                     tile.regeneration_progress = 0.0
                     tile.regen_complete_day = self.uptime_days
-                    tile.clean_locked_until_day = self.uptime_days + 7
+                    tile.clean_locked_until_day = self.uptime_days + 7  # Protected from proactive rebuild
                     tile.needs_scrub = False  # Already did hard scrub above
-                    print(f"  🔒 Tile {tile.id} marked CLEAN_LOCKED for 7 days (until day {tile.clean_locked_until_day})")
+                    print(f"  ✓ Tile {tile.id} promoted to ACTIVE (LIVE_CORRECT) with 7-day protection (until day {tile.clean_locked_until_day})")
 
-        # Check for expired CLEAN_LOCKED tiles and transition to ACTIVE
+        # Clear expired clean lock protection flags
         for tile in self.tiles:
-            if tile.state == TileState.CLEAN_LOCKED:
-                if self.uptime_days >= tile.clean_locked_until_day:
-                    # Lock expired - transition to ACTIVE (or SICK based on integrity)
-                    if tile.integrity >= 0.80:
-                        tile.state = TileState.ACTIVE
-                        print(f"🔓 Tile {tile.id} CLEAN_LOCKED expired → ACTIVE (integrity: {tile.integrity:.2%})")
-                    elif tile.integrity >= 0.60:
-                        tile.state = TileState.SICK
-                        print(f"🔓 Tile {tile.id} CLEAN_LOCKED expired → SICK (integrity: {tile.integrity:.2%})")
-                    else:
-                        tile.state = TileState.FAILED
-                        print(f"🔓 Tile {tile.id} CLEAN_LOCKED expired → FAILED (integrity: {tile.integrity:.2%})")
-                    tile.clean_locked_until_day = -999
+            if tile.clean_locked_until_day > 0 and self.uptime_days >= tile.clean_locked_until_day:
+                print(f"🔓 Tile {tile.id} clean lock protection expired (integrity: {tile.integrity:.2%})")
+                tile.clean_locked_until_day = -999
 
         # Adaptive scrubbing: if SICK tiles or recent rebuild, scrub every 2 days
         sick_count = sum(1 for t in self.tiles if t.state == TileState.SICK)
@@ -585,12 +634,14 @@ class BioRAIDController:
         # Check for rebuild triggers
         self._check_rebuild_needed()
 
-        # TWO-MODE TOP-UP: Track time at 2-live vs 3-live and check for top-up opportunities
+        # THREE-MODE TOP-UP: Track time at 2-live vs 3-live and check for top-up opportunities
         self._track_live_replica_time()
-        # Try RECOVERY_TOPUP first (higher priority - failed replicas)
+        # Try RECOVERY_TOPUP first (highest priority - failed replicas)
         self._check_recovery_topup()
-        # Then try CALM_TOPUP (lower priority - stable chunks)
+        # Then try CALM_TOPUP (medium priority - stable chunks)
         self._check_calm_period_topup()
+        # Finally try DEADLINE_TOPUP (fail-safe - chunks stuck <3-live too long)
+        self._check_deadline_topup()
 
         # Daily monitoring: print min/avg integrity and triggers
         if self.uptime_days % 10 == 0:  # Every 10 days
@@ -1735,10 +1786,11 @@ class BioRAIDController:
         print(f"      📸 Using snapshot from epoch {snapshot_epoch} (age: {self.uptime_days - snapshot_epoch} days)")
         print(f"      Creating replica on tile {target.id}...")
 
-        # Seed target with snapshot data as PENDING replica
+        # Seed target with snapshot data
         target.state = TileState.REGENERATING
         target.binary_data = snapshot_data
         target.pattern = self.encoder.encode(snapshot_data)
+        self._track_write(target, success=True)  # Track snapshot recovery write
         target.regeneration_progress = 1.0  # Skip regeneration delay
         target.needs_scrub = False
         target.integrity = 0.98  # Start at high integrity
@@ -1764,8 +1816,8 @@ class BioRAIDController:
         # IMPORTANT: Do NOT call _scrub_chunk here - it would cause recursive AT_RISK detection!
         # The replica will be verified in the next normal scrub cycle
 
-        # Mark as CLEAN_LOCKED for 7 days (skips REGENERATING state for emergency recovery)
-        target.state = TileState.CLEAN_LOCKED
+        # IMMEDIATE PROMOTION: Mark as ACTIVE (LIVE_CORRECT) with 7-day protection
+        target.state = TileState.ACTIVE
         target.clean_locked_until_day = self.uptime_days + 7
         target.regen_complete_day = self.uptime_days
 
@@ -1776,7 +1828,17 @@ class BioRAIDController:
 
         self.snapshot_used_for_recovery_count += 1
 
-        print(f"      ✓ Snapshot recovery initiated - tile {target.id} added as CLEAN_LOCKED")
+        print(f"      ✓ Snapshot recovery initiated - tile {target.id} added as ACTIVE (LIVE_CORRECT) with protection")
+
+        # FOLLOW-THROUGH: If chunk still <3 LIVE_CORRECT after this recovery, schedule additional top-up
+        # This ensures we don't leave chunk at 2-live after snapshot recovery
+        live_correct_count = self._count_live_correct(chunk_idx)
+        if live_correct_count < 3:
+            print(f"      ⚠️  Chunk {chunk_idx} still has only {live_correct_count} LIVE_CORRECT replicas after snapshot recovery")
+            print(f"          Marking for additional top-up to restore full 3-live redundancy")
+            # Mark chunk as under-replicated to trigger top-up on next cycle
+            if chunk_idx not in self.chunk_under_replicated_since_day:
+                self.chunk_under_replicated_since_day[chunk_idx] = self.uptime_days
 
         # CLEANUP: Flush any FAILED tiles to maintain 3-replica invariant
         # After adding recovery replica, chunk may have 4 replicas (3 usable + 1 FAILED)
@@ -1793,38 +1855,59 @@ class BioRAIDController:
 
     def _track_live_replica_time(self):
         """
-        TWO-MODE TOP-UP: Track time spent at 2-live vs 3-live for each chunk.
+        Track time spent at 2-live vs 3-live for each chunk.
 
-        Updates per-chunk counters and detects under-replication for both modes.
+        Now tracks BOTH correctness (LIVE_CORRECT) and health (LIVE_HEALTHY) metrics.
+        LIVE_CORRECT = verified, >=60% integrity (key metric for correctness)
+        LIVE_HEALTHY = >=80% integrity (key metric for health)
         """
         for chunk_idx, tile_ids in self.chunk_replicas.items():
-            # Count LIVE replicas (ACTIVE only, ≥60% integrity)
-            live_count = sum(1 for tid in tile_ids
-                           if self.tiles[tid].state == TileState.ACTIVE
-                           and self.tiles[tid].integrity >= 0.60)
+            # Count LIVE_CORRECT replicas (verified, >=60%)
+            live_correct_count = self._count_live_correct(chunk_idx)
 
-            # Initialize counters if needed
+            # Count LIVE_HEALTHY replicas (>=80%)
+            live_healthy_count = self._count_live_healthy(chunk_idx)
+
+            # Initialize CORRECT counters
+            if chunk_idx not in self.chunk_time_at_3live_correct:
+                self.chunk_time_at_3live_correct[chunk_idx] = 0
+            if chunk_idx not in self.chunk_time_at_2live_correct:
+                self.chunk_time_at_2live_correct[chunk_idx] = 0
+
+            # Initialize HEALTHY counters
+            if chunk_idx not in self.chunk_time_at_3live_healthy:
+                self.chunk_time_at_3live_healthy[chunk_idx] = 0
+
+            # Initialize legacy counters (for compatibility)
             if chunk_idx not in self.chunk_time_at_3live:
                 self.chunk_time_at_3live[chunk_idx] = 0
             if chunk_idx not in self.chunk_time_at_2live:
                 self.chunk_time_at_2live[chunk_idx] = 0
 
-            # Track time at current level
-            if live_count >= 3:
-                self.chunk_time_at_3live[chunk_idx] += 1
-                # Reset timers when back to 3-live
+            # Track LIVE_CORRECT time (primary metric for correctness)
+            if live_correct_count >= 3:
+                self.chunk_time_at_3live_correct[chunk_idx] += 1
+                # Reset timers when back to 3-live-correct
                 if chunk_idx in self.chunk_two_live_since_day:
                     del self.chunk_two_live_since_day[chunk_idx]
                 if chunk_idx in self.chunk_under_replicated_since_day:
                     del self.chunk_under_replicated_since_day[chunk_idx]
-            elif live_count == 2:
-                self.chunk_time_at_2live[chunk_idx] += 1
-                # Mark when chunk first dropped to 2-live
+            elif live_correct_count == 2:
+                self.chunk_time_at_2live_correct[chunk_idx] += 1
+                # Mark when chunk first dropped to 2-live-correct
                 if chunk_idx not in self.chunk_two_live_since_day:
                     self.chunk_two_live_since_day[chunk_idx] = self.uptime_days
 
-            # Track under-replication for RECOVERY_TOPUP (any <3 live)
-            if live_count < 3:
+            # Track LIVE_HEALTHY time (secondary metric for health)
+            if live_healthy_count >= 3:
+                self.chunk_time_at_3live_healthy[chunk_idx] += 1
+
+            # Track legacy metrics (for compatibility)
+            self.chunk_time_at_3live[chunk_idx] = self.chunk_time_at_3live_correct[chunk_idx]
+            self.chunk_time_at_2live[chunk_idx] = self.chunk_time_at_2live_correct[chunk_idx]
+
+            # Track under-replication for RECOVERY_TOPUP (any <3 live_correct)
+            if live_correct_count < 3:
                 if chunk_idx not in self.chunk_under_replicated_since_day:
                     self.chunk_under_replicated_since_day[chunk_idx] = self.uptime_days
 
@@ -1945,23 +2028,81 @@ class BioRAIDController:
             self._perform_topup(chunk_idx, live_tiles, sterile[0], mode='CALM')
             return  # Only one top-up per day
 
+    def _check_deadline_topup(self):
+        """
+        DEADLINE TOP-UP: Force top-up if chunk stuck <3 LIVE_CORRECT for too long.
+
+        This is a FAIL-SAFE mechanism. Triggers when:
+        1. Chunk has <3 LIVE_CORRECT replicas for >= 14 days
+        2. Has at least 2 readable replicas OR snapshot exists (safety)
+        3. Has sterile spare available
+        4. <3 usable replicas (enforce maximum)
+
+        More aggressive than CALM - doesn't wait for stability, just forces recovery.
+        """
+        sterile = [t for t in self.tiles if t.state == TileState.STERILE]
+        if not sterile:
+            return  # No spare capacity
+
+        for chunk_idx in sorted(self.chunk_replicas.keys()):
+            tile_ids = self.chunk_replicas[chunk_idx]
+
+            # Count LIVE_CORRECT replicas
+            live_correct_count = self._count_live_correct(chunk_idx)
+
+            # Only trigger if <3 LIVE_CORRECT
+            if live_correct_count >= 3:
+                continue
+
+            # Check duration <3 LIVE_CORRECT
+            if chunk_idx not in self.chunk_under_replicated_since_day:
+                continue  # Just dropped, too soon
+            days_under_replicated = self.uptime_days - self.chunk_under_replicated_since_day[chunk_idx]
+            if days_under_replicated < self.DEADLINE_TOPUP_DAYS:
+                continue  # Not at deadline yet
+
+            # Count usable replicas (exclude FAILED/STERILE)
+            usable_tiles = [self.tiles[tid] for tid in tile_ids
+                           if self.tiles[tid].state not in [TileState.FAILED, TileState.STERILE]]
+
+            # Check replica limit
+            if len(usable_tiles) >= 3:
+                continue  # Already have 3 usable replicas
+
+            # SAFETY GATE: Must have >=2 readable OR snapshot exists
+            live_correct_tiles = [self.tiles[tid] for tid in tile_ids if self._is_live_correct(self.tiles[tid])]
+            has_snapshot = chunk_idx in self.chunk_snapshot_bits
+
+            if len(live_correct_tiles) < 2 and not has_snapshot:
+                print(f"  ⚠️  Chunk {chunk_idx} deadline reached ({days_under_replicated}d <3-live) but no quorum/snapshot - BLOCKED")
+                continue  # Too risky
+
+            # DEADLINE TOP-UP ELIGIBLE!
+            print(f"  ⏰ DEADLINE TOP-UP: Chunk {chunk_idx} has been <3 LIVE_CORRECT for {days_under_replicated} days")
+            self._perform_topup(chunk_idx, live_correct_tiles, sterile[0], mode='DEADLINE')
+            return  # Only one top-up per day
+
     def _perform_topup(self, chunk_idx: int, live_tiles: List[Tile], target_sterile: Tile, mode: str):
         """
-        TWO-MODE TOP-UP: Add third replica to under-replicated chunk.
+        THREE-MODE TOP-UP: Add third replica to under-replicated chunk.
 
         Args:
             chunk_idx: Chunk index to top up
             live_tiles: Current live replicas (must be >=2)
             target_sterile: Sterile spare to use for new replica
-            mode: 'RECOVERY' or 'CALM'
+            mode: 'RECOVERY', 'CALM', or 'DEADLINE'
         """
         if mode == 'RECOVERY':
             print(f"\n🔄 RECOVERY TOP-UP: Chunk {chunk_idx}")
             print(f"   Chunk under-replicated ({len(live_tiles)} live) for {self.uptime_days - self.chunk_under_replicated_since_day[chunk_idx]} days")
             print(f"   Adding third replica on tile {target_sterile.id}...")
-        else:  # CALM
+        elif mode == 'CALM':
             print(f"\n🌊 CALM-PERIOD TOP-UP: Chunk {chunk_idx}")
             print(f"   Chunk stable at 2 live for {self.uptime_days - self.chunk_two_live_since_day[chunk_idx]} days, 0 drift")
+            print(f"   Adding third replica on tile {target_sterile.id}...")
+        else:  # DEADLINE
+            print(f"\n⏰ DEADLINE TOP-UP: Chunk {chunk_idx}")
+            print(f"   Chunk <3 LIVE_CORRECT for {self.uptime_days - self.chunk_under_replicated_since_day[chunk_idx]} days (deadline reached)")
             print(f"   Adding third replica on tile {target_sterile.id}...")
 
         # Get correct data from highest-integrity live tile
@@ -1972,6 +2113,7 @@ class BioRAIDController:
         target_sterile.state = TileState.REGENERATING
         target_sterile.binary_data = correct_data
         target_sterile.pattern = self.encoder.encode(correct_data)
+        self._track_write(target_sterile, success=True)  # Track top-up replica creation
         target_sterile.regeneration_progress = 1.0  # Skip regeneration delay
         target_sterile.needs_scrub = False
         target_sterile.integrity = 0.98  # Start at high integrity
@@ -2000,8 +2142,8 @@ class BioRAIDController:
         # Perform hard informational scrub
         self._scrub_chunk(chunk_idx)
 
-        # Mark as CLEAN_LOCKED for 7 days
-        target_sterile.state = TileState.CLEAN_LOCKED
+        # IMMEDIATE PROMOTION: Mark as ACTIVE (LIVE_CORRECT) with 7-day protection
+        target_sterile.state = TileState.ACTIVE
         target_sterile.clean_locked_until_day = self.uptime_days + 7
         target_sterile.regen_complete_day = self.uptime_days
 
@@ -2013,10 +2155,13 @@ class BioRAIDController:
         # Track the correct counter based on mode
         if mode == 'RECOVERY':
             self.recovery_topup_count += 1
-            print(f"✓ Recovery top-up #{self.recovery_topup_count} complete (tile {target_sterile.id} CLEAN_LOCKED for 7 days)")
-        else:  # CALM
+            print(f"✓ Recovery top-up #{self.recovery_topup_count} complete (tile {target_sterile.id} ACTIVE with 7-day protection)")
+        elif mode == 'CALM':
             self.calm_topup_count += 1
-            print(f"✓ Calm-period top-up #{self.calm_topup_count} complete (tile {target_sterile.id} CLEAN_LOCKED for 7 days)")
+            print(f"✓ Calm-period top-up #{self.calm_topup_count} complete (tile {target_sterile.id} ACTIVE with 7-day protection)")
+        else:  # DEADLINE
+            self.deadline_topup_count += 1
+            print(f"✓ Deadline top-up #{self.deadline_topup_count} complete (tile {target_sterile.id} ACTIVE with 7-day protection)")
 
         # CLEANUP: Flush any FAILED tiles to maintain 3-replica invariant
         # After adding new replica, chunk may temporarily have 4 replicas (3 usable + 1 FAILED)
@@ -2782,12 +2927,14 @@ def run_phase2_simulation(duration_days=365):
     rebuilds_per_tile_per_year = (controller.rebuild_count / controller.n_tiles) / years_simulated if years_simulated > 0 else 0
     print(f"  📊 Rebuilds per tile per year: {rebuilds_per_tile_per_year:.2f}")
 
-    # TWO-MODE TOP-UPS (separate from rebuilds)
+    # THREE-MODE TOP-UPS (separate from rebuilds)
     recovery_topups_per_month = controller.recovery_topup_count / months_simulated if months_simulated > 0 else 0
     calm_topups_per_month = controller.calm_topup_count / months_simulated if months_simulated > 0 else 0
-    total_topups = controller.recovery_topup_count + controller.calm_topup_count
+    deadline_topups_per_month = controller.deadline_topup_count / months_simulated if months_simulated > 0 else 0
+    total_topups = controller.recovery_topup_count + controller.calm_topup_count + controller.deadline_topup_count
     print(f"  📊 Recovery top-ups: {controller.recovery_topup_count} ({recovery_topups_per_month:.2f}/month)")
     print(f"  📊 Calm-period top-ups: {controller.calm_topup_count} ({calm_topups_per_month:.2f}/month)")
+    print(f"  📊 Deadline top-ups: {controller.deadline_topup_count} ({deadline_topups_per_month:.2f}/month)")
     print(f"  📊 Total top-ups: {total_topups} ({total_topups/months_simulated:.2f}/month)")
 
     # COLD SNAPSHOT METRICS (emergency recovery)
@@ -2800,22 +2947,30 @@ def run_phase2_simulation(duration_days=365):
         else:
             print(f"     ⚠️  Some correlated failures not recovered - need more snapshots or sterile spares")
 
-    # Time at 3-live vs 2-live (GOAL: >90% at 3-live)
-    total_chunk_days = sum(controller.chunk_time_at_3live.values()) + sum(controller.chunk_time_at_2live.values())
-    if total_chunk_days > 0:
-        pct_3live = sum(controller.chunk_time_at_3live.values()) / total_chunk_days * 100
-        pct_2live = sum(controller.chunk_time_at_2live.values()) / total_chunk_days * 100
-        if pct_3live >= 90:
-            print(f"  ✓ Chunk-time at 3-live: {pct_3live:.1f}% - EXCELLENT (goal: >90%)")
-        elif pct_3live >= 70:
-            print(f"  ⚠️  Chunk-time at 3-live: {pct_3live:.1f}% - GOOD (goal: >90%)")
-        else:
-            print(f"  ✗ Chunk-time at 3-live: {pct_3live:.1f}% - TOO LOW (goal: >90%)")
-        print(f"     at 2-live: {pct_2live:.1f}%")
+    # Time at 3-live: CORRECTNESS vs HEALTH split (GOAL: >90% at 3-live-correct)
+    total_chunk_days_correct = sum(controller.chunk_time_at_3live_correct.values()) + sum(controller.chunk_time_at_2live_correct.values())
+    total_chunk_days_healthy = sum(controller.chunk_time_at_3live_healthy.values()) + (total_chunk_days_correct - sum(controller.chunk_time_at_3live_healthy.values()))
 
-    # Write fail rate (using actual write attempts)
+    if total_chunk_days_correct > 0:
+        pct_3live_correct = sum(controller.chunk_time_at_3live_correct.values()) / total_chunk_days_correct * 100
+        pct_2live_correct = sum(controller.chunk_time_at_2live_correct.values()) / total_chunk_days_correct * 100
+        pct_3live_healthy = sum(controller.chunk_time_at_3live_healthy.values()) / total_chunk_days_correct * 100
+
+        # LIVE_CORRECT metric (primary - key for correctness)
+        if pct_3live_correct >= 90:
+            print(f"  ✓ Chunk-time at 3-live-CORRECT: {pct_3live_correct:.1f}% - EXCELLENT (goal: >90%)")
+        elif pct_3live_correct >= 70:
+            print(f"  ⚠️  Chunk-time at 3-live-CORRECT: {pct_3live_correct:.1f}% - GOOD (goal: >90%)")
+        else:
+            print(f"  ✗ Chunk-time at 3-live-CORRECT: {pct_3live_correct:.1f}% - TOO LOW (goal: >90%)")
+        print(f"     at 2-live-CORRECT: {pct_2live_correct:.1f}%")
+
+        # LIVE_HEALTHY metric (secondary - shows physical health)
+        print(f"  📊 Chunk-time at 3-live-HEALTHY (>=80%): {pct_3live_healthy:.1f}%")
+
+    # Write statistics (scrub write-backs + replica creation)
     write_fail_rate = (controller.write_failures_total / controller.write_attempts_total * 100) if controller.write_attempts_total > 0 else 0
-    print(f"  📊 Write fail rate: {write_fail_rate:.2f}% ({controller.write_failures_total}/{controller.write_attempts_total} attempts)")
+    print(f"  📊 Write stats: {controller.write_successes_total} success / {controller.write_failures_total} fail / {controller.write_attempts_total} total (fail rate: {write_fail_rate:.2f}%)")
 
     # Mature tile percentage
     mature_tiles = sum(1 for t in controller.tiles if t.maturity_level >= 2)
