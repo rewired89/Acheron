@@ -241,12 +241,13 @@ class BioRAIDController:
         self.REGEN_INTEGRITY_MIN = 0.90  # Minimum integrity after regeneration
         self.REGEN_INTEGRITY_MAX = 0.97  # Maximum integrity after regeneration
         self.REPEAT_OFFENDER_WINDOW = 60  # Days to track repeat regenerations
-        self.REPEAT_OFFENDER_THRESHOLD = 2  # Max regenerations before permanent swap
+        self.REPEAT_OFFENDER_THRESHOLD = 2  # Max degradation events before permanent swap
         self.regen_in_place_count = 0  # Count of in-place regenerations
         self.temp_shadow_count = 0  # Count of temporary shadow replicas created
         self.repeat_offender_swaps = 0  # Count of swaps due to repeat offenders
         self.tile_sick_since_day = {}  # {tile_id: day} - when tile became SICK
         self.tile_regen_history = {}  # {tile_id: [day1, day2, ...]} - regeneration events
+        self.tile_degradation_events = {}  # {tile_id: [day1, day2, ...]} - all degradation events (dropped <80% OR entered REGEN)
         self.tiles_regenerating = set()  # Set of tile IDs currently regenerating
         self.tile_temp_shadow = {}  # {tile_id: shadow_tile_id} - maps regenerating tile to its shadow
         self.days_with_regen_active = 0  # Days when at least one tile was regenerating
@@ -312,6 +313,11 @@ class BioRAIDController:
         self.tiles_dropped_below_80_baseline = 0  # Dropped due to baseline decay
         self.tiles_dropped_below_80_shock = 0  # Dropped due to shock events
         self.tiles_recovered_integrity = 0  # Count of tiles that recovered integrity
+
+        # DEGRADATION STATISTICS: Detailed tracking for investor presentation
+        self.degradation_events_baseline = []  # [(day, tile_id, magnitude)] - chronic/baseline events
+        self.degradation_events_shock = []  # [(day, tile_id, magnitude)] - random shock events
+        self.degradation_events_shock_week = []  # [(day, tile_id, magnitude)] - correlated shock week events
 
     def write_data(self, binary_data: str):
         """
@@ -626,12 +632,24 @@ class BioRAIDController:
                     chronic_magnitude = np.random.uniform(self.CHRONIC_DEGRADATION_MAG_MIN, self.CHRONIC_DEGRADATION_MAG_MAX)
                     tile.integrity *= (1.0 - chronic_magnitude)
                     self.total_degradation_events += 1
-                    shock_marker = " [SHOCK WEEK]" if tile.id in self.current_shock_week_tiles else ""
+
+                    # DEGRADATION STATISTICS: Record event with magnitude
+                    if tile.id in self.current_shock_week_tiles:
+                        self.degradation_events_shock_week.append((self.uptime_days, tile.id, chronic_magnitude))
+                        shock_marker = " [SHOCK WEEK]"
+                    else:
+                        self.degradation_events_baseline.append((self.uptime_days, tile.id, chronic_magnitude))
+                        shock_marker = ""
+
                     if tile.integrity < 0.80:
                         print(f"🧬 Chronic degradation{shock_marker}: Tile {tile.id} dropped to {tile.integrity:.2%} (molecular fatigue)")
                     # Track if this caused drop below 80%
                     if was_healthy and tile.integrity < 0.80:
                         self.tiles_dropped_below_80_baseline += 1
+                        # REPEAT_OFFENDER: Record degradation event for aggressive tracking
+                        if tile.id not in self.tile_degradation_events:
+                            self.tile_degradation_events[tile.id] = []
+                        self.tile_degradation_events[tile.id].append(self.uptime_days)
 
                 # REST & RECOVERY: Passive integrity recovery for stable tiles
                 # Only if tile has been calm (no recent shocks) AND mature
@@ -663,9 +681,18 @@ class BioRAIDController:
                     shock_magnitude = np.random.uniform(0.85, 0.95) if tile.maturity_level < 2 else np.random.uniform(0.90, 0.97)  # Smaller shocks for mature
                     tile.integrity *= shock_magnitude
                     self.total_degradation_events += 1
+
+                    # DEGRADATION STATISTICS: Record random shock event
+                    shock_magnitude_pct = 1.0 - shock_magnitude  # Convert to percentage lost
+                    self.degradation_events_shock.append((self.uptime_days, tile.id, shock_magnitude_pct))
+
                     # Track if this caused drop below 80%
                     if was_healthy and tile.integrity < 0.80:
                         self.tiles_dropped_below_80_shock += 1
+                        # REPEAT_OFFENDER: Record degradation event for aggressive tracking
+                        if tile.id not in self.tile_degradation_events:
+                            self.tile_degradation_events[tile.id] = []
+                        self.tile_degradation_events[tile.id].append(self.uptime_days)
                     # CALM-PERIOD TOP-UP: Record shock for this tile's chunk
                     self._record_shock(tile.id)
 
@@ -2528,12 +2555,13 @@ class BioRAIDController:
                 if days_sick < self.REGEN_IN_PLACE_MIN_SICK_DAYS:
                     continue  # Not sick long enough
 
-                # Check if this is a repeat offender (>2 regens in 60 days)
-                if tile.id in self.tile_regen_history:
-                    recent_regens = [d for d in self.tile_regen_history[tile.id]
+                # Check if this is a repeat offender (>=2 degradation events in 60 days)
+                # Degradation events = dropped <80% OR entered REGENERATING
+                if tile.id in self.tile_degradation_events:
+                    recent_events = [d for d in self.tile_degradation_events[tile.id]
                                     if self.uptime_days - d <= self.REPEAT_OFFENDER_WINDOW]
-                    if len(recent_regens) >= self.REPEAT_OFFENDER_THRESHOLD:
-                        print(f"🔁 Tile {tile.id} is a repeat offender ({len(recent_regens)} regens in {self.REPEAT_OFFENDER_WINDOW} days) - escalating to permanent swap")
+                    if len(recent_events) >= self.REPEAT_OFFENDER_THRESHOLD:
+                        print(f"🔁 Tile {tile.id} is a repeat offender ({len(recent_events)} degradation events in {self.REPEAT_OFFENDER_WINDOW} days) - escalating to permanent swap")
                         continue  # Skip REGEN-IN-PLACE, let PROACTIVE_REBUILD handle it
 
                 # Safety check: ensure we won't drop below 2 readable replicas
@@ -2604,6 +2632,11 @@ class BioRAIDController:
         if tile_to_regen.id not in self.tile_regen_history:
             self.tile_regen_history[tile_to_regen.id] = []
         self.tile_regen_history[tile_to_regen.id].append(self.uptime_days)
+
+        # REPEAT_OFFENDER: Track this as a degradation event (entered REGENERATING)
+        if tile_to_regen.id not in self.tile_degradation_events:
+            self.tile_degradation_events[tile_to_regen.id] = []
+        self.tile_degradation_events[tile_to_regen.id].append(self.uptime_days)
 
         # Clear sick timer
         if tile_to_regen.id in self.tile_sick_since_day:
@@ -2714,12 +2747,15 @@ class BioRAIDController:
                 if days_degraded < min_days:
                     continue  # Not degraded long enough
 
-                # Check if this is a repeat offender (>2 regens in 60 days)
+                # Check if this is a repeat offender (>=2 degradation events in 60 days)
+                # Degradation events = dropped <80% OR entered REGENERATING
                 is_repeat_offender = False
-                if tile.id in self.tile_regen_history:
-                    recent_regens = [d for d in self.tile_regen_history[tile.id]
+                event_count = 0
+                if tile.id in self.tile_degradation_events:
+                    recent_events = [d for d in self.tile_degradation_events[tile.id]
                                     if self.uptime_days - d <= self.REPEAT_OFFENDER_WINDOW]
-                    if len(recent_regens) >= self.REPEAT_OFFENDER_THRESHOLD:
+                    event_count = len(recent_events)
+                    if event_count >= self.REPEAT_OFFENDER_THRESHOLD:
                         is_repeat_offender = True
 
                 # Only proceed if repeat offender OR below 70%
@@ -2735,7 +2771,7 @@ class BioRAIDController:
                     continue  # Too risky - would leave <2 readable
 
                 # Candidate for proactive rebuild
-                reason = "repeat offender" if is_repeat_offender else f"<70% ({tile.integrity:.2%})"
+                reason = f"repeat offender ({event_count} events in {self.REPEAT_OFFENDER_WINDOW}d)" if is_repeat_offender else f"<70% ({tile.integrity:.2%})"
                 candidates.append((tile, chunk_idx, days_degraded, reason))
 
         if not candidates:
@@ -3798,6 +3834,21 @@ def run_phase2_simulation(duration_days=365):
     print(f"     Degradation multiplier: {controller.SHOCK_WEEK_DEGRADATION_MULTIPLIER}x")
     print(f"     Tiles affected per shock week: {controller.SHOCK_WEEK_AFFECTED_TILES_MIN}-{controller.SHOCK_WEEK_AFFECTED_TILES_MAX}")
 
+    # UNIFIED SELF-HEAL OPS: Total self-healing operations (investor visibility metric)
+    total_self_heal_ops = (controller.regen_in_place_count +
+                           controller.proactive_rebuild_count +
+                           controller.calm_topup_count +
+                           controller.recovery_topup_count +
+                           controller.deadline_topup_count)
+    self_heal_ops_per_month = total_self_heal_ops / months_simulated if months_simulated > 0 else 0
+    self_heal_ops_per_year = self_heal_ops_per_month * 12.0
+    print(f"  🔧 UNIFIED SELF-HEAL OPS (total system-wide healing operations):")
+    print(f"     Total: {total_self_heal_ops} ({self_heal_ops_per_month:.2f}/month, {self_heal_ops_per_year:.1f}/year)")
+    print(f"     Breakdown:")
+    print(f"       - REGEN-IN-PLACE (Stage A): {controller.regen_in_place_count} ({controller.regen_in_place_count/total_self_heal_ops*100:.1f}%)" if total_self_heal_ops > 0 else "       - REGEN-IN-PLACE (Stage A): 0 (0.0%)")
+    print(f"       - PROACTIVE_REBUILD (Stage B): {controller.proactive_rebuild_count} ({controller.proactive_rebuild_count/total_self_heal_ops*100:.1f}%)" if total_self_heal_ops > 0 else "       - PROACTIVE_REBUILD (Stage B): 0 (0.0%)")
+    print(f"       - TOP-UPs (recovery/calm/deadline): {controller.recovery_topup_count + controller.calm_topup_count + controller.deadline_topup_count} ({(controller.recovery_topup_count + controller.calm_topup_count + controller.deadline_topup_count)/total_self_heal_ops*100:.1f}%)" if total_self_heal_ops > 0 else "       - TOP-UPs: 0 (0.0%)")
+
     # SPARE_POOL_HEALTH: Spare pool maintenance metrics
     spare_regenerations_per_month = controller.spare_regenerations / months_simulated if months_simulated > 0 else 0
     final_sterile_count = sum(1 for t in controller.tiles if t.state == TileState.STERILE)
@@ -3870,6 +3921,34 @@ def run_phase2_simulation(duration_days=365):
             print(f"     ℹ️  Natural recovery disabled; integrity restored only via regen pipeline")
         else:
             print(f"     ℹ️  Natural recovery enabled: {controller.RECOVERY_RATE*100:.2f}%/day for tiles ≥{controller.RECOVERY_MIN_CALM_DAYS} calm days")
+
+    # DEGRADATION STATISTICS: Detailed breakdown for investor presentation
+    print(f"\n  📉 DEGRADATION STATISTICS (investor visibility):")
+    total_degrad_events = len(controller.degradation_events_baseline) + len(controller.degradation_events_shock) + len(controller.degradation_events_shock_week)
+    if total_degrad_events > 0:
+        # Event counts by type
+        print(f"     Total degradation events: {total_degrad_events}")
+        print(f"       - Baseline/chronic: {len(controller.degradation_events_baseline)} ({len(controller.degradation_events_baseline)/total_degrad_events*100:.1f}%)")
+        print(f"       - Random shocks: {len(controller.degradation_events_shock)} ({len(controller.degradation_events_shock)/total_degrad_events*100:.1f}%)")
+        print(f"       - Shock week (correlated): {len(controller.degradation_events_shock_week)} ({len(controller.degradation_events_shock_week)/total_degrad_events*100:.1f}%)")
+
+        # Average magnitude by type
+        avg_baseline = np.mean([mag for _, _, mag in controller.degradation_events_baseline]) * 100 if controller.degradation_events_baseline else 0
+        avg_shock = np.mean([mag for _, _, mag in controller.degradation_events_shock]) * 100 if controller.degradation_events_shock else 0
+        avg_shock_week = np.mean([mag for _, _, mag in controller.degradation_events_shock_week]) * 100 if controller.degradation_events_shock_week else 0
+        print(f"     Avg integrity loss per event:")
+        print(f"       - Baseline/chronic: {avg_baseline:.2f}%")
+        print(f"       - Random shocks: {avg_shock:.2f}%")
+        print(f"       - Shock week: {avg_shock_week:.2f}%")
+
+        # % of events that triggered healing
+        total_heal_ops = controller.regen_in_place_count + controller.proactive_rebuild_count
+        pct_triggered_healing = (total_heal_ops / total_degrad_events * 100) if total_degrad_events > 0 else 0
+        print(f"     Events that triggered healing: {total_heal_ops}/{total_degrad_events} ({pct_triggered_healing:.1f}%)")
+        print(f"       - Triggered REGEN-IN-PLACE: {controller.regen_in_place_count}")
+        print(f"       - Triggered PROACTIVE_REBUILD: {controller.proactive_rebuild_count}")
+    else:
+        print(f"     No degradation events recorded")
 
     # CORRECTNESS GUARDRAILS: Lightweight assertions
     print(f"\n  🔒 CORRECTNESS GUARDRAILS:")
