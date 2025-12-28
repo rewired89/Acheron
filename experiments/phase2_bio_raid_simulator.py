@@ -258,7 +258,28 @@ class BioRAIDController:
         self.tiles_regenerating = set()  # Set of tile IDs currently regenerating
         self.tile_temp_shadow = {}  # {tile_id: shadow_tile_id} - maps regenerating tile to its shadow
         self.days_with_regen_active = 0  # Days when at least one tile was regenerating
-        self.FORCE_REGEN_IF_STUCK_DAYS = 10  # Force REGEN if tile stuck at 70-80% for >10 days
+        self.FORCE_REGEN_IF_STUCK_DAYS = 5  # Force REGEN if tile stuck at 70-80% for >5 days (REDUCED from 10 - faster intervention)
+
+        # INVESTOR DURABILITY METRICS: Track tile health transitions and recovery times
+        self.tile_became_sick_day = {}  # {tile_id: day} - when tile first dropped <80% (for MTBS calculation)
+        self.tile_sick_event_count = 0  # Total sick events (tile transitions from >=80% to <80%)
+        self.tile_recovery_times = []  # [days] - time to recover from <80% to >=80% (for MTTR calculation)
+        self.tile_cumulative_sick_days = {}  # {tile_id: days} - cumulative days spent <80% in last 60 days (for chronic sick detection)
+        self.tile_integrity_history = {}  # {tile_id: [(day, integrity)]} - integrity checkpoints for distribution analysis
+        self.integrity_checkpoints = []  # [(day, min, avg, p95)] - system-wide integrity distribution snapshots
+
+        # HEALTH STABILIZATION: Post-regen recovery boost (prevent immediate re-sick)
+        self.tile_health_stabilization_until = {}  # {tile_id: day} - boosted recovery period after regen
+        self.HEALTH_STABILIZATION_DAYS = 7  # Days of boosted recovery after regen
+        self.HEALTH_STABILIZATION_RECOVERY_RATE = 0.006  # 0.6%/day recovery during stabilization (3x normal high rate)
+
+        # TREND-BASED EARLY INTERVENTION: Detect rapid degradation
+        self.tile_integrity_3day_history = {}  # {tile_id: [(day, integrity)]} - last 3 days of integrity for trend detection
+        self.RAPID_DEGRADATION_THRESHOLD = 0.02  # 2% drop in 3 days triggers early regen
+
+        # CHRONIC SICK PATH: Escalate tiles that spend too much time sick
+        self.CHRONIC_SICK_DAYS_THRESHOLD = 15  # Total days sick in 60-day window triggers rebuild escalation
+        self.chronic_sick_rebuilds = 0  # Count of rebuilds due to chronic sickness
 
         # CORRELATED_SHOCK_WEEKS: Periodic stress testing to force Stage B (PROACTIVE_REBUILD)
         self.SHOCK_WEEKS_PER_YEAR_MIN = 2  # Minimum shock weeks per year
@@ -703,9 +724,44 @@ class BioRAIDController:
                             self.tile_degradation_events[tile.id] = []
                         self.tile_degradation_events[tile.id].append(self.uptime_days)
 
+                # INVESTOR DURABILITY METRICS: Track sick event transitions (healthy → sick)
+                is_healthy_now = (tile.integrity >= 0.80)
+                if was_healthy and not is_healthy_now:
+                    # Tile just became sick - record event
+                    self.tile_sick_event_count += 1
+                    self.tile_became_sick_day[tile.id] = self.uptime_days
+                    if tile.id not in self.tile_cumulative_sick_days:
+                        self.tile_cumulative_sick_days[tile.id] = 0
+                elif not was_healthy and is_healthy_now:
+                    # Tile just recovered - record recovery time
+                    if tile.id in self.tile_became_sick_day:
+                        recovery_time = self.uptime_days - self.tile_became_sick_day[tile.id]
+                        self.tile_recovery_times.append(recovery_time)
+                        del self.tile_became_sick_day[tile.id]
+
+                # Track cumulative sick days (for chronic sick detection)
+                if not is_healthy_now:
+                    if tile.id not in self.tile_cumulative_sick_days:
+                        self.tile_cumulative_sick_days[tile.id] = 0
+                    self.tile_cumulative_sick_days[tile.id] += 1
+
+                # Prune cumulative sick days older than 60 days
+                # (approximate by decaying counter - simple approach)
+                if tile.id in self.tile_cumulative_sick_days and self.uptime_days % 7 == 0:
+                    # Decay by ~1/60th per week
+                    self.tile_cumulative_sick_days[tile.id] = max(0, self.tile_cumulative_sick_days[tile.id] - 7/60.0)
+
+                # TREND TRACKING: Record integrity for rapid degradation detection
+                if tile.id not in self.tile_integrity_3day_history:
+                    self.tile_integrity_3day_history[tile.id] = []
+                self.tile_integrity_3day_history[tile.id].append((self.uptime_days, tile.integrity))
+                # Keep only last 3 days
+                self.tile_integrity_3day_history[tile.id] = [(d, i) for d, i in self.tile_integrity_3day_history[tile.id] if self.uptime_days - d <= 3]
+
                 # REST & RECOVERY: Passive integrity recovery for stable tiles
                 # BIO_HEALTH recovery: Natural healing when calm (no shocks)
                 # Recovery rate depends on current integrity band (better health → faster recovery)
+                # HEALTH STABILIZATION: Post-regen boost (prevent immediate re-sick)
                 if self.RECOVERY_ENABLED and tile.maturity_level >= 2:
                     # Check if this tile's chunk has been calm
                     chunk_idx = None
@@ -721,9 +777,16 @@ class BioRAIDController:
                             days_since_shock = self.uptime_days - self.chunk_last_shock_day[chunk_idx]
 
                         if days_since_shock >= self.RECOVERY_MIN_CALM_DAYS and tile.integrity < self.RECOVERY_MAX:
-                            # Apply passive recovery (integrity-band-specific rates)
+                            # Check if tile is in health stabilization period (post-regen boost)
+                            in_stabilization = (tile.id in self.tile_health_stabilization_until and
+                                              self.uptime_days <= self.tile_health_stabilization_until[tile.id])
+
+                            # Apply passive recovery (integrity-band-specific rates + stabilization boost)
                             old_integrity = tile.integrity
-                            if tile.integrity >= 0.80:
+                            if in_stabilization:
+                                # Post-regen boost: 0.6%/day (3x normal high rate)
+                                recovery_rate = self.HEALTH_STABILIZATION_RECOVERY_RATE
+                            elif tile.integrity >= 0.80:
                                 recovery_rate = self.RECOVERY_RATE_HIGH  # 0.4%/day for healthy tiles
                             elif tile.integrity >= 0.70:
                                 recovery_rate = self.RECOVERY_RATE_MEDIUM  # 0.2%/day for degraded tiles
@@ -2616,13 +2679,29 @@ class BioRAIDController:
 
                 # FORCE REGEN if stuck at 70-80% for too long (prevents long sick durations)
                 force_regen = False
+                force_reason = None
                 if 0.70 <= tile.integrity < 0.80:
                     if tile.id not in self.tile_degraded_70_80_since_day:
                         self.tile_degraded_70_80_since_day[tile.id] = self.uptime_days
                     days_stuck_70_80 = self.uptime_days - self.tile_degraded_70_80_since_day[tile.id]
                     if days_stuck_70_80 >= self.FORCE_REGEN_IF_STUCK_DAYS:
                         force_regen = True
-                        print(f"⚡ Tile {tile.id} stuck at 70-80% for {days_stuck_70_80} days - forcing REGEN-IN-PLACE")
+                        force_reason = f"stuck at 70-80% for {days_stuck_70_80} days"
+
+                # TREND-BASED EARLY INTERVENTION: Detect rapid degradation (>2% drop in 3 days)
+                if not force_regen and tile.id in self.tile_integrity_3day_history:
+                    history = self.tile_integrity_3day_history[tile.id]
+                    if len(history) >= 2:
+                        # Check if dropping rapidly
+                        oldest_integrity = history[0][1]
+                        current_integrity = tile.integrity
+                        integrity_drop = oldest_integrity - current_integrity
+                        if integrity_drop >= self.RAPID_DEGRADATION_THRESHOLD:
+                            force_regen = True
+                            force_reason = f"rapid degradation ({integrity_drop:.1%} drop in {len(history)} days)"
+
+                if force_regen:
+                    print(f"⚡ Tile {tile.id} - EARLY INTERVENTION: {force_reason} - forcing REGEN-IN-PLACE")
 
                 if not force_regen and days_sick < self.REGEN_IN_PLACE_MIN_SICK_DAYS:
                     continue  # Not sick long enough (and not force-regen case)
@@ -2741,7 +2820,11 @@ class BioRAIDController:
                 tile.state = TileState.ACTIVE
                 tile.regeneration_progress = 1.0
                 tile.clean_locked_until_day = self.uptime_days + 7  # Protection period
+
+                # HEALTH STABILIZATION: Activate post-regen recovery boost (prevent immediate re-sick)
+                self.tile_health_stabilization_until[tile_id] = self.uptime_days + self.HEALTH_STABILIZATION_DAYS
                 print(f"   ✓ Tile {tile_id} restored to ACTIVE with integrity {new_integrity:.2%}")
+                print(f"   🩹 Health stabilization activated: {self.HEALTH_STABILIZATION_RECOVERY_RATE*100:.1f}%/day recovery for {self.HEALTH_STABILIZATION_DAYS} days")
 
                 # Step 2: Remove TEMP_SHADOW (standalone backup, not in chunk)
                 if tile_id in self.tile_temp_shadow:
@@ -2824,7 +2907,9 @@ class BioRAIDController:
                 # Check if this is a repeat offender (>=2 degradation events in 60 days)
                 # Degradation events = dropped <80% OR entered REGENERATING
                 is_repeat_offender = False
+                is_chronic_sick = False
                 event_count = 0
+                cumulative_sick_days = 0
                 if tile.id in self.tile_degradation_events:
                     recent_events = [d for d in self.tile_degradation_events[tile.id]
                                     if self.uptime_days - d <= self.REPEAT_OFFENDER_WINDOW]
@@ -2832,9 +2917,15 @@ class BioRAIDController:
                     if event_count >= self.REPEAT_OFFENDER_THRESHOLD:
                         is_repeat_offender = True
 
-                # Only proceed if repeat offender OR below 70%
-                if not is_repeat_offender and tile.integrity >= 0.70:
-                    continue  # Let REGEN-IN-PLACE handle non-repeat-offenders above 70%
+                # CHRONIC SICK PATH: Check if tile has spent too much time sick (>15 days in 60-day window)
+                if tile.id in self.tile_cumulative_sick_days:
+                    cumulative_sick_days = self.tile_cumulative_sick_days[tile.id]
+                    if cumulative_sick_days >= self.CHRONIC_SICK_DAYS_THRESHOLD:
+                        is_chronic_sick = True
+
+                # Only proceed if repeat offender OR chronic sick OR below 70%
+                if not is_repeat_offender and not is_chronic_sick and tile.integrity >= 0.70:
+                    continue  # Let REGEN-IN-PLACE handle non-problem tiles above 70%
 
                 # Safety check: ensure we won't drop below 2 readable replicas
                 readable = [t for t in tiles
@@ -2845,7 +2936,12 @@ class BioRAIDController:
                     continue  # Too risky - would leave <2 readable
 
                 # Candidate for proactive rebuild
-                reason = f"repeat offender ({event_count} events in {self.REPEAT_OFFENDER_WINDOW}d)" if is_repeat_offender else f"<70% ({tile.integrity:.2%})"
+                if is_repeat_offender:
+                    reason = f"repeat offender ({event_count} events in {self.REPEAT_OFFENDER_WINDOW}d)"
+                elif is_chronic_sick:
+                    reason = f"chronic sick ({cumulative_sick_days:.0f} days sick in {self.REPEAT_OFFENDER_WINDOW}d window)"
+                else:
+                    reason = f"<70% ({tile.integrity:.2%})"
                 candidates.append((tile, chunk_idx, days_degraded, reason))
 
         if not candidates:
@@ -2854,10 +2950,13 @@ class BioRAIDController:
         # Pick the most degraded tile (lowest integrity)
         tile_to_rebuild, chunk_idx, days_degraded, reason = min(candidates, key=lambda x: x[0].integrity)
 
-        # Check if this is a repeat offender (for tracking)
+        # Check escalation reason (for tracking)
         is_repeat_offender = "repeat offender" in reason
+        is_chronic_sick = "chronic sick" in reason
         if is_repeat_offender:
             self.repeat_offender_swaps += 1
+        if is_chronic_sick:
+            self.chronic_sick_rebuilds += 1
 
         # Check if this tile would have failed (integrity <60%)
         will_save_before_failure = tile_to_rebuild.integrity < 0.70  # In SICK range or close to failure
@@ -3580,6 +3679,18 @@ def run_phase2_simulation(duration_days=365, environment='space_stable'):
     for day in range(1, duration_days + 1):
         controller.simulate_day()
 
+        # INVESTOR DURABILITY METRICS: Record integrity distribution at checkpoints
+        if day in checkpoints or day % 30 == 0:  # Checkpoints + monthly snapshots
+            active_tiles = [t for t in controller.tiles if t.state in [TileState.ACTIVE, TileState.SICK, TileState.CLEAN_LOCKED]]
+            if active_tiles:
+                integrities = [t.integrity for t in active_tiles]
+                min_integrity = min(integrities)
+                avg_integrity = sum(integrities) / len(integrities)
+                sorted_integrities = sorted(integrities, reverse=True)
+                p95_idx = int(len(sorted_integrities) * 0.05)  # 95th percentile
+                p95_integrity = sorted_integrities[p95_idx] if p95_idx < len(sorted_integrities) else sorted_integrities[-1]
+                controller.integrity_checkpoints.append((day, min_integrity, avg_integrity, p95_integrity))
+
         if day in checkpoints:
             # Checkpoint visualization
             print(f"\n{'='*70}")
@@ -4028,6 +4139,78 @@ def run_phase2_simulation(duration_days=365, environment='space_stable'):
         print(f"       - Triggered PROACTIVE_REBUILD: {controller.proactive_rebuild_count}")
     else:
         print(f"     No degradation events recorded")
+
+    # INVESTOR DURABILITY REPORT: Key longevity metrics for investor presentation
+    print(f"\n{'='*80}")
+    print(f"INVESTOR DURABILITY REPORT - {environment.upper().replace('_', ' ')}")
+    print(f"{'='*80}")
+
+    # MTBS: Mean Time Between Sick Events (tile transitions from >=80% to <80%)
+    if controller.tile_sick_event_count > 0:
+        mtbs_days = days_simulated / controller.tile_sick_event_count
+        mtbs_months = mtbs_days / 30.0
+        print(f"\n  📊 MEAN TIME BETWEEN SICK EVENTS (MTBS):")
+        print(f"     {mtbs_days:.1f} days ({mtbs_months:.2f} months)")
+        print(f"     Total sick events: {controller.tile_sick_event_count}")
+        sick_events_per_year = (controller.tile_sick_event_count / days_simulated * 365) if days_simulated > 0 else 0
+        print(f"     Sick events per year: {sick_events_per_year:.1f}")
+    else:
+        print(f"\n  📊 MEAN TIME BETWEEN SICK EVENTS (MTBS): No sick events (system too stable)")
+
+    # MTTR: Mean Time To Recover (time to recover from <80% to >=80%)
+    if controller.tile_recovery_times:
+        mttr_days = np.mean(controller.tile_recovery_times)
+        mttr_median = np.median(controller.tile_recovery_times)
+        mttr_max = max(controller.tile_recovery_times)
+        print(f"\n  ⏱️  MEAN TIME TO RECOVER (MTTR):")
+        print(f"     Mean: {mttr_days:.1f} days")
+        print(f"     Median: {mttr_median:.1f} days")
+        print(f"     Max: {mttr_max:.0f} days")
+        print(f"     Total recoveries: {len(controller.tile_recovery_times)}")
+    else:
+        print(f"\n  ⏱️  MEAN TIME TO RECOVER (MTTR): No recoveries recorded")
+
+    # HEALING OPERATIONS: Regen/rebuild rates and time in regen
+    months = days_simulated / 30.0
+    regen_per_month_durability = controller.regen_in_place_count / months if months > 0 else 0
+    regen_per_year_durability = regen_per_month_durability * 12.0
+    rebuilds_per_month_durability = controller.proactive_rebuild_count / months if months > 0 else 0
+    rebuilds_per_year_durability = rebuilds_per_month_durability * 12.0
+    pct_time_in_regen = (controller.days_with_regen_active / days_simulated * 100) if days_simulated > 0 else 0
+
+    print(f"\n  🔧 HEALING OPERATIONS:")
+    print(f"     Regen-in-place: {controller.regen_in_place_count} ({regen_per_month_durability:.2f}/month, {regen_per_year_durability:.1f}/year)")
+    print(f"     Proactive rebuilds: {controller.proactive_rebuild_count} ({rebuilds_per_month_durability:.2f}/month, {rebuilds_per_year_durability:.1f}/year)")
+    print(f"       - Repeat offender swaps: {controller.repeat_offender_swaps}")
+    print(f"       - Chronic sick rebuilds: {controller.chronic_sick_rebuilds}")
+    print(f"     Time with active regen: {pct_time_in_regen:.1f}% ({controller.days_with_regen_active}/{days_simulated} days)")
+
+    # LONGEVITY METRICS: Healthy vs correct chunk-time
+    print(f"\n  📈 LONGEVITY METRICS:")
+    print(f"     Chunk-time at 3-live-HEALTHY (≥80%): {pct_3live_healthy:.1f}%")
+    print(f"     Chunk-time at 3-live-CORRECT (verified): {pct_3live_correct:.1f}%")
+    print(f"     Chunk-time at 2-live-CORRECT: {pct_2live_correct:.1f}%")
+
+    # INTEGRITY DISTRIBUTION: Min/avg/p95 at checkpoints
+    if controller.integrity_checkpoints:
+        print(f"\n  📊 INTEGRITY DISTRIBUTION OVER TIME:")
+        print(f"     {'Day':<10} {'Min':<10} {'Avg':<10} {'P95':<10}")
+        print(f"     {'-'*40}")
+        for day, min_int, avg_int, p95_int in controller.integrity_checkpoints[:10]:  # Show first 10 checkpoints
+            print(f"     {day:<10} {min_int*100:<9.1f}% {avg_int*100:<9.1f}% {p95_int*100:<9.1f}%")
+        if len(controller.integrity_checkpoints) > 10:
+            print(f"     ... ({len(controller.integrity_checkpoints) - 10} more checkpoints)")
+
+    # SUMMARY SENTENCE: One-line verdict for investors
+    print(f"\n  🎯 SUMMARY:")
+    if logical_errors == 0 and replica_drift_rate == 0.0:
+        healing_descriptor = "minimal" if total_self_heal_ops < 10 else "active" if total_self_heal_ops < 30 else "aggressive"
+        rebuild_descriptor = "rare" if controller.proactive_rebuild_count < 5 else "occasional" if controller.proactive_rebuild_count < 15 else "frequent"
+        print(f"     ✓ Correctness held perfect (0% errors, 0% drift)")
+        print(f"     ✓ Healing activated {total_self_heal_ops} times ({healing_descriptor}), rebuilds {rebuild_descriptor} ({controller.proactive_rebuild_count} total)")
+        print(f"     ✓ System maintained {pct_3live_healthy:.0f}% healthy-3-live, {pct_3live_correct:.0f}% verified-3-live")
+    else:
+        print(f"     ✗ Correctness violations detected - system FAILED")
 
     # CORRECTNESS GUARDRAILS: Lightweight assertions
     print(f"\n  🔒 CORRECTNESS GUARDRAILS:")
