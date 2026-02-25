@@ -120,43 +120,99 @@ class CrossTalkSimulator:
         self.time += self.dt
 
     def run(self, duration_hours: float = 24.0) -> Dict:
-        """Run simulation and measure cross-talk at the end."""
+        """
+        Run paired simulation AND an isolated control, then compare.
+
+        True cross-talk = difference between the paired run and the
+        isolated control run. This separates genuine inter-tile voltage
+        bleed from the natural decay of each tile toward resting potential.
+        """
         n_steps = int(duration_hours * 60 / self.dt)
+
+        # Save initial state to rerun as isolated controls
+        V_init = self.V.copy()
+
+        # --- Paired run: both tiles present ---
         for _ in range(n_steps):
             self.step()
-        return self._measure_crosstalk()
+        V_paired = self.V.copy()
 
-    def _measure_crosstalk(self) -> Dict:
+        # --- Isolated control: run each tile alone, no neighbor ---
+        # Control for tile A: only tile A encoded, tile B at rest
+        self.V = np.full((self.rows, self.cols), V_REST)
+        for r, c in self._tile_a_coords:
+            self.V[r, c] = V_HIGH
+        self.time = 0.0
+        for _ in range(n_steps):
+            self.step()
+        V_ctrl_a = np.mean([self.V[r, c] for r, c in self._tile_a_coords])
+        V_ctrl_b_from_a = np.mean([self.V[r, c] for r, c in self._tile_b_coords])
+
+        # Control for tile B: only tile B encoded, tile A at rest
+        self.V = np.full((self.rows, self.cols), V_REST)
+        for r, c in self._tile_b_coords:
+            self.V[r, c] = V_LOW
+        self.time = 0.0
+        for _ in range(n_steps):
+            self.step()
+        V_ctrl_a_from_b = np.mean([self.V[r, c] for r, c in self._tile_a_coords])
+        V_ctrl_b = np.mean([self.V[r, c] for r, c in self._tile_b_coords])
+
+        # Restore paired grid for visualization
+        self.V = V_paired
+
+        return self._measure_crosstalk(V_paired,
+                                        V_ctrl_a, V_ctrl_b,
+                                        V_ctrl_b_from_a, V_ctrl_a_from_b)
+
+    def _measure_crosstalk(self,
+                            V_paired: np.ndarray,
+                            V_ctrl_a: float,
+                            V_ctrl_b: float,
+                            V_ctrl_b_from_a: float,
+                            V_ctrl_a_from_b: float) -> Dict:
         """
-        Quantify how much each tile's voltage has drifted toward the other.
+        True cross-talk = delta between paired run and isolated control.
 
-        Cross-talk from B→A: how much has tile A (bit1) shifted toward V_LOW?
-        Cross-talk from A→B: how much has tile B (bit0) shifted toward V_HIGH?
+        V_ctrl_a:        tile A voltage when run alone (natural decay only)
+        V_ctrl_b:        tile B voltage when run alone (natural decay only)
+        V_ctrl_b_from_a: tile B region voltage when only tile A is present
+                         (shows how much tile A leaks INTO tile B's position)
+        V_ctrl_a_from_b: tile A region voltage when only tile B is present
+                         (shows how much tile B leaks INTO tile A's position)
+
+        True cross-talk on tile B = (actual V_B) - (V_B isolated)
+        If this is positive, tile A is pushing tile B upward (toward V_HIGH).
         """
-        # Tile A: started at V_HIGH, any shift toward V_LOW is cross-talk
-        va_mean = np.mean([self.V[r, c] for r, c in self._tile_a_coords])
-        vb_mean = np.mean([self.V[r, c] for r, c in self._tile_b_coords])
+        va_paired = np.mean([V_paired[r, c] for r, c in self._tile_a_coords])
+        vb_paired = np.mean([V_paired[r, c] for r, c in self._tile_b_coords])
 
-        signal_range  = abs(V_HIGH - V_LOW)  # 70 mV
-        xt_a = abs(va_mean - V_HIGH) / signal_range  # A drifted toward LOW
-        xt_b = abs(vb_mean - V_LOW)  / signal_range  # B drifted toward HIGH
+        signal_range = abs(V_HIGH - V_LOW)  # 70 mV
 
-        worst_case_xt = max(xt_a, xt_b)
+        # True cross-talk: how much does the neighbor PERTURB each tile
+        # beyond its natural isolated decay?
+        xt_on_a = abs(va_paired - V_ctrl_a) / signal_range   # B perturbing A
+        xt_on_b = abs(vb_paired - V_ctrl_b) / signal_range   # A perturbing B
 
-        # Are tiles still correctly classified?
-        a_correct = va_mean > V_MID
-        b_correct = vb_mean < V_MID
+        # Worst-case true cross-talk
+        worst_case_xt = max(xt_on_a, xt_on_b)
+
+        # Are tiles still correctly classified in the paired run?
+        a_correct = va_paired > V_MID
+        b_correct = vb_paired < V_MID
 
         return {
-            'tile_a_mean_V':   va_mean,
-            'tile_b_mean_V':   vb_mean,
-            'crosstalk_a':     xt_a,
-            'crosstalk_b':     xt_b,
-            'worst_xt':        worst_case_xt,
-            'a_correct':       a_correct,
-            'b_correct':       b_correct,
-            'both_correct':    a_correct and b_correct,
-            'V_grid':          self.V.copy(),
+            'tile_a_mean_V':        va_paired,
+            'tile_b_mean_V':        vb_paired,
+            'tile_a_isolated_V':    V_ctrl_a,
+            'tile_b_isolated_V':    V_ctrl_b,
+            'crosstalk_on_a':       xt_on_a,
+            'crosstalk_on_b':       xt_on_b,
+            'worst_xt':             worst_case_xt,
+            'a_correct':            a_correct,
+            'b_correct':            b_correct,
+            'both_correct':         a_correct and b_correct,
+            'V_grid':               V_paired,
         }
 
 

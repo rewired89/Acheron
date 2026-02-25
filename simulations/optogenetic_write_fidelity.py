@@ -139,11 +139,13 @@ class OptogeneticCellModel:
         self.channel_open_prob = np.clip(self.channel_open_prob + dP, 0.0, 1.0)
 
         # Photocurrent (scales with expression level and open probability)
+        # Units: g_eff (nS) × ΔV (mV) = nS × mV = 10⁻⁹S × 10⁻³V = 10⁻¹²A = pA
         g_eff    = self.g_peak * self.expression * self.channel_open_prob
-        I_photo  = g_eff * (self.E_rev - self.V) * 1e-3  # convert nS×mV to pA
+        I_photo  = g_eff * (self.E_rev - self.V)   # pA — no conversion needed
 
         # Leak current back toward rest
-        I_leak   = (self.V_rest - self.V) / self.R_mem * 1e-3  # pA
+        # Units: ΔV (mV) / R (MΩ) = 10⁻³V / 10⁶Ω = 10⁻⁹A = nA → × 1000 = pA
+        I_leak   = (self.V_rest - self.V) / self.R_mem * 1000  # pA
 
         # Total current → voltage change
         # dV/dt = I_total / C_mem  [pA / pF = mV/ms]
