@@ -728,6 +728,139 @@ If PARTIAL → Might work with enough error correction (Bio-RAID helps)
 
 ---
 
+## Part 8: Computational Follow-Up — Noise Floor Validation (August 2026)
+
+This section reports results from actually running the simulation suite against
+the question Part 6 raised ("do arbitrary patterns persist the same way
+morphogenetic patterns do?") instead of leaving it as an open assumption.
+
+### Finding 1: The 100% / 24h persistence claim is a zero-noise artifact
+
+`simulations/noise_floor_characterizer.py` re-runs the base persistence model
+with realistic biological noise sources (ion channel shot noise, cell-to-cell
+variability, metabolic fluctuation, thermal noise) injected.
+
+| Scenario | Integrity @ 24h | SNR | Status |
+|---|---|---|---|
+| Ideal (zero noise — matches `bioelectric_persistence.py` claim) | 100.0% | 9.7:1 | PASS |
+| Mild biological noise | 66.7% | 1.0:1 | FAIL |
+| Realistic biological noise | 57.8% | 0.2:1 | FAIL |
+| Severe biological noise | 51.5% | 0.1:1 | FAIL |
+
+The original persistence result depends entirely on the noise-free assumption.
+Under any realistic noise, integrity collapses to near-chance (~50%) for a
+binary read. This confirms Part 6's "morphogenetic vs. arbitrary pattern"
+conflation was the correct thing to worry about — the base model has no real
+attractor, just a very slow leak, and noise beats slow.
+
+### Finding 2: Weak/naturally-plausible bistability does not rescue it
+
+The simulator's `bistable_k` parameter models an active positive-feedback
+mechanism (ion channel autoregulation or synthetic toggle circuit) that holds
+cells at their written state. Sweeping it further than the original three
+test points:
+
+| bistable_k | Integrity @ 24h | SNR | Status |
+|---|---|---|---|
+| 0.01 ("well-characterized bistable gene circuit," per model's own calibration) | 59.3% | 0.4:1 | FAIL |
+| 0.05 | 63.3% | 0.9:1 | FAIL |
+| 0.10 | 84.4% | 2.1:1 | FAIL |
+| **0.20** | **98.9%** | **31.5:1** | **PASS** |
+| 0.50 | 100.0% | 285.6:1 | PASS |
+
+Reliable storage requires feedback roughly **15–20x stronger** than what the
+model calibrates as a realistic, well-characterized engineered circuit.
+Passive/naturally-occurring bistability is very unlikely to be sufficient —
+this needs to be a deliberately engineered mechanism, not an assumption about
+ordinary planarian ion channel behavior.
+
+*Caveat: `bistable_k` is a phenomenological modeling knob, not a value with a
+direct literature-measured biological equivalent. Treat the 15–20x figure as
+a relative benchmark (how much stronger than "natural" is needed), not a
+literal constant to design around.*
+
+### Finding 3: Bio-RAID tile replication cannot compensate for signal-level noise
+
+Tested true multi-tile replication (independent noise draws per tile,
+majority vote across tiles — matching the documented Bio-RAID architecture,
+not just a bigger local cluster):
+
+| Profile | 1 tile | 3 tiles | 5 tiles | 9 tiles |
+|---|---|---|---|---|
+| Realistic (no bistable) | 51.2% | 45.0% | 51.2% | 50.0% |
+| Realistic + moderate bistable (k=0.01) | 55.0% | 51.3% | 51.2% | 48.8% |
+
+Flat at ~50% regardless of tile count. This is expected from first
+principles (Condorcet's jury theorem): majority voting across independent
+readings only helps when each individual reading already beats a coin flip.
+Once per-tile signal has decayed into the noise floor, no amount of
+replication manufactures signal that isn't there. **Bio-RAID protects against
+losing a tile (radiation, physical damage); it cannot resurrect a bit whose
+voltage separation has already been erased by noise.**
+
+### Revised model: two independent subsystems, not one
+
+Part 6 already warned about conflating morphogenetic and arbitrary pattern
+stability. These results make it quantitative and split it into two
+engineering problems that need separate solutions:
+
+1. **Signal-level fix (not yet designed):** an engineered bistable circuit
+   strong enough to create genuine double-well voltage attractors. This is
+   the load-bearing missing piece — nothing currently in the project
+   addresses it.
+2. **Availability-level fix (already designed):** Bio-RAID tile replication,
+   which remains valuable, but only *after* (1) is solved — it currently has
+   nothing reliable to replicate.
+
+### Existence proof that (1) is achievable — just not yet in planaria
+
+Gardner, Cantor & Collins (2000, *Nature*, [DOI](https://doi.org/10.1038/35002131))
+built a synthetic genetic toggle switch in *E. coli*: two mutually-repressing
+promoters forming a true bistable circuit, flipped by a transient
+chemical/thermal pulse, holding state indefinitely afterward. Their abstract
+explicitly frames it as "a synthetic, addressable cellular memory unit" with
+direct implications for biocomputing. This is proof that strong, engineered
+bistability is buildable in a living cell — it has never been built in
+planarian somatic tissue. That is a specific, scoped synthetic-biology gap,
+not an open-ended unknown.
+
+### Proposed experiment: toggle-circuit-in-planaria
+
+**Goal:** Determine whether a Gardner-style bistable circuit, ported into
+planarian somatic cells, creates voltage attractors that survive realistic
+biological noise — replacing the currently unproven "passive persistence"
+assumption with a measured one.
+
+**Design:**
+- Circuit: two mutually-inhibitory regulatory elements controlling
+  depolarizing vs. hyperpolarizing ion channel expression (a
+  bioelectric-coupled analog of the Gardner mutual-repressor toggle), so that
+  a depolarized state upregulates further depolarization and a hyperpolarized
+  state upregulates further hyperpolarization, with cross-inhibition between
+  the two loops.
+- Delivery: mRNA/plasmid electroporation or dsRNA-compatible construct into a
+  small regenerating fragment (matches existing planarian genetic toolkit
+  constraints better than viral transfection).
+- Write: transient chemical, thermal, or optogenetic pulse to set state (0 or 1).
+- Read: voltage-sensitive dye or genetically-encoded voltage indicator,
+  imaged at 0h, 6h, 12h, 24h, 48h.
+- Control: identical fragment, same write pulse, no circuit (passive decay
+  baseline — this is what `bioelectric_persistence.py` currently assumes).
+- **Success criteria:** bimodal, well-separated voltage distribution
+  maintained ≥24h in ≥70% of tested clusters, with SNR ≥3:1 — i.e., the
+  PASS threshold this simulation already defined, now measured instead of
+  assumed.
+- Budget/timeline: comparable to the original minimal viable experiment
+  ($10K–$30K, 6–12 months), but now requires a synthetic-biology
+  collaborator in addition to a bioelectric/regeneration lab, since circuit
+  design is a prerequisite deliverable, not an assumption.
+
+**Bottom line:** the project's own "Option 4 — Hybrid: planarians + synthetic
+biology" is no longer just the cautious fallback choice — it is what the
+quantitative noise-floor results point to directly.
+
+---
+
 ## Next Action: One Experiment Changes Everything
 
 **The experiment:**
