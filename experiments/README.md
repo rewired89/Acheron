@@ -268,6 +268,21 @@ crossing scan for this substrate's actual (bistable/digital) behavior. See
 surfaced a real design consideration about the circuit's symmetric
 baseline being an unusable knife-edge for a controllable `SET_BIT`.
 
+### 11. Field-Mediated Pattern Persistence (Does a self-generated field help, beyond gap junctions?)
+```bash
+python experiments/field_mediated_persistence.py
+```
+Runs Manicka & Levin's own published, peer-reviewed bioelectric tissue
+model (vendored under `third_party/electric_morphogenesis/`, CC BY 4.0,
+one documented bug-fix patch — pretrained checkpoints deliberately NOT
+used, see `third_party/electric_morphogenesis/NOTICE.md`) against a
+written bit-cluster pattern, comparing field-enabled vs. gap-junction-only
+persistence. See `docs/THIRD_PARTY_METHODS.md` for the actual result and
+why it doesn't contradict the source paper despite looking that way at
+first glance.
+
+**Output:** `analysis/field_mediated_persistence.png`
+
 ## Research Contributions
 
 These experiments enable multiple publishable contributions:

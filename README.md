@@ -50,28 +50,40 @@ This software layer can be licensed to ALL biocomputing companies.
                       docs/THIRD_PARTY_METHODS.md for what's grounded in
                       external published methodology)
 /experiments        - Runnable experiment scripts, including reservoir-
-                      benchmark and write-axis demonstrations against the
-                      Gardner toggle circuit
+                      benchmark, write-axis, and field-mediated-persistence
+                      demonstrations against Acheron's own circuits
+/third_party        - Vendored code from CC-BY/MIT-licensed external
+                      projects, with attribution NOTICE files (see
+                      docs/THIRD_PARTY_METHODS.md)
 /tests              - pytest unit tests for the analysis/ modules
 ```
 
 ## Analysis Methods
 
-Beyond the project's own BETSE-inspired simulations, `analysis/` includes
-three methods adapted from published external work and validated against
-Acheron's own circuits (not just left as unused library code) — see
-`docs/THIRD_PARTY_METHODS.md` for full attribution and the actual findings:
+Beyond the project's own BETSE-inspired simulations, `analysis/` and
+`third_party/` include methods adapted from published external work and
+validated against Acheron's own circuits (not just left as unused library
+code) — see `docs/THIRD_PARTY_METHODS.md` for full attribution and the
+actual findings:
 
 | Module | Method | Source |
 |---|---|---|
 | `analysis/reservoir_benchmarks.py` | NARMA-10 + memory-capacity benchmark | Generalized from [NeuromorphicMyceliumChip](https://github.com/otelhan/NeuromorphicMyceliumChip) |
 | `analysis/memory_geometry.py` | Q/R/K_mem dominant write-axis | Generalized from [tasmorpho](https://github.com/marcelbtec/tasmorpho) |
 | `analysis/hidden_state_model.py` | Latent-threshold hidden-memory model | Reimplemented from tasmorpho, numerically validated to 6 decimal places against a real run of the original |
+| `third_party/electric_morphogenesis/` | Field-mediated bioelectric tissue model | Vendored (CC BY 4.0, one bug-fix patch) from [ElectricMorphogenesis](https://github.com/santamanicka/ElectricMorphogenesis) |
+
+Also referenced (not integrated — the source has no code license, only
+the published paper is cited): T-Pro / compressed genetic circuits
+(Huang et al. 2025, *Nature Communications*), a directly relevant
+precedent for `gardner_toggle_circuit.py`'s open "hypothetical
+ion-channel-output link" problem — see `docs/THIRD_PARTY_METHODS.md`.
 
 Run the demonstrations:
 ```bash
 python experiments/reservoir_benchmark_gardner.py
 python experiments/write_axis_gardner.py
+python experiments/field_mediated_persistence.py   # requires torch (already in requirements.txt)
 python -m pytest tests/
 ```
 

@@ -32,6 +32,21 @@ in-planaria design, just with real characterized parts instead of a
 literature-adjacent guess for the topology and an organism-matched
 source for the parts.
 
+RELATED WORK ON THE ACTUAL "GENETIC CIRCUIT -> PERSISTENT MEMORY" PROBLEM:
+Huang, Yu, Lee et al. (2025), "Engineering wetware and software for the
+predictive design of compressed genetic circuits for higher-state
+decision-making," Nature Communications 16:9414 (DOI
+10.1038/s41467-025-64457-0) build and quantitatively validate a
+recombinase-based genetic memory circuit (their Fig. 7), hitting a
+targeted 70% recombination efficiency via a context-specific expression
+cassette (CSEC) lookup-table design workflow, with predictions accurate
+to <1.4-fold across >50 test cases — a real, wet-lab-measured version of
+exactly the "write a persistent bit via a genetic circuit, predict its
+performance before building it" problem this file's ion-channel-output
+link is still hypothetical about. Their code (github.com/Jayaos/TPro) has
+no published license, so it isn't used here — this is a citation, not an
+integration; see docs/THIRD_PARTY_METHODS.md.
+
 MODEL:
 Dimensionless Gardner toggle:
     du/dt = alpha1 / (1 + v^beta) - u
