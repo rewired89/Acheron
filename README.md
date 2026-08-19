@@ -44,7 +44,35 @@ This software layer can be licensed to ALL biocomputing companies.
 /encoder           - Binary → bioelectric pattern translator
 /hardware          - Optogenetic controller (DMD interface)
 /docs              - White papers, technical specs
-/analysis          - Data visualization, comparative studies
+/analysis          - Data visualization, comparative studies, and reusable
+                      analysis methods (reservoir-computing benchmarks,
+                      write-axis geometry, hidden-state modeling — see
+                      docs/THIRD_PARTY_METHODS.md for what's grounded in
+                      external published methodology)
+/experiments        - Runnable experiment scripts, including reservoir-
+                      benchmark and write-axis demonstrations against the
+                      Gardner toggle circuit
+/tests              - pytest unit tests for the analysis/ modules
+```
+
+## Analysis Methods
+
+Beyond the project's own BETSE-inspired simulations, `analysis/` includes
+three methods adapted from published external work and validated against
+Acheron's own circuits (not just left as unused library code) — see
+`docs/THIRD_PARTY_METHODS.md` for full attribution and the actual findings:
+
+| Module | Method | Source |
+|---|---|---|
+| `analysis/reservoir_benchmarks.py` | NARMA-10 + memory-capacity benchmark | Generalized from [NeuromorphicMyceliumChip](https://github.com/otelhan/NeuromorphicMyceliumChip) |
+| `analysis/memory_geometry.py` | Q/R/K_mem dominant write-axis | Generalized from [tasmorpho](https://github.com/marcelbtec/tasmorpho) |
+| `analysis/hidden_state_model.py` | Latent-threshold hidden-memory model | Reimplemented from tasmorpho, numerically validated to 6 decimal places against a real run of the original |
+
+Run the demonstrations:
+```bash
+python experiments/reservoir_benchmark_gardner.py
+python experiments/write_axis_gardner.py
+python -m pytest tests/
 ```
 
 ## Competitive Intelligence

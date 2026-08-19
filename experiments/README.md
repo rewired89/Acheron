@@ -243,6 +243,31 @@ experiments/
 
 ---
 
+### 9. Reservoir-Computing Benchmark (Does the circuit have memory capacity?)
+```bash
+python experiments/reservoir_benchmark_gardner.py
+```
+Drives `simulations/gardner_toggle_circuit.py`'s `GardnerToggleCell` with
+the NARMA-10 benchmark (methodology generalized from
+[NeuromorphicMyceliumChip](https://github.com/otelhan/NeuromorphicMyceliumChip),
+which trained a real physical mycelium chip on the same benchmark) and
+scores a ridge-regression readout. See `docs/THIRD_PARTY_METHODS.md` for
+attribution and the actual result.
+
+**Output:** `analysis/reservoir_benchmark_gardner.png`
+
+### 10. Dominant Write-Axis Analysis (Which perturbation writes most efficiently?)
+```bash
+python experiments/write_axis_gardner.py
+```
+Computes the Q/R/K_mem write-axis geometry (methodology generalized from
+[tasmorpho](https://github.com/marcelbtec/tasmorpho)) against the Gardner
+toggle circuit's own perturbation parameters, plus a direct threshold-
+crossing scan for this substrate's actual (bistable/digital) behavior. See
+`docs/THIRD_PARTY_METHODS.md` for attribution and the actual result — it
+surfaced a real design consideration about the circuit's symmetric
+baseline being an unusable knife-edge for a controllable `SET_BIT`.
+
 ## Research Contributions
 
 These experiments enable multiple publishable contributions:
