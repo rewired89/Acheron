@@ -313,6 +313,25 @@ metabolic-noise term — verified by ablation, not guessed. See
 `docs/THIRD_PARTY_METHODS.md` for the full result and a proposed
 (not-yet-applied) fix.
 
+### 14. Damage-Detection Trigger (How does the system know it needs to heal?)
+```bash
+python experiments/damage_detection_trigger.py
+```
+Every other piece of the "detect damage → handoff → heal → return" cycle
+has been touched by simulation except the first step. This tests whether
+`regeneration_data_loss_window.py`'s assumed detection latency
+(Normal(30min, 10min), modeling a fixed polling schedule) is consistent
+with real wound-signal biology — grounded in real, cited timing (PMID
+30799071: wound depolarization detectable within ~1h, causally
+determines outcome by ~3h) combined with Acheron's own existing noise
+parameters. Finding: it depends entirely on the wound-signal's magnitude,
+which isn't measured yet — at full bit-range strength the current
+assumption is safe (even conservative); at 10% strength, real detection
+is 3.5-7x slower than assumed. The magnitude is the concrete thing
+Experiment A's planned voltage-imaging protocol would need to pin down.
+
+**Output:** `analysis/damage_detection_trigger.png`
+
 ## Research Contributions
 
 These experiments enable multiple publishable contributions:

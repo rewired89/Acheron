@@ -181,4 +181,29 @@ in this repository's commit history:
   model's constants were chosen, not a deliberate asymmetric-reliability
   design. A fix (recentering `V_REST` to `V_MID`, or decoupling metabolic
   noise from raw leak distance) is proposed but not applied, since it
-  would change validated existing simulation behavior.
+  would change validated existing simulation behavior. Tested the fix
+  anyway (without applying it permanently): it shrinks the gap by ~60%
+  but doesn't fully close it — a smaller residual (likely the clip bounds
+  also being off-center) remains, not fully traced.
+
+## Wound-signal timing (Biophysical Journal, 2019)
+
+- **Paper**: "The Role of Early Bioelectric Signals in the Regeneration of
+  Planarian Anterior/Posterior Polarity," *Biophysical Journal* (2019),
+  PMID [30799071](https://pubmed.ncbi.nlm.nih.gov/30799071/)
+- **Used in**: `experiments/damage_detection_trigger.py` — the only
+  piece of this repo's "detect damage → handoff → heal → return" cycle
+  that had never been simulated at all. `regeneration_data_loss_window.py`
+  assumes detection latency is a fixed polling delay (Normal(30min,
+  10min)); this experiment instead grounds a signal's rise time in this
+  paper's real, cited milestones (depolarization detectable within ~1h,
+  causally determines outcome by ~3h) and asks whether that signal is
+  distinguishable from Acheron's own existing noise parameters fast
+  enough to justify the polling-delay assumption. It depends entirely on
+  the wound-signal's magnitude, which the paper doesn't report in
+  reusable form and which this repo hasn't measured — swept explicitly
+  as a parameter rather than asserted. Finding: at full bit-range signal
+  strength the current assumption is safe, even conservative; at ~10%
+  strength, real detection latency runs 3.5-7x slower than assumed. The
+  magnitude is exactly the kind of thing `EXPERIMENT_A_PROTOCOL.md`'s
+  planned voltage-sensitive-dye imaging would need to pin down.
