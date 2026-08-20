@@ -283,6 +283,24 @@ first glance.
 
 **Output:** `analysis/field_mediated_persistence.png`
 
+### 12. Reused-Pool Handoff + Imperfect Healing (Does "back of the line" survive many cycles?)
+```bash
+python experiments/handoff_pool_imperfect_healing.py
+```
+Extends `biofilm_tile_handoff.py`'s single-use handoff chain to a small
+reused pool of tiles (a healed tile actually comes back into rotation,
+not just handed off to once), and tests whether tasmorpho's real
+~15% "healing isn't a clean reset" probability (imported live from the
+fitted model) matters when applied to this bacterial model. It doesn't,
+for a well-understood reason — but running this surfaced a bigger,
+unplanned finding: the ORIGINAL mechanism's own 100%-fidelity claim only
+holds at the 5-cycle test length its own `main()` uses; run longer and a
+real, asymmetric spontaneous-bit-flip risk shows up. See
+`docs/THIRD_PARTY_METHODS.md` for the full result and root-cause
+investigation.
+
+**Output:** `analysis/handoff_pool_imperfect_healing.png`
+
 ## Research Contributions
 
 These experiments enable multiple publishable contributions:

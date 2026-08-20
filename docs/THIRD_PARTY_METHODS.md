@@ -150,3 +150,22 @@ in this repository's commit history:
   values — the current result is "field-mediation isn't automatically
   stabilizing for any parameter choice," not "field-mediation doesn't
   help."
+- `experiments/handoff_pool_imperfect_healing.py`: built to test whether
+  tasmorpho's ~15% residual-confusion probability (imported live from the
+  fitted model, not hardcoded) hurts fidelity when a healed tile is reused
+  in a pool rather than replaced with an infinite supply of fresh ones. It
+  doesn't, at any tested bias magnitude (0-50%), because
+  `propagate_handoff`'s coupling turns out to be a "snap to rail" process
+  robust to any one-time starting-voltage offset (verified directly: a
+  destination starting at the *opposite* rail still converges to the
+  correct bit within a third of the allotted handoff window). A one-time
+  voltage nudge is the wrong shape of perturbation to test against this
+  design — not evidence imperfect healing can't matter. While building
+  this, found something bigger and unplanned: `biofilm_tile_handoff.py`'s
+  own `main()` only tests 5 cycles (100% fidelity there); run for 60
+  cycles with nothing else changed, fidelity for bit=1 drops to ~95% and
+  bit=0 to ~68%, from a spontaneous mid-hold-period bistable flip in the
+  existing, unmodified simulation — not from anything to do with tasmorpho,
+  pool reuse, or imperfect healing. Root cause of the bit=0/bit=1 asymmetry
+  specifically was checked against the obvious candidates and not
+  resolved — left open rather than guessed at.
