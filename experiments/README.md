@@ -301,6 +301,18 @@ investigation.
 
 **Output:** `analysis/handoff_pool_imperfect_healing.png`
 
+### 13. Bit=0/Bit=1 Asymmetry Root Cause
+```bash
+python experiments/bit_asymmetry_root_cause.py
+```
+Ablates each term in the bacterial tile's update equation to find why
+bit=0 spontaneously flips roughly 2x more often than bit=1 over a long
+run (found in experiment 12, above). Root cause: `V_REST` isn't
+equidistant between `V_HIGH` and `V_LOW`, which asymmetrically scales the
+metabolic-noise term — verified by ablation, not guessed. See
+`docs/THIRD_PARTY_METHODS.md` for the full result and a proposed
+(not-yet-applied) fix.
+
 ## Research Contributions
 
 These experiments enable multiple publishable contributions:

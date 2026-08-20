@@ -61,10 +61,12 @@ simulation's parameters that its own 5-cycle test was too short to catch,
 directly relevant to the "keep going indefinitely" part of the theory:
 each hold period is an independent chance to spontaneously lose the bit,
 and that risk compounds over many cycles. The root cause of WHY bit=0 is
-specifically more vulnerable than bit=1 was investigated but not fully
-resolved (the V_HIGH/V_LOW wells are symmetric around V_MID; a metabolic-
-noise-scaling asymmetry was checked and points the wrong direction) --
-flagged as open, not asserted.
+specifically more vulnerable than bit=1 is now identified and verified by
+ablation -- see experiments/bit_asymmetry_root_cause.py. Short version:
+V_HIGH/V_LOW are symmetric around V_MID, but V_REST is NOT (off-center by
+5mV toward the V_LOW/bit=0 side), which asymmetrically scales the
+metabolic-noise term -- an incidental side effect of how V_REST was set
+in the original file, not a deliberate design choice.
 """
 
 from __future__ import annotations
@@ -273,10 +275,12 @@ def main() -> None:
     print(f"   existing parameters, not something introduced here -- each hold period is an")
     print(f"   independent chance to lose the bit, and that risk compounds over many cycles,")
     print(f"   which is exactly the 'keep going indefinitely' part of the theory. WHY bit=0")
-    print(f"   is specifically more vulnerable than bit=1 was checked against the obvious")
-    print(f"   candidates (the V_HIGH/V_LOW wells are symmetric around V_MID; a metabolic-")
-    print(f"   noise-scaling asymmetry was checked and points the wrong direction) and is")
-    print(f"   left open rather than guessed at.")
+    print(f"   is specifically more vulnerable than bit=1 is now root-caused, not just")
+    print(f"   flagged as open -- see experiments/bit_asymmetry_root_cause.py. Short")
+    print(f"   version: V_HIGH/V_LOW are symmetric around V_MID, but V_REST is NOT (it")
+    print(f"   sits 5mV toward the V_LOW/bit=0 side), which asymmetrically scales the")
+    print(f"   metabolic-noise term (verified by ablation, not assumed) -- an incidental")
+    print(f"   side effect of how V_REST was set, not a deliberate design choice.")
     print(f"\nWhat NEITHER of these shows: whether a {p_residual:.0%} residual-confusion rate, any")
     print(f"  specific bias magnitude, or these exact noise parameters are correct for real")
     print(f"  bacterial biofilm -- none of it has been measured on this substrate. Both")

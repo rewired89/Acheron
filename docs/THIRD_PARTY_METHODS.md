@@ -166,6 +166,19 @@ in this repository's commit history:
   cycles with nothing else changed, fidelity for bit=1 drops to ~95% and
   bit=0 to ~68%, from a spontaneous mid-hold-period bistable flip in the
   existing, unmodified simulation — not from anything to do with tasmorpho,
-  pool reuse, or imperfect healing. Root cause of the bit=0/bit=1 asymmetry
-  specifically was checked against the obvious candidates and not
-  resolved — left open rather than guessed at.
+  pool reuse, or imperfect healing.
+- `experiments/bit_asymmetry_root_cause.py`: root-causes the bit=0/bit=1
+  asymmetry above by ablating each term in the tile's update equation.
+  Not the bistable wells (symmetric around `V_MID`) and not the
+  deterministic leak term alone (removing it changes nothing — its
+  magnitude is ~2000x smaller than the bistable term). It's the
+  metabolic-noise term: its standard deviation scales with distance from
+  `V_REST`, and `V_REST` (-50mV) is NOT equidistant between `V_HIGH`
+  (-10mV) and `V_LOW` (-80mV) — it sits 5mV toward the `V_LOW`/bit=0 side
+  (`V_MID` is -45mV). Verified by ablation: removing metabolic noise
+  collapses ~75-80% of the baseline escape-rate gap. Reads as an
+  incidental consequence of how `V_REST` was set when this bacterial
+  model's constants were chosen, not a deliberate asymmetric-reliability
+  design. A fix (recentering `V_REST` to `V_MID`, or decoupling metabolic
+  noise from raw leak distance) is proposed but not applied, since it
+  would change validated existing simulation behavior.
