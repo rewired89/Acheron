@@ -3,6 +3,73 @@
 
 ---
 
+## UCF Synthetic Biology / Genetic Circuit Search — Verified Findings (Aug 2026)
+
+**Bottom line: UCF does not appear to have a dedicated synthetic-biology /
+genetic-circuit-engineering lab the way UF does (UF's SYBORGS Lab, run by
+Prof. Andre Menezes, does bacterial genetic circuit design/build/test —
+see the UF section below, 1.5 hrs away). Searches for "UCF synthetic
+biology," "UCF genetic circuits," and a UCF iGEM team all came back
+empty.** That's a real, checked negative, not an assumption.
+
+Two real UCF leads did turn up, both verified via search this session
+(unlike some names lower in this document — see the caveat at the end of
+this section):
+
+1. **Hickman Hybrid Systems Lab** — Prof. James J. Hickman, NanoScience
+   Technology Center (joint appointments in Chemistry, Biomolecular
+   Science, and Electrical Engineering).
+   `https://nanoscience.ucf.edu/hickman/about/`
+   Not a genetic-circuit lab — but arguably a **better** fit for Acheron
+   than one would be. This lab does exactly the bioelectric/microelectrode
+   side of the stack Acheron needs: microelectrode arrays (MEAs) reading
+   live cell voltage, iPSC-derived neurons patterned onto electrodes,
+   computational modeling of neuron-electrode interfaces. That's the
+   "read the voltage" half of the project, from a lab that already has
+   the equipment and a track record of publishing hybrid bio-electronic
+   systems work.
+
+2. **NanoBioSensors & Systems Laboratory** — Prof. Swaminathan Rajaraman,
+   joint appointments in Materials Science & Engineering, Electrical &
+   Computer Engineering, Biomedical Engineering, and Burnett School of
+   Biomedical Sciences; core faculty at NSTC.
+   `https://nanoscience.ucf.edu/rajaraman/group/`
+   Also not genetic-circuit work — focus is micro/nanofabrication of
+   biosensors and microelectrode arrays for cellular analysis. Same
+   relevance as Hickman's lab: readout hardware, not circuit design.
+
+3. **Burnett School's Molecular Microbiology division** (19 faculty) was
+   checked and is genuinely the closest UCF department-level match to
+   "genetic engineering of organisms" — but its stated focus is microbial
+   pathogenesis and antimicrobial drug development, not synthetic circuit
+   engineering. `https://med.ucf.edu/biomed/people-groups/faculty/molecular-microbiology/`
+   Individual faculty names in that division could not be pulled — this
+   sandbox's network proxy blocks direct fetches to `med.ucf.edu`, so only
+   the search-indexed department-level description was available, not a
+   faculty roster. If you want individual names, visit that URL directly
+   yourself.
+
+**What this means practically:** for the genetic-circuit-engineering half
+of the project specifically, UF's SYBORGS Lab is the strongest lead found
+so far, anywhere in this document — it's a real, active, named lab doing
+literally the kind of work the theory needs, just not local. For the
+bioelectric-readout half (voltage imaging, MEAs, the actual "read the
+data back out" mechanism Experiment A's protocol depends on), Hickman's
+lab is a strong **local** match worth reaching out to, arguably a better
+fit than approaching a neuroscience lab (Dr. Sugaya, below) cold.
+
+**Caveat on the rest of this document:** the faculty names below this
+section (Altomare, Parks, Wei, Deb, Gesquiere, Strother) were not
+independently verified by web search this session — I don't have a record
+of them being checked against real UCF directories either. Dr. Sugaya and
+the three leads above ARE verified as real, current UCF/UF people with
+working lab pages. Before emailing anyone else named below, confirm they
+still exist and still work in the stated area — UCF's own directory
+(`med.ucf.edu/biomed/directory/`) is the place to check, though this
+sandbox cannot fetch that page directly.
+
+---
+
 ## Your Concern: "I'm not a biology student"
 
 ### Why This Is Actually an ADVANTAGE:
