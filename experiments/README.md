@@ -243,6 +243,95 @@ experiments/
 
 ---
 
+### 9. Reservoir-Computing Benchmark (Does the circuit have memory capacity?)
+```bash
+python experiments/reservoir_benchmark_gardner.py
+```
+Drives `simulations/gardner_toggle_circuit.py`'s `GardnerToggleCell` with
+the NARMA-10 benchmark (methodology generalized from
+[NeuromorphicMyceliumChip](https://github.com/otelhan/NeuromorphicMyceliumChip),
+which trained a real physical mycelium chip on the same benchmark) and
+scores a ridge-regression readout. See `docs/THIRD_PARTY_METHODS.md` for
+attribution and the actual result.
+
+**Output:** `analysis/reservoir_benchmark_gardner.png`
+
+### 10. Dominant Write-Axis Analysis (Which perturbation writes most efficiently?)
+```bash
+python experiments/write_axis_gardner.py
+```
+Computes the Q/R/K_mem write-axis geometry (methodology generalized from
+[tasmorpho](https://github.com/marcelbtec/tasmorpho)) against the Gardner
+toggle circuit's own perturbation parameters, plus a direct threshold-
+crossing scan for this substrate's actual (bistable/digital) behavior. See
+`docs/THIRD_PARTY_METHODS.md` for attribution and the actual result — it
+surfaced a real design consideration about the circuit's symmetric
+baseline being an unusable knife-edge for a controllable `SET_BIT`.
+
+### 11. Field-Mediated Pattern Persistence (Does a self-generated field help, beyond gap junctions?)
+```bash
+python experiments/field_mediated_persistence.py
+```
+Runs Manicka & Levin's own published, peer-reviewed bioelectric tissue
+model (vendored under `third_party/electric_morphogenesis/`, CC BY 4.0,
+one documented bug-fix patch — pretrained checkpoints deliberately NOT
+used, see `third_party/electric_morphogenesis/NOTICE.md`) against a
+written bit-cluster pattern, comparing field-enabled vs. gap-junction-only
+persistence. See `docs/THIRD_PARTY_METHODS.md` for the actual result and
+why it doesn't contradict the source paper despite looking that way at
+first glance.
+
+**Output:** `analysis/field_mediated_persistence.png`
+
+### 12. Reused-Pool Handoff + Imperfect Healing (Does "back of the line" survive many cycles?)
+```bash
+python experiments/handoff_pool_imperfect_healing.py
+```
+Extends `biofilm_tile_handoff.py`'s single-use handoff chain to a small
+reused pool of tiles (a healed tile actually comes back into rotation,
+not just handed off to once), and tests whether tasmorpho's real
+~15% "healing isn't a clean reset" probability (imported live from the
+fitted model) matters when applied to this bacterial model. It doesn't,
+for a well-understood reason — but running this surfaced a bigger,
+unplanned finding: the ORIGINAL mechanism's own 100%-fidelity claim only
+holds at the 5-cycle test length its own `main()` uses; run longer and a
+real, asymmetric spontaneous-bit-flip risk shows up. See
+`docs/THIRD_PARTY_METHODS.md` for the full result and root-cause
+investigation.
+
+**Output:** `analysis/handoff_pool_imperfect_healing.png`
+
+### 13. Bit=0/Bit=1 Asymmetry Root Cause
+```bash
+python experiments/bit_asymmetry_root_cause.py
+```
+Ablates each term in the bacterial tile's update equation to find why
+bit=0 spontaneously flips roughly 2x more often than bit=1 over a long
+run (found in experiment 12, above). Root cause: `V_REST` isn't
+equidistant between `V_HIGH` and `V_LOW`, which asymmetrically scales the
+metabolic-noise term — verified by ablation, not guessed. See
+`docs/THIRD_PARTY_METHODS.md` for the full result and a proposed
+(not-yet-applied) fix.
+
+### 14. Damage-Detection Trigger (How does the system know it needs to heal?)
+```bash
+python experiments/damage_detection_trigger.py
+```
+Every other piece of the "detect damage → handoff → heal → return" cycle
+has been touched by simulation except the first step. This tests whether
+`regeneration_data_loss_window.py`'s assumed detection latency
+(Normal(30min, 10min), modeling a fixed polling schedule) is consistent
+with real wound-signal biology — grounded in real, cited timing (PMID
+30799071: wound depolarization detectable within ~1h, causally
+determines outcome by ~3h) combined with Acheron's own existing noise
+parameters. Finding: it depends entirely on the wound-signal's magnitude,
+which isn't measured yet — at full bit-range strength the current
+assumption is safe (even conservative); at 10% strength, real detection
+is 3.5-7x slower than assumed. The magnitude is the concrete thing
+Experiment A's planned voltage-imaging protocol would need to pin down.
+
+**Output:** `analysis/damage_detection_trigger.png`
+
 ## Research Contributions
 
 These experiments enable multiple publishable contributions:

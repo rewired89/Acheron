@@ -68,6 +68,13 @@ class RegenerationTimingModel:
     All times in hours unless noted.
     """
     # Detection latency: silicon polls voltage imaging on a schedule
+    # CAVEAT (see experiments/damage_detection_trigger.py): this models only
+    # polling delay, not whether the wound signal has actually risen above
+    # the noise floor yet by this point. Whether that's a safe approximation
+    # depends entirely on the wound-depolarization magnitude, which hasn't
+    # been measured -- at full bit-range strength this assumption is
+    # conservative; at ~10% strength, real detection latency runs 3.5-7x
+    # slower than assumed here.
     detection_mean_h:   float = 0.5    # 30 min polling interval
     detection_std_h:    float = 0.17   # ±10 min variability
     detection_min_h:    float = 0.08   # 5 min minimum (can't detect instantly)
