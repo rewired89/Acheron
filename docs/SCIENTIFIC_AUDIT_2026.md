@@ -1016,6 +1016,91 @@ archival write-once record, which is the actual point of this project.
 
 ---
 
+## Part 11: Methylation Memory — Real Fidelity Numbers, and Where They Break (August 2026)
+
+Part 10 identified DNA methylation (the mechanism BioCompute's B2A pipeline
+actually reads, via Nanopore + Modkit methylation calling, not CRISPR as an
+earlier secondhand summary had wrongly claimed) as a candidate memory
+mechanism distinct from both the engineered Gardner toggle-switch and raw
+DNA-sequence storage: a chemical tag layered on top of existing DNA,
+natively copied to daughter cells by maintenance methyltransferases at
+every division, without altering the underlying genetic code. Real
+precedent exists for a *self-perpetuating epigenetic bistable switch* built
+this way in nature: Hernday, Krabbe, Braaten & Low (2002), "Self-
+perpetuating epigenetic pili switches in bacteria," PNAS 99(Suppl 4):
+16470-6, DOI 10.1073/pnas.182427199, PMC139910 — the *E. coli* pap pilin
+operon, which holds a heritable ON/OFF phase state purely through Dam
+methylation patterns surviving replication, no synthetic circuit required.
+
+**A citable per-division maintenance-methylation fidelity number was
+searched for and found** — not for this exact system, but for closely
+related ones:
+- Laird, Pleasant, Clark, Sneeden, Hassan, Manley, Vary, Morgan, Hansen &
+  Stöger (2004), "Hairpin-bisulfite PCR: assessing epigenetic methylation
+  patterns on complementary strands of individual DNA molecules," PNAS
+  101(1):204-9, DOI 10.1073/pnas.2536758100, PMC314163. Direct,
+  single-molecule measurement: maintenance methylation efficiency ≈0.96
+  per site per cell division for a hypermethylated CpG island (human
+  FMR1 gene, lymphocytes).
+- Watanabe, Okochi-Takada, Yagi, Furuta & Ushijima (2006), "Decreased
+  fidelity in replicating DNA methylation patterns in cancer cells leads
+  to dense methylation of a CpG island," Curr Top Microbiol Immunol
+  310:199-210, DOI 10.1007/3-540-31181-5_10. Clonal-expansion measurement
+  in non-cancer human cell lines: error rates <1.0×10⁻³ per site per
+  generation (>99.9% fidelity) for PROMOTER CpG islands specifically.
+- Westphal, Sauvey, Champion, Ehrenreich & Finkel (2016), "Genomewide Dam
+  Methylation during Long-Term Stationary Phase," mSystems 1(6), DOI
+  10.1128/mSystems.00130-16, PMC5155068 — the mechanistically closer
+  *bacterial* system (*E. coli* Dam/GATC, the same enzyme family the
+  Hernday pap switch depends on). No single numeric fidelity reported, but
+  qualitatively strong: "virtually all" GATC sites stay methylated across
+  the entire bacterial life cycle, including death phase and long-term
+  starvation, confirmed by mass spectrometry.
+
+**Caveats, stated plainly:** the two quantified numbers are human/mammalian
+CpG methylation (Dnmt1-family enzymes), not bacterial Dam. *B. subtilis*
+does not natively carry the Dam/Dcm system these numbers, or the Hernday
+pap switch, depend on — Dam is essentially restricted to *E. coli* and
+other gammaproteobacteria. A *B. subtilis* implementation of this mechanism
+would need a maintenance methyltransferase engineered in, which is an
+additional dependency, not a free win borrowed from BioCompute's existing
+read pipeline. There is also no single universal fidelity even within one
+species — it depends on genomic context (promoter vs. non-promoter,
+hyper- vs. hypomethylated baseline).
+
+**Simulated (`simulations/methylation_bit_encoding.py`,
+`simulations/methylation_regeneration_transfer.py`), using both real
+numbers as anchors instead of one assumed value:** a single-lineage bit
+held across generations, and a full colony-damage-then-regrowth-by-division
+scenario (mirroring `bacterial_colony_regrowth.py`'s structure), swept
+across surviving fractions from 0% to 100%. Result, at *B. subtilis*'s
+~30-minute doubling time over a 24-hour (~48-generation) window:
+- **At 99.9% fidelity** (Watanabe et al.'s best-case number): the bit
+  survives regrowth intact (~95-97% combined accuracy) from even a 2%
+  surviving population.
+- **At 96% fidelity** (Laird et al.'s directly-measured number, a
+  DIFFERENT real context from the 99.9% figure): the signal decays to
+  chance (~50%, a coin flip) by ~48 generations, **regardless of surviving
+  fraction** — even a colony that suffered zero damage (100% survival)
+  loses the bit on this timescale, because the failure mode is per-division
+  drift compounding over many divisions, not insufficient survivors.
+
+**This is a genuinely different failure mode than the Gardner-circuit
+colony result.** In `bacterial_colony_regrowth.py`, surviving fraction was
+the binding constraint (recovery held down to ~2% survivors). Here,
+maintenance fidelity is the binding constraint, and more surviving cells
+cannot rescue a fidelity that's too low — the same qualitative lesson
+Bio-RAID redundancy already taught for the bioelectric circuit (Part 8:
+Condorcet's jury theorem — voting across copies that are each only
+marginally better than chance doesn't help). Two real, published fidelity
+numbers exist, and they land on opposite sides of this project's pass/fail
+line. Which one (if either) *B. subtilis* would actually deliver is not
+knowable from literature alone — it is a wet-lab measurement, not a
+desk-research question, exactly like the noise-floor parameters flagged
+throughout this audit.
+
+---
+
 ## Next Action: One Experiment Changes Everything
 
 **The experiment:**
