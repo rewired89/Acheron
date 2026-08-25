@@ -942,6 +942,80 @@ channel expression link, which is the one piece with no prior art at all.
 
 ---
 
+## Part 10: Competitive Landscape — Closest Prior Art (August 2026)
+
+Three real, verified pieces of related work surfaced this month, from
+external feedback (DeepSeek) and independent user research, not something
+this project's own literature scan caught first. Logged here properly
+rather than left as chat history, since a diligent reviewer will find all
+three on their own.
+
+**1. Mycelium memristor.** LaRocco, Tahmina, Petreaca, Simonis & Hill
+(2025), "Sustainable memristors from shiitake mycelium for high-frequency
+bioelectronics," *PLOS ONE* 20(10): e0328965, DOI
+[10.1371/journal.pone.0328965](https://doi.org/10.1371/journal.pone.0328965),
+PMID 41071833. A self-repairing fungal memristor, 90±1% accuracy at up to
+5.85 kHz, survives dehydration/rehydration. Closest public self-healing
+bioelectric device — but it's an analog resistance element (one continuous
+value), not an addressable binary memory with a write/read software layer,
+and 90% accuracy is a real, disqualifying error rate for a memory system
+(this project's own pass bar throughout has been ≥70% integrity AND ≥3:1
+SNR — even that was "usable," not "good").
+
+**2. DNA-sequence data storage in *B. subtilis*.** Yachie & Tomita (2007),
+"Alignment-Based Approach for Durable Data Storage into Living Organisms,"
+*Biotechnology Progress* — encoded Einstein's E=mc² as 120 bits, inserted
+redundantly across multiple loci in the *B. subtilis* genome, decoded via
+sequence alignment. Confirms arbitrary data storage in this exact organism
+already exists — but as a DNA-**sequence** difference (archival, read via
+destructive sequencing), not a **physiological state** difference (dynamic,
+read non-destructively in real time). Different engineering problem: closer
+to a printed archive than to RAM.
+
+**3. BioCompute Inc.** (founded 2024, Bengaluru → San Francisco) — a
+funded startup (WTF Fund, Grad Capital, 1517 Fund) commercializing exactly
+category 2 at scale: a microfluidics chip using CRISPR to write/read
+digital data in bacterial DNA, targeting data-center archival storage.
+Same category as Yachie & Tomita, now with real capital and a product
+roadmap behind it.
+
+**The pattern across all three:** every existing example of "data in a
+living organism" is either (a) an analog device with no addressable write
+layer, or (b) DNA-sequence storage, which is fundamentally archival, not
+a dynamic, rewritable state. Nothing found stores arbitrary data as a
+physiological/bioelectric state the way this project's actual approach
+does.
+
+**Could the DNA-sequence approach (2/3) be borrowed as Acheron's write
+mechanism instead?** Worth being precise about what that would and
+wouldn't buy:
+- For *B. subtilis*: little changes. Bacterial genetic engineering,
+  including CRISPR, is already routine, and this project's existing
+  circuit design already assumes it's feasible.
+- For planaria: this is where it matters, and reveals a DIFFERENT
+  bottleneck than the one this project has been testing. If data is
+  stored as pure DNA sequence, "does regeneration preserve it" is nearly
+  guaranteed already — that's just DNA replication fidelity, standard
+  transgene inheritance, not an open question. **The real, currently
+  unsolved bottleneck moves to whether the sequence can be written into a
+  planarian genome at all.** Checked directly (August 2026): "CRISPR-based
+  functional genomics have yet to be reported in planarians" — some
+  narrower CRISPR/Cas applications exist (e.g., rRNA depletion for
+  sequencing prep), and stable transgenesis has been achieved via older
+  transposon/electroporation methods with a marker gene, but reliable,
+  arbitrary-sequence CRISPR knock-in, the actual "write" step this
+  approach would need, is not yet established in this organism.
+
+**Bottom line:** borrowing DNA-sequence storage doesn't skip past a hard
+problem, it trades this project's current hard problem (does a bioelectric
+state hold under noise) for a different hard problem specific to planaria
+(can the genome be reliably edited at all). Both are real open questions;
+neither is free. The bioelectric/physiological-state approach remains the
+one that produces a genuinely dynamic, rewritable memory rather than an
+archival write-once record, which is the actual point of this project.
+
+---
+
 ## Next Action: One Experiment Changes Everything
 
 **The experiment:**
