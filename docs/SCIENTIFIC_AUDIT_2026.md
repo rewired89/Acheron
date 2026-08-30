@@ -1181,6 +1181,64 @@ failure mode. That specific comparison hasn't been tested yet.
 
 ---
 
+## Part 13: EIS Readout Tested Against the Same Oscillation, and a Full Cross-Organism Comparison (August 2026)
+
+**Does EIS survive the interference that broke single-snapshot voltage
+reading?** Part 12 proposed electrical impedance spectroscopy (EIS) as a
+candidate fix for the readout-corruption problem it found, reasoning that
+an EIS measurement integrates over a frequency sweep rather than sampling
+one instant. `simulations/eis_readout_interference.py` tested that
+reasoning directly against the same real oscillation (period 2-4h,
+Ford et al. 2021; Mulder et al. 2025) instead of asserting it. **The
+hopeful hypothesis did not hold up as expected.** Realistic EIS sweep
+durations (the Akabuogu et al. 2024 protocol sweeps ~0.2-10 Hz, a
+measurement of seconds to a few minutes) integrate over too short a
+window to average out an hours-long biological oscillation — accuracy
+stayed degraded (50-67%) at every window from 1 to 90 minutes, and only
+recovered (92-100%) once the integration window reached ~180 minutes,
+exactly one full oscillation period. **The honest conclusion: a single
+real-world EIS measurement is NOT immune to this interference.** EIS's
+real advantage isn't "one sweep sees through the oscillation" — it's that
+EIS is cheap and non-destructive enough to repeat many times across a
+multi-hour window and combine the readings, which single-shot destructive
+sequencing could never do. That's a genuine advantage, just a more
+specific and more modest one than the initial hypothesis, and this
+project's discipline is to report that correction rather than the
+more flattering version.
+
+**Full cross-organism comparison.** `simulations/organism_comparison_summary.py`
+runs the three directly comparable regeneration/regrowth tests side by
+side for the first time: planarian (bioelectric circuit, mean-field
+coupling), B. subtilis (bioelectric circuit, division-based inheritance),
+and B. subtilis (methylation, division-based, at both real fidelity
+anchors from Part 11). Result, at surviving fractions from 0% to 100%:
+
+| Mechanism | Recovery threshold (>=70%) | Grounding confidence |
+|---|---|---|
+| B. subtilis, circuit, division-based | ~2% surviving | Highest — coupling is mechanistically forced (division copies existing protein), not a free parameter |
+| B. subtilis, methylation, 99.9% fidelity anchor | ~2% surviving (93-97% combined) | Medium — real number, wrong organism (mammalian CpG, not B. subtilis) |
+| B. subtilis, methylation, 96% fidelity anchor | None in this sweep — fails regardless of survivors | Medium — same caveat, different real context, opposite outcome |
+| Planarian, circuit, mean-field coupling | ~2% surviving (numerically ties the B. subtilis circuit row at 100%) | Lowest — coupling strength is a borrowed assumption, not measured in real planarian tissue |
+
+Numerically, planarian ties the B. subtilis circuit's 100% and beats the
+methylation mechanism's real-number anchor. That is NOT the same as
+planarian being equally trustworthy — same output number, much less
+confidence behind it. Ranked by how much wet-lab risk each row is still
+hiding, lowest to highest: **B. subtilis circuit < B. subtilis methylation
+< planarian circuit.**
+
+**A gap stated plainly, not filled in:** `native_oscillation_interference.py`
+and `eis_readout_interference.py` only exist for B. subtilis, because
+that's where the underlying biofilm potassium-signaling literature is.
+No comparable planarian interference test exists yet — not because
+planarians are assumed safe from an equivalent problem, but because no
+citation for a planarian equivalent was found anywhere in this project's
+research. Building one without a citation would be exactly the kind of
+unlabeled assumption this audit has consistently avoided elsewhere, so
+it's reported here as an open gap instead.
+
+---
+
 ## Next Action: One Experiment Changes Everything
 
 **The experiment:**
