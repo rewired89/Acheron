@@ -1101,6 +1101,86 @@ throughout this audit.
 
 ---
 
+## Part 12: Real Non-Destructive Readout Method, and a New Interference Risk From the Colony's Own Biology (August 2026)
+
+Three papers, brought to this audit by the founder, add real evidence and
+one previously-unflagged design risk.
+
+**A real, non-destructive, low-cost readout method exists.** Akabuogu,
+Zhang, Krašovec, Roberts & Waigh (2024), "Electrical Impedance Spectroscopy
+with Bacterial Biofilms: Neuronal-like Behavior," Nano Letters 24(7):
+2234-2241, DOI 10.1021/acs.nanolett.3c04446, PMID 38320294. Two simple
+electrodes plus a small AC/DC voltage sweep (electrical impedance
+spectroscopy) reveal a "negative capacitance" signature in *E. coli*
+DH5α biofilms that exists ONLY when cells are alive and metabolically
+active, and depends specifically on the voltage-gated potassium channel
+Kch: knocking it out raises contact resistance 15-fold (471±4 Ω wild-type
+vs. 7500±28 Ω knockout), and killing the cells with disinfectant removes
+the signature entirely. The authors explicitly propose this as a cheap
+Live/Dead-assay alternative that avoids fluorescent dyes. For this
+project, it's a candidate THIRD readout mechanism, alongside optical
+voltage-dye imaging and destructive sequencing: cheap electrodes, no
+dye, no sample destruction, repeatable on the same living colony.
+
+**Independent, quantitative confirmation that voltage-based signaling
+really propagates in *B. subtilis* biofilms**, from two papers modeling
+the Prindle lab's potassium-wave discovery: Ford, Fisher, Prindle & Chopp
+(2021), "A Two-Dimensional Model of Potassium Signaling and Oscillatory
+Growth in a Biofilm," Bulletin of Mathematical Biology 83(5):60, DOI
+10.1007/s11538-021-00887-3, PMID 33856558; and Mulder, Peters Kostman,
+Almodaimegh, Edge & Larkin (2025), "An agent-based model of metabolic
+signaling oscillations in *Bacillus subtilis* biofilms," PLOS
+Computational Biology 21(12):e1013746, DOI 10.1371/journal.pcbi.1013746,
+PMID 41343600. Real measured/simulated numbers: propagation speed ~10-50
+microns/minute, oscillation period ~2-4 hours, onset once a biofilm
+reaches ~500 microns wide. Mechanism: nutrient-starved interior cells
+release potassium and hyperpolarize; the signal spreads outward, briefly
+suppressing neighbors' nutrient uptake so food reaches the interior.
+
+**The new risk this surfaces:** this oscillation is not hypothetical or
+engineered, it is the colony's own normal metabolic regulation, running
+continuously and independently of anything Acheron builds. Since it also
+runs through voltage-gated potassium channel activity, the same broad
+category of machinery `gardner_toggle_circuit.py`'s "hypothetical
+ion-channel expression link" would need, an engineered bit sharing the
+same membrane could have its VOLTAGE READOUT disturbed by the colony's
+own signaling, independent of whether the underlying genetic circuit is
+working correctly.
+
+**Simulated (`simulations/native_oscillation_interference.py`):** added
+the real period range (2-4h) as an external sinusoidal perturbation to a
+written, otherwise-healthy `GardnerToggleCell`'s membrane voltage only
+(deliberately NOT fed back into the u/v repressor state — see the file's
+docstring for why that stricter, more conservative scope was chosen).
+Amplitude was swept from 10mV up to 70mV (this project's own engineered
+signal's full range, V_HIGH=-10mV to V_LOW=-80mV) since neither source
+paper reported an exact millivolt figure for the natural swing.
+
+Result: the **genetic memory (u/v state) stayed at 100% fidelity
+throughout, exactly as it should by construction** (a useful sanity
+check that this file works as intended). But the **voltage readout**,
+sampled every 10 minutes across a 24-hour run to catch intermittent
+corruption rather than one lucky/unlucky snapshot, **collapsed toward a
+coin flip (50-59%) at just 10-20mV of ambient oscillation, well below
+the 70mV worst case**, across all three tested periods (2h, 3h, 4h).
+
+**What this means, plainly:** if the engineered circuit and the colony's
+native signaling aren't electrically decoupled somehow, the DATA could
+still be sitting there correctly in the genetic circuit while a voltage
+readout returns garbage, simply because it caught the reading at the
+wrong moment in the colony's own natural rhythm. That's a solvable
+engineering problem (e.g., reading via a mechanism less sensitive to
+transient voltage than raw membrane potential, averaging over a full
+oscillation period before reading, or physically isolating cells from
+neighbors' potassium flux) rather than a fatal flaw, but it is a concrete,
+previously-unflagged wet-lab requirement, and it is a genuinely new
+argument for the EIS readout method above: EIS measures a channel-activity
+SIGNATURE tied to whether Kch is present and cells are alive, not a raw
+instantaneous voltage value, which may prove less sensitive to this exact
+failure mode. That specific comparison hasn't been tested yet.
+
+---
+
 ## Next Action: One Experiment Changes Everything
 
 **The experiment:**
