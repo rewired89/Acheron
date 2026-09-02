@@ -186,6 +186,39 @@ in this repository's commit history:
   but doesn't fully close it — a smaller residual (likely the clip bounds
   also being off-center) remains, not fully traced.
 
+- `experiments/asymmetry_structural_search.py`: follows up on
+  `bit_asymmetry_root_cause.py`'s untested speculation ("a smaller residual
+  [gap], likely the clip bounds also being off-center, remains, not fully
+  traced") with an automated search instead of another single guess-and-check
+  — methodologically modeled on Lobo, Morokuma & Levin (2016)'s approach to
+  finding planarian regulatory genes: search a small combinatorial space of
+  candidate structural fixes and treat convergence across many independent
+  random-seed batches (not one run) as the evidence standard, rather than
+  picking one hypothesis and checking it in isolation. (This script does not
+  claim equivalent discovery power — Lobo et al. searched a real
+  gene-regulatory-network topology space against published phenotype data and
+  validated the winning prediction with an actual RNAi knockdown; this
+  searches 3 binary factors against Acheron's own placeholder-noise
+  simulation code, so any finding is about the simulation, not real biofilm
+  biology.) All 8 combinations of {recenter V_REST to V_MID, symmetrize the
+  clip bounds around V_MID, decouple metabolic-noise magnitude from V_REST}
+  were run at 20 independent batches x 2000 trials each (160,000 trajectories
+  total). Finding: recentering V_REST alone does NOT reliably close the gap
+  (mean +0.7%, |gap|/std = 1.30 — worse than the +0.4%/0.4% baseline);
+  every one of the 4 combinations that included clip-bound symmetrization
+  converged on a gap statistically indistinguishable from zero (|gap|/std
+  ≤ 0.3), and every combination without it did not (≥ 0.6). This revises the
+  emphasis of the earlier speculation, which named V_REST-recentering as the
+  primary ~60%-reduction fix and the clip bounds only as a secondary suspect:
+  at this measurement resolution, clip-bound symmetrization looks like the
+  necessary factor, not V_REST-recentering. (The earlier "~60% reduction"
+  figure was reported in prose without preserved, rerunnable code for that
+  exact test in this repo, so it isn't directly reproducible for a clean
+  before/after comparison — this script's own baseline and all 8
+  configurations are fully reproducible by rerunning it.) Not applied to the
+  validated simulation code, consistent with this repo's practice of
+  proposing rather than silently changing tuned parameters.
+
 ## Wound-signal timing (Biophysical Journal, 2019)
 
 - **Paper**: "The Role of Early Bioelectric Signals in the Regeneration of
