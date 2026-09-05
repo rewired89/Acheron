@@ -32,6 +32,27 @@ in-planaria design, just with real characterized parts instead of a
 literature-adjacent guess for the topology and an organism-matched
 source for the parts.
 
+THE "HYPOTHETICAL" ION CHANNEL NOW HAS A NAME (September 2026, via
+Acheron Nexus's SubtiWiki-sourced literature search): Lundberg, Becker &
+Choe (2013), "MstX and a Putative Potassium Channel Facilitate Biofilm
+Formation in Bacillus subtilis," PLoS ONE 8(5):e60993, DOI
+10.1371/journal.pone.0060993, PMID 23737939, identify yugO (downstream
+of mstX in a two-gene operon) as a real, characterized TrkA-domain K+
+efflux channel, and this is the same channel Prindle et al. 2015
+implicates in the biofilm's own potassium-wave signaling (see
+native_oscillation_interference.py). The mstX-yugO operon has a
+confirmed SinR binding site (ChIP-verified) and is transcriptionally
+REPRESSED by SinR, the same master biofilm regulator that also gates
+the epsA-O/tapA-sipW-tasA matrix operons this project's BBB-derived
+promoter choices target. That does not make the toggle-to-voltage
+link validated — nobody has wired a Gardner circuit's output to yugO
+and measured a bit — but it does mean the "hypothetical" link now has a
+concrete, literature-characterized candidate promoter and channel
+instead of no candidate at all, and that candidate sits on the same
+SinR/Spo0A/KinC regulatory node the circuit's own chassis promoters are
+drawn from — worth flagging before assuming the engineered and native
+signaling paths are independent.
+
 RELATED WORK ON THE ACTUAL "GENETIC CIRCUIT -> PERSISTENT MEMORY" PROBLEM:
 Huang, Yu, Lee et al. (2025), "Engineering wetware and software for the
 predictive design of compressed genetic circuits for higher-state
@@ -115,8 +136,9 @@ class GardnerToggleCell:
         self.u = max(0.0, self.u + du * dt)
         self.v = max(0.0, self.v + dv * dt)
 
-        # Map repressor dominance -> membrane voltage (hypothetical ion
-        # channel expression link — the part nobody has built yet)
+        # Map repressor dominance -> membrane voltage (still an unbuilt,
+        # unmeasured link — see module docstring for the real candidate
+        # channel/promoter, yugO under SinR control, Lundberg et al. 2013)
         target_V = self.V_HIGH if self.u > self.v else self.V_LOW
         dV = (target_V - self.V) * 0.05 * dt * 100  # fast tracking of genetic state
         dV += self.rng.normal(0, self.channel_noise * np.sqrt(dt))
