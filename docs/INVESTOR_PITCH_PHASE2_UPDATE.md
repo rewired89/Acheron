@@ -3,7 +3,7 @@
 > sourced, and builds "Phase 2" enterprise infrastructure claims on top of a
 > Phase 1 persistence result later found to be a zero-noise simulation
 > artifact (see `docs/SCIENTIFIC_AUDIT_2026.md`). Do not use this document
-> for investor or incubator applications — use `docs/INVESTOR_PITCH.md`
+> for investor or incubator applications, use `docs/INVESTOR_PITCH.md`
 > instead. Kept here for the roadmap/architecture ideas only (Bio-RAID
 > replication concept), not for any number in it.
 

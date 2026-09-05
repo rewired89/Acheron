@@ -1,6 +1,6 @@
 # Competitive Analysis: Bioelectric Computing Landscape (2025)
 
-**Research Date:** December 2025 (see update below — August 2026)
+**Research Date:** December 2025 (see update below, August 2026)
 **Analyst:** Acheron Project Team
 
 > **Update (August 2026):** Three additional, closer competitors surfaced
@@ -9,28 +9,28 @@
 > four neuron/organoid players. See `docs/SCIENTIFIC_AUDIT_2026.md` Part 10
 > for full detail:
 >
-> 1. **Mycelium memristor** (LaRocco et al. 2025, *PLOS ONE*) — a real,
+> 1. **Mycelium memristor** (LaRocco et al. 2025, *PLOS ONE*), a real,
 >    published self-repairing fungal memristor, 90±1% accuracy up to 5.85
 >    kHz, survives dehydration/rehydration. Closest published self-healing
->    bioelectric device to date — but it's an analog resistance element,
+>    bioelectric device to date, but it's an analog resistance element,
 >    not an addressable binary memory with a write/read software layer, and
 >    90% accuracy would fail this project's own ≥70%-integrity-AND-≥3:1-SNR
 >    bar for a memory system.
 > 2. **DNA-sequence data storage in *B. subtilis*** (Yachie & Tomita 2007)
->    — arbitrary data (120 bits) already stored in this exact organism's
+>   , arbitrary data (120 bits) already stored in this exact organism's
 >    genome and read back via sequencing. Confirms the organism can hold
 >    arbitrary data at all, but as an archival, destructively-read DNA
->    sequence — a fundamentally different engineering problem than a
+>    sequence, a fundamentally different engineering problem than a
 >    dynamic, non-destructively-readable physiological/bioelectric state.
-> 3. **BioCompute Inc.** (founded 2024) — a funded startup (WTF Fund, Grad
+> 3. **BioCompute Inc.** (founded 2024), a funded startup (WTF Fund, Grad
 >    Capital, 1517 Fund) commercializing exactly that DNA-sequence-storage
 >    category at scale, with a real product roadmap and capital behind it.
 >    This is the closest thing to a funded, direct commercial competitor
->    found so far — worth naming explicitly in any pitch, not omitting.
+>    found so far, worth naming explicitly in any pitch, not omitting.
 >
 > None of the three use a dynamic bioelectric/physiological state as the
 > data-bearing signal, which remains this project's actual differentiator
-> — but "nobody else is doing bioelectric memory at all" (the original
+>, but "nobody else is doing bioelectric memory at all" (the original
 > framing below) is no longer accurate; "nobody else is doing *dynamic,
 > rewritable* bioelectric memory" is the current, defensible claim.
 
