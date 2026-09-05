@@ -191,16 +191,29 @@ in advance, we're asking for the ~$10K-$30K it costs to find out.
 
 ## Why This Is Different From Every Real Competitor We Found
 
-Not "nobody else is doing anything like this", three real, closer
-competitors exist (see `docs/COMPETITIVE_ANALYSIS.md` update, August 2026),
-and the honest differentiation against each is specific, not generic:
+Only two real, closer competitors exist for what Acheron actually is, a
+dynamic, rewritable, self-healing bioelectric memory (see
+`docs/COMPETITIVE_ANALYSIS.md` update, August 2026). A third group, neuron-
+based wetware companies, gets mentioned constantly in this space but isn't
+actually competing for the same thing, and it's worth being precise about
+why:
 
-- **Neuron-based biocomputers (Cortical Labs, Koniku, FinalSpark):**
-  volatile by construction, need continuous power to hold any state, on a
-  fixed degradation clock, zero regeneration. Acheron's bet is a substrate
-  that (if validated) holds state with no power and physically repairs
-  itself after damage, a different failure mode entirely, not an
-  incremental improvement on theirs.
+- **Adjacent research, not a competitor: Cortical Labs (CL-1), Koniku.**
+  Both build neuron-based wetware for cognition and sensing tasks (playing
+  games, detecting explosives, training AI), a different product category
+  from memory storage, so not a rival product. Their hardware is still
+  worth studying: CL-1 uses high-density electrode arrays (HD-MEAs) to
+  write and read electrical signals into living tissue bidirectionally, a
+  mature solution to a problem Acheron also has. Koniku holds a real patent
+  (JP6858769) for an electrode design that improves signal-to-noise ratio
+  when recording from neurons, directly relevant to the native-oscillation
+  readout problem this project's own audit found. (One thing not to
+  overclaim: Koniku's marketing describes "high redundancy, stable power
+  consumption, operation in noisy environments," but that specific claim
+  wasn't independently verifiable against a technical source, treat it as
+  a company claim, not a confirmed result, if it comes up.) FinalSpark is
+  the same category (neuron organoids for AI), with no comparably specific
+  technical lead found.
 - **Mycelium memristor (LaRocco et al. 2025):** the closest published
   *self-healing* bioelectric device, real, and genuinely impressive
   (90±1% accuracy, survives dehydration/rehydration). But it's an **analog**
@@ -210,16 +223,19 @@ and the honest differentiation against each is specific, not generic:
   1 time in 10 is not usable as memory). Acheron is targeting an
   addressable, individually-writable/readable bit architecture, not a
   continuous analog signal.
-- **DNA-sequence storage (BioCompute Inc., building on Yachie & Tomita
-  2007):** real, funded, and already storing arbitrary data in a living
-  organism's genome. But it's **archival**: written once, read only by
-  destructive sequencing, closer to etching a record you can only read by
-  destroying the copy than to a working memory you check and update in
-  place. Acheron is solving a different engineering problem on purpose: a
-  **dynamic, rewritable, non-destructively-readable** physiological state,
-  not a write-once archive. If the bioelectric approach doesn't pan out,
-  this is worth revisiting as a fallback, but it trades this project's
-  current open question (does a bioelectric state hold under noise) for a
+- **DNA-sequence storage (BioCompute Inc. and Biomemory, building on
+  Yachie & Tomita 2007):** real, funded, and gaining ground fast, Biomemory
+  acquired Catalog Technologies in 2026 and is targeting a commercial,
+  end-to-end DNA data storage launch by the end of the year. Both already
+  store arbitrary data in a living organism's genome. But it's **archival**:
+  written once, read only by destructive sequencing, closer to etching a
+  record you can only read by destroying the copy than to a working memory
+  you check and update in place. Acheron is solving a different
+  engineering problem on purpose: a **dynamic, rewritable,
+  non-destructively-readable** physiological state, not a write-once
+  archive. If the bioelectric approach doesn't pan out, this category is
+  worth revisiting as a fallback, but it trades this project's current
+  open question (does a bioelectric state hold under noise) for a
   different one specific to genome editing in the target organism, not a
   shortcut past having an open question at all.
 

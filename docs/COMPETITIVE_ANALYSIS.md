@@ -33,6 +33,27 @@
 >, but "nobody else is doing bioelectric memory at all" (the original
 > framing below) is no longer accurate; "nobody else is doing *dynamic,
 > rewritable* bioelectric memory" is the current, defensible claim.
+>
+> **Update (September 2026): Cortical Labs, Koniku, and FinalSpark are not
+> competitors and should not be listed as such.** On review, all three
+> build neuron-based wetware for cognition/sensing tasks (game-playing,
+> explosive detection, AI training), a different product category from
+> memory storage, not a rival for the same customer. They belong in an
+> "adjacent research" bucket instead, and two of them have real, specific
+> technical leads worth studying regardless: Cortical Labs' CL-1 uses
+> high-density electrode arrays (HD-MEAs) to write/read electrical signals
+> into living tissue bidirectionally; Koniku holds a patent (JP6858769) for
+> improved signal-to-noise electrode recording from noisy biological
+> tissue, directly relevant to this project's own native-oscillation
+> readout problem (`docs/SCIENTIFIC_AUDIT_2026.md` Part 12). Koniku's own
+> marketing also claims "high redundancy, stable power consumption,
+> operation in noisy environments," a claim not independently verified
+> against a technical source here, so treat it as a company claim, not a
+> confirmed result. Also add **Biomemory** (Paris-based, acquired Catalog
+> Technologies in 2026, targeting a commercial end-to-end DNA data storage
+> launch by year end) alongside BioCompute Inc. as the real, current
+> DNA-sequence-storage competitors, the category has more active, funded
+> momentum than a single-startup framing suggested.
 
 ## Executive Summary
 
