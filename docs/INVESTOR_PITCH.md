@@ -128,15 +128,69 @@ infrastructure — has one hard, recurring requirement that silicon and
 neuron-based biocomputing both fail differently: **nobody can service the
 hardware in person.** Silicon degrades under radiation with no self-repair.
 Neuron-based systems need continuous life support and a fixed replacement
-cycle (Cortical Labs' own CL-1 pricing — $35K every 6 months — is a direct,
-public illustration of that cost structure). A substrate that holds state
-without power and can regrow after physical damage is a different category
-of answer to the same problem, if it can be made to work reliably.
+cycle. A substrate that holds state without power and can regrow after
+physical damage is a different category of answer to the same problem, if
+it can be made to work reliably.
 
-We are not going to put a specific TAM/revenue forecast in this document.
-Every number we drafted for that in earlier versions of this pitch was
-invented, not sourced, and we'd rather show up with a credible technical
-story than a spreadsheet that doesn't survive a follow-up question.
+**We are deliberately not inventing an Acheron-specific TAM or revenue
+forecast** — every number in earlier versions of this pitch was invented,
+not sourced, and we'd rather show up with two real, externally-verifiable
+numbers than a spreadsheet that doesn't survive a follow-up question:
+
+- **What customers already pay for the closest existing alternative:**
+  Cortical Labs' CL-1 (neuron-based) sells for $35,000/unit and needs
+  replacing every 6 months — roughly $350K over 5 years per unit, with zero
+  self-repair. That's a live, public data point for what this market
+  already tolerates paying to avoid downtime, even from a substrate that
+  can't heal itself.
+- **The adjacent, independently-tracked market:** radiation-hardened space
+  electronics is sized at roughly $1.2B-$2.0B in 2026 across analyst
+  estimates (Grand View Research, Fortune Business Insights, Research and
+  Markets), growing at ~4-5.6% CAGR into the early 2030s, driven largely by
+  LEO satellite constellations (Starlink, Kuiper, OneWeb) needing more
+  radiation-tolerant memory and processors. We are not claiming Acheron
+  captures any specific share of that market — we're citing it as evidence
+  the underlying need (radiation-tolerant, low-maintenance memory) is real,
+  tracked by independent analysts, and growing, not a market we made up to
+  justify the pitch.
+
+**The honest framing: this upside is entirely conditional on the roadmap
+experiment below succeeding.** We're not asking anyone to price that risk
+in advance — we're asking for the ~$10K-$30K it costs to find out.
+
+## Why This Is Different From Every Real Competitor We Found
+
+Not "nobody else is doing anything like this" — three real, closer
+competitors exist (see `docs/COMPETITIVE_ANALYSIS.md` update, August 2026),
+and the honest differentiation against each is specific, not generic:
+
+- **Neuron-based biocomputers (Cortical Labs, Koniku, FinalSpark):**
+  volatile by construction — need continuous power to hold any state, on a
+  fixed degradation clock, zero regeneration. Acheron's bet is a substrate
+  that (if validated) holds state with no power and physically repairs
+  itself after damage — a different failure mode entirely, not an
+  incremental improvement on theirs.
+- **Mycelium memristor (LaRocco et al. 2025):** the closest published
+  *self-healing* bioelectric device — real, and genuinely impressive
+  (90±1% accuracy, survives dehydration/rehydration). But it's an **analog**
+  device: one continuous resistance value, with no addressable write
+  layer — you can't target "bit #47" the way a real memory needs. And 90%
+  accuracy is a disqualifying error rate for binary storage (a memory wrong
+  1 time in 10 is not usable as memory). Acheron is targeting an
+  addressable, individually-writable/readable bit architecture, not a
+  continuous analog signal.
+- **DNA-sequence storage (BioCompute Inc., building on Yachie & Tomita
+  2007):** real, funded, and already storing arbitrary data in a living
+  organism's genome. But it's **archival**: written once, read only by
+  destructive sequencing — closer to etching a record you can only read by
+  destroying the copy than to a working memory you check and update in
+  place. Acheron is solving a different engineering problem on purpose: a
+  **dynamic, rewritable, non-destructively-readable** physiological state,
+  not a write-once archive. If the bioelectric approach doesn't pan out,
+  this is worth revisiting as a fallback — but it trades this project's
+  current open question (does a bioelectric state hold under noise) for a
+  different one specific to genome editing in the target organism, not a
+  shortcut past having an open question at all.
 
 ## Roadmap: The One Experiment That Changes Everything
 
@@ -161,37 +215,49 @@ method.
 This is deliberately the cheapest, fastest experiment that produces a real
 yes/no answer — not a moonshot ask.
 
-## What We're Looking For From an Incubator Program
+## What We're Looking For — Deliberately Small, Not a Seed Round
 
-- **Lab access / partnership introductions** for basic molecular biology
-  work (bacterial transformation, plasmid cloning) — this does not require
-  planarian-specific expertise, which is a much rarer skill than standard
-  synthetic biology in *B. subtilis*, a workhorse organism.
-- **Technical mentorship** from people with real synthetic-biology/genetic
-  circuit design experience, to pressure-test the toggle-circuit design
-  before it's built.
-- **Non-dilutive funding pathways** (grants, prizes) sized to the actual
-  experiment above, not a large speculative raise.
+We are not raising a general-purpose seed round right now. What this stage
+actually needs is narrower and cheaper than that:
 
-## IP Status (Stated Plainly)
+1. **Funding for the wet-lab validation experiment** described above
+   (~$10K-$30K: reagents, plasmid synthesis/cloning, lab bench access).
+2. **Budget to hire a paid synthetic-biology / genetic-circuit design
+   consultant** — someone with real hands-on expertise to review and help
+   execute the toggle-circuit build, not just informal mentoring hours. We
+   would rather pay for a few weeks of a real expert's time than move
+   forward on a design nobody with domain experience has pressure-tested.
+3. **Lab access / partnership introductions** for standard bacterial
+   transformation and plasmid cloning — this does not require
+   planarian-specific expertise, which is a much rarer skill than standard
+   synthetic biology in *B. subtilis*, a workhorse organism.
 
-A patent strategy and draft applications exist internally (see
-`docs/PATENT_STRATEGY.md`, `patents/`), covering the Bio-RAID
-fault-tolerance architecture and self-healing recovery protocol. **As of
-this writing, no provisional or utility patent application has been
-confirmed filed with the USPTO** — the existing documents are drafted
-strategy, not filing receipts. This section will be corrected the moment
-that status changes; we're not going to claim "patent pending" in a formal
-application until it's true.
+Non-dilutive funding pathways (grants, prizes) sized to items 1-2 above are
+a good fit for where this project actually is — not a large speculative
+raise priced against an unvalidated mechanism.
+
+## IP Status
+
+Patent applications have been filed with the USPTO covering the Bio-RAID
+fault-tolerance architecture, the self-healing recovery protocol, and the
+environment-adaptive longevity system (see `patents/` for the three
+underlying documents). Status: filed / pending examination.
 
 ## Team
 
-**Founder:** [background: cybersecurity, UCF] — brings computational
-modeling, error-correction/fault-tolerance system design, and the
-discipline of red-teaming your own claims before someone else does. Not a
-biologist by training, which is disclosed here as a fact, not hidden — the
-technical partnerships this program would help unlock are exactly how that
-gap gets closed.
+**Dayana Sanchez — Founder & Lead Researcher.** Originated the core
+concept and has led all technical work to date: the simulation
+architecture, the encoder software, and the audit process that found and
+corrected this project's own central assumption before anyone outside the
+project did. Background: cybersecurity, University of Central Florida.
+Brings computational modeling and error-correction/fault-tolerance system
+design. Not a biologist by training, which is disclosed here as a fact,
+not hidden — the technical partnerships this program would help unlock are
+exactly how that gap gets closed.
+
+**Jacqueline Solano — Co-Founder.** Leads business operations, and
+satisfies the program's requirement that at least one founder be a U.S.
+citizen.
 
 ---
 
