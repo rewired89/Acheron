@@ -1239,6 +1239,67 @@ it's reported here as an open gap instead.
 
 ---
 
+## Part 14: The Ion Channel Finally Has a Name, and Its Own Promoter Sits on the Circuit's Regulatory Node (September 2026)
+
+**Where this came from:** Acheron Nexus (this project's RAG research
+assistant) added a SubtiWiki collector, and searching the curated
+B. subtilis gene records it surfaces around the biofilm potassium
+pathway led back to a real paper nobody had pulled into this project
+before: Lundberg, Becker & Choe (2013), "MstX and a Putative Potassium
+Channel Facilitate Biofilm Formation in Bacillus subtilis," PLoS ONE
+8(5):e60993, DOI 10.1371/journal.pone.0060993, PMID 23737939.
+
+**What it establishes.** Two prior audit entries (Part 12) named the
+mechanism generically — "the voltage-gated potassium channel," citing
+the Prindle lab's discovery and its modeling follow-ups — without ever
+naming the gene, because none of those three papers name it either
+(they model the wave, not the channel's own genetics). Lundberg et al.
+2013 do: the channel is **yugO**, a TrkA-domain K+ efflux channel
+encoded immediately downstream of **mstX** in a two-gene operon. Three
+facts from that paper matter directly to this project's own simulations:
+
+1. The **mstX-yugO operon has a confirmed SinR binding site** (verified
+   by ChIP) and is transcriptionally **repressed by SinR** — the same
+   master biofilm regulator that also represses the epsA-O and
+   tapA-sipW-tasA matrix operons this project's BBB-chassis promoter
+   choices (`gardner_toggle_circuit.py`) are drawn from.
+2. Once expressed, YugO's K+ efflux **activates the histidine kinase
+   KinC**, which phosphorylates Spo0A, whose phosphorylated form
+   represses SinR — a real, published positive-feedback loop, not an
+   assumed one.
+3. `mstX-yugO` transcription is low during log-phase growth and rises
+   specifically under biofilm-forming conditions, confirmed by RT-PCR
+   and RNA harvested at both growth stages.
+
+**What this changes, and what it doesn't.**
+`gardner_toggle_circuit.py`'s "hypothetical ion-channel-expression link"
+now has a named, literature-characterized candidate channel and
+promoter instead of no candidate at all — a materially more concrete
+starting point for anyone eventually trying to wire the toggle's output
+to a real channel. It does NOT mean that link is validated: nobody has
+measured a Gardner-topology circuit driving yugO specifically. And
+`native_oscillation_interference.py`'s explicitly-scoped-out question —
+whether the biofilm's native oscillation could feed back into the
+engineered circuit's own genetic state, not just its voltage readout —
+is now known to have a real analogue in the literature (yugO's own
+expression is itself gated by the SinR/Spo0A node), even though no
+paper yet shows that specific feedback path reaching an engineered
+circuit. Both files have been updated in place with these citations
+and the distinction between "a real candidate now exists" and "the
+link is validated" preserved exactly as strictly as everywhere else in
+this audit.
+
+**The actionable takeaway:** before committing to a specific BBB
+promoter for the engineered toggle, check whether it is itself
+SinR/Spo0A-regulated (many biofilm-stage promoters are, by construction
+of what BBB characterized). If it is, the interference risk flagged in
+Part 12 is not just "shared membrane real estate" — it is a shared
+upstream transcriptional regulator, and that is a concrete, checkable
+design constraint this audit did not have language for before this
+SubtiWiki-sourced search.
+
+---
+
 ## Next Action: One Experiment Changes Everything
 
 **The experiment:**

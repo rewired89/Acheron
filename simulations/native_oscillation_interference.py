@@ -45,6 +45,26 @@ stay unaffected - if it doesn't, that itself would be worth investigating
 as a modeling bug, not a real biological finding, given how this file is
 built.
 
+UPDATE (September 2026): a third, separate paper narrows how conservative
+that scoping choice actually is. Lundberg, Becker & Choe (2013), "MstX and
+a Putative Potassium Channel Facilitate Biofilm Formation in Bacillus
+subtilis," PLoS ONE 8(5):e60993, DOI 10.1371/journal.pone.0060993, PMID
+23737939, name the channel behind the Prindle-lab potassium wave (yugO)
+and show its own operon is repressed by SinR and, once active, drives K+
+efflux that activates the histidine kinase KinC, which phosphorylates
+Spo0A, which represses SinR - a real, published transcriptional feedback
+loop sitting on exactly the SinR/Spo0A regulatory node this project's BBB
+chassis promoters are drawn from. That is still not the same citation as
+"the native oscillation flips THIS engineered circuit's u/v state" - this
+paper describes yugO's own regulation, not a demonstrated link into a
+Gardner-topology toggle - so the voltage-only scope below remains the
+honest thing to simulate today. But it moves the un-tested genetic-feedback
+scenario from "a real possibility, unestablished in the literature" to "a
+mechanistically analogous loop is established in the literature, just not
+yet for this specific engineered promoter" - worth a follow-up test if the
+BBB promoter this project ultimately picks turns out to be SinR/Spo0A-
+regulated itself.
+
 GROUNDING FOR THE PERTURBATION PARAMETERS:
 - Period: 2-4 hours, real range from both papers (simulated 3-4h, a
   comparison experiment in Martinez-Corral et al. ~2-3h, per Ford et al.
