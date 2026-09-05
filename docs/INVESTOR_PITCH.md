@@ -1,434 +1,205 @@
-# Acheron: The Bio-Hard Drive
-## Self-Healing Bioelectric Memory for Extreme Environments
+# Acheron: Self-Healing Bioelectric Memory
+## Persistent, Regenerative Data Storage in Living Cells
 
-**Investor Pitch Deck - December 2025**
+**Pitch Narrative — Updated September 2026**
 
----
-
-## The Problem: Neurons Die
-
-**Current biocomputing companies use neurons. Neurons are volatile RAM.**
-
-| Company | Technology | Lifespan | Issue |
-|---------|-----------|----------|-------|
-| **Cortical Labs** | Human neurons on silicon | 6 months | Cells die, $35K replacement |
-| **Koniku** | Neuron sensors | 2 years | Limited applications |
-| **FinalSpark** | Brain organoids | Unknown | Early stage |
-
-**Cost to customer:**
-- Cortical Labs CL-1: $35,000 every 6 months
-- Operational cost: Life support systems, controlled environment
-- **Failure mode**: No self-healing - one crack kills the chip
-
-**The market is waiting for persistent, regenerative bioelectric memory.**
+*This replaces the December 2025 version of this document. That version cited
+"24hr pattern persistence" and "<1% bit error rate" as simulation proof
+points. Acheron's own later noise-floor testing (see
+`docs/SCIENTIFIC_AUDIT_2026.md`, Part 8) found those numbers only hold in a
+zero-noise simulation; under realistic biological noise, integrity collapses
+toward a coin flip. This document is written to be defensible under
+technical due diligence — every claim below is either a cited fact, a
+clearly-labeled simulation result with its caveats, or a clearly-labeled
+open question. Nothing here should be softened to sound more impressive;
+that already backfired once in this project's history.*
 
 ---
 
-## The Solution: Planarian Somatic Memory
+## The Problem
 
-**We use planarian cells instead of neurons. Planarians are the most regenerative organisms on Earth.**
+Every commercial biocomputing product today uses **neurons** as the
+computing substrate:
 
-### Key Advantages
+| Company | Substrate | Lifespan | Price |
+|---|---|---|---|
+| Cortical Labs | Human neurons on silicon (CL-1) | 6 months | $35,000/unit |
+| Koniku | Neuron-silicon sensing chips | ~2 years | Not public |
+| FinalSpark | Brain organoids | Not public | Cloud access only |
 
-| Feature | Neurons (Competitors) | Planarian Cells (Acheron) |
-|---------|----------------------|---------------------------|
-| **Memory Type** | Volatile (needs power) | Persistent (stable attractors) |
-| **Lifespan** | 6 months - 2 years | Indefinite (regenerates) |
-| **Self-Healing** | ❌ None | ✅ Full regeneration |
-| **Extreme Environments** | ❌ Lab only | ✅ Radiation, temperature, pressure |
-| **Energy** | High (life support) | Low (hardy cells) |
+Neurons are excitable cells: they need continuous energy to hold a signal,
+they degrade on a fixed clock, and none of them regenerate. That's fine for
+fast computation. It's a bad fit for **long-duration, low-maintenance
+storage** — the kind needed on a spacecraft, a seafloor sensor, or any
+system nobody can walk up to and repair.
 
-### The Science (30-Second Version)
+## The Idea
 
-Planarians store their "body plan" in bioelectric voltage patterns. Cut one in half → both halves regenerate complete worms.
+Some organisms maintain voltage patterns across their tissue for long
+periods without active energy input, and can **regrow the tissue itself**
+after physical damage. Michael Levin's lab (Tufts) demonstrated this in
+planarian flatworms: cut one in half, and the bioelectric pattern that
+determines "this end grows a head" survives the cut and gets faithfully
+rebuilt in both halves — sometimes even when researchers deliberately
+altered it (his lab's two-headed-worm result). That's a real, published,
+frequently-replicated finding.
 
-**We hijack this system to store arbitrary data.**
+**Acheron's question:** can that same kind of biological system — voltage
+state plus a strong regenerative/inheritance mechanism — be used to store
+*arbitrary* binary data, not just the organism's own natural body-plan
+signal? If yes, that's a memory substrate that needs no power to hold its
+state and can survive and repair physical damage that would destroy silicon
+or kill a neuron culture outright.
 
-Binary '1' = High voltage cluster
-Binary '0' = Low voltage cluster
-**Pattern persists for weeks without power.**
+## What We Actually Know So Far (and What We Don't)
 
----
+This is the section most pitch decks skip. We think it's the reason to take
+this one seriously.
 
-## The Technology: Three Layers
+**What's real, independent of us:**
+- Bioelectric control of body-plan patterning in planaria is real,
+  published, and reproduced across multiple labs (Levin et al., multiple
+  papers 2006–2023).
+- Engineered genetic bistability — a synthetic circuit that holds one of
+  two states indefinitely once flipped — is a solved, 25-year-old result in
+  a different organism: Gardner, Cantor & Collins built exactly this in
+  *E. coli* in 2000 (*Nature*), explicitly describing it as an addressable
+  cellular memory unit.
+- Non-destructive electrical readout of living bacterial biofilm state is
+  real and recent: Akabuogu et al. (2024, *Nano Letters*) showed a simple
+  two-electrode impedance measurement distinguishes live from dead biofilm,
+  tied to a specific ion channel's activity — a candidate low-cost readout
+  mechanism.
 
-### 1. Software (Immediate Revenue)
+**What we found by actually testing our own assumptions, not just citing
+others' (full detail in `docs/SCIENTIFIC_AUDIT_2026.md`):**
+- Our first-pass simulation's headline result (patterns hold for 24+ hours
+  with near-zero error) only holds with zero noise. Add realistic
+  biological noise sources (channel noise, metabolic fluctuation,
+  cell-to-cell variability) and it decays toward chance within hours. This
+  was our own finding, from our own code, and we're leading with it rather
+  than burying it.
+- The fix is identifiable and specific: passive bioelectric persistence
+  isn't enough; the system needs an **actively engineered bistable
+  circuit** (Gardner-style), not just "cells doing what cells naturally
+  do." We modeled this circuit (`simulations/gardner_toggle_circuit.py`)
+  using real, chassis-matched, already-characterized genetic parts (the
+  Bacillus BioBrick Box), and it holds state reliably in simulation — with
+  one concrete, previously-hidden design constraint surfaced: the two
+  promoters driving the circuit must be closely matched in strength, or the
+  circuit isn't bistable at all, just monostable and useless as a switch.
+- We ran a **cross-organism comparison** most projects never bother to run
+  honestly against their own preferred organism: at identical simulated
+  damage/regrowth conditions, an engineered circuit in *B. subtilis*
+  (bacteria) is currently the best-grounded path (its inheritance mechanism
+  — cell division copying existing protein — is mechanistically forced, not
+  a modeling assumption), a DNA-methylation-based mechanism in the same
+  organism is medium-confidence (real fidelity numbers exist, but only from
+  a different species), and the original planarian-circuit approach is
+  currently the least-grounded of the three (the cell-coupling strength in
+  our planarian model is a borrowed assumption, never measured in real
+  planarian tissue). **We are reporting this even though it means our
+  original organism choice is currently our weakest-evidence option** —
+  because knowing that now, before spending wet-lab money, is the entire
+  point of doing the simulation work first.
+- We also found and are reporting a specific new risk before anyone asked
+  about it: *B. subtilis* biofilms have their own natural electrical
+  signaling (a potassium-wave mechanism, published by the Prindle lab,
+  2015) that runs continuously regardless of anything we build, and our
+  simulation shows it can corrupt an instantaneous voltage reading even
+  when the underlying engineered circuit's data is completely intact. This
+  is a solvable engineering problem (timing the read around the natural
+  oscillation, or using the impedance-based readout instead of raw
+  voltage), not a fatal one, but it's the kind of thing that only surfaces
+  from actually building and stress-testing the model.
 
-**Bioelectric Pattern Encoder** - translates binary data → voltage patterns
+**The one open question everything else depends on:**
+Does an engineered bistable circuit, once built in a living cell that also
+has strong regenerative/inheritance properties, actually hold a
+*non-natural* data pattern through damage and regrowth — not just through
+normal cell division? Nobody has tested this in any organism. It is a
+defined, falsifiable, relatively cheap experiment (see Roadmap), not an
+open-ended unknown.
 
-**Key IP:** No other company has this. Works with ANY wetware substrate.
+## Why This Matters Commercially
 
-**Go-to-Market:**
-- License to Cortical Labs, Koniku, FinalSpark
-- $50K/year + 2% hardware revenue share
-- **Year 1 revenue target:** 3 licenses = $150K
+Extreme-environment computing — spacecraft, deep-sea systems, remote
+infrastructure — has one hard, recurring requirement that silicon and
+neuron-based biocomputing both fail differently: **nobody can service the
+hardware in person.** Silicon degrades under radiation with no self-repair.
+Neuron-based systems need continuous life support and a fixed replacement
+cycle (Cortical Labs' own CL-1 pricing — $35K every 6 months — is a direct,
+public illustration of that cost structure). A substrate that holds state
+without power and can regrow after physical damage is a different category
+of answer to the same problem, if it can be made to work reliably.
 
-### 2. Hardware (Year 2-3)
+We are not going to put a specific TAM/revenue forecast in this document.
+Every number we drafted for that in earlier versions of this pitch was
+invented, not sourced, and we'd rather show up with a credible technical
+story than a spreadsheet that doesn't survive a follow-up question.
 
-**Optogenetic Write/Read System**
-- DMD (Digital Micromirror Device) for light patterning
-- Voltage-sensitive dye imaging for readout
-- Microfluidic chip for cell culture
+## Roadmap: The One Experiment That Changes Everything
 
-**Prototype Cost:** $30K (DMD + microscope + chips)
+Per our own audit's conclusion, this is the actual next step, not a general
+research program:
 
-### 3. Wetware (Year 3+)
+**Experiment:** Build the matched-promoter Gardner-style toggle circuit
+(using the already-characterized Bacillus BioBrick Box parts our simulation
+identified) in *B. subtilis*, write a bit, damage the colony, let it regrow
+from survivors, and measure whether the bit reads back correctly —
+non-destructively, using electrical impedance spectroscopy as the readout
+method.
 
-**Planarian Cell "Chips"**
-- 8-bit prototype (Year 3)
-- 64-bit commercial product (Year 4)
-- 512-bit space-certified (Year 5)
+- **Cost:** ~$10K–$30K (reagents, plasmid synthesis/cloning, a lab
+  partnership providing bench access and culturing expertise)
+- **Timeline:** 6–12 months
+- **Outcome:** Either validates the core mechanism (clear path to a
+  multi-bit prototype) or falsifies it cleanly (redirect to the
+  methylation-based mechanism, which is next in line by our own confidence
+  ranking)
 
-**Target Price:** $10K (8-bit), $50K (64-bit) - undercuts Cortical Labs and never needs replacement
+This is deliberately the cheapest, fastest experiment that produces a real
+yes/no answer — not a moonshot ask.
 
----
+## What We're Looking For From an Incubator Program
 
-## Market Opportunity
+- **Lab access / partnership introductions** for basic molecular biology
+  work (bacterial transformation, plasmid cloning) — this does not require
+  planarian-specific expertise, which is a much rarer skill than standard
+  synthetic biology in *B. subtilis*, a workhorse organism.
+- **Technical mentorship** from people with real synthetic-biology/genetic
+  circuit design experience, to pressure-test the toggle-circuit design
+  before it's built.
+- **Non-dilutive funding pathways** (grants, prizes) sized to the actual
+  experiment above, not a large speculative raise.
 
-### Primary: Extreme Environment Computing
+## IP Status (Stated Plainly)
 
-**Space** ($50B+ market by 2030)
-- NASA, SpaceX, Axiom, Blue Origin
-- **Pain point:** No replacement parts on Mars
-- **Our solution:** Self-healing chips survive radiation
-
-**Deep Sea** ($5B+ market)
-- NOAA, offshore oil, submarine cables
-- **Pain point:** Impossible to service at depth
-- **Our solution:** Regenerates after pressure damage
-
-**Military** ($$$ classified budgets)
-- DARPA, DoD
-- **Pain point:** Silicon chips vulnerable to exploits
-- **Our solution:** Biologically unique, physically unclonable
-
-### Secondary: Bioelectric Platform
-
-**Software licensing to wetware companies**
-- Cortical Labs (100 units/year × $35K = $3.5M revenue → $70K license to us)
-- Koniku (commercial sensing)
-- FinalSpark + future entrants
-
-**Platform Strategy:** Become the "operating system" for bioelectric memory
-
-### Market Size (TAM/SAM/SOM)
-
-- **TAM** (Total Addressable): $100B+ (biocomputing + space hardware)
-- **SAM** (Serviceable): $5B (extreme environment + wetware software)
-- **SOM** (Obtainable Year 5): $10M (500 units at $20K avg)
-
----
-
-## Competitive Moat
-
-### 1. First-Mover Advantage
-**No one uses planarian cells for computing.**
-- USPTO/EPO patent search: Zero results for "planarian bioelectric computing"
-- Closest: Morphoceuticals (uses Levin's work for medicine, NOT computing)
-
-### 2. Software IP
-**Bioelectric encoder is substrate-agnostic.**
-- Competitors NEED this to improve precision
-- We can license to them while building our own hardware
-
-### 3. Niche Dominance
-**We own the extreme environment category.**
-- Cortical Labs' neurons die in space radiation
-- Our cells evolved to survive extreme conditions
-
-### 4. Academic Partnerships
-**Tufts University (Levin Lab) alignment**
-- Open-source BETSE simulator validates our approach
-- Potential scientific advisory board member
-- Credibility for grants/contracts
-
----
-
-## Traction
-
-### Completed (Month 0)
-✅ Competitive analysis - identified 5 critical gaps
-✅ BETSE-based simulator - proves 24hr pattern persistence
-✅ Bioelectric encoder (first version)
-✅ Technical white paper (40 pages)
-✅ Open-source repository (community building)
-
-### Next 6 Months
-🎯 Provisional patent filing
-🎯 Lab partnership (Tufts/Wyss)
-🎯 First software license customer
-🎯 Single-bit wetware demonstration
-
-### Next 12-18 Months
-🎯 8-bit storage demo
-🎯 Self-healing demo (cut & regenerate)
-🎯 Space certification process started
-🎯 Series A ($5-10M)
-
----
-
-## Business Model
-
-### Revenue Streams
-
-**Year 1-2: Software**
-- Encoder SDK licenses: $50K/year each
-- Consulting/integration: $200/hr
-- Revenue share: 2% of hardware using our software
-
-**Year 3+: Hardware**
-- 8-bit chips: $10K
-- 64-bit chips: $50K
-- Custom designs: Quote-based
-
-### Revenue Projections
-
-| Year | Software Licenses | Hardware Units | Total Revenue | Gross Margin |
-|------|-------------------|----------------|---------------|--------------|
-| 1 | 3 | 0 | $150K | 95% |
-| 2 | 5 | 10 prototypes | $350K | 90% |
-| 3 | 8 | 50 | $1M | 70% |
-| 4 | 15 | 200 | $3M | 75% |
-| 5 | 25 | 500 | $10M+ | 80% |
-
-**Gross margins:** Software is 95%+, Hardware 70-80% (higher than electronics due to no replacement costs)
-
----
-
-## The Ask
-
-### Seed Round: $500K
-
-**Use of Funds:**
-
-| Category | Amount | Purpose |
-|----------|--------|---------|
-| **Lab Partnership** | $150K | Wetware validation (6 months at Tufts/Wyss) |
-| **Hardware Prototyping** | $100K | DMD, microscope, microfluidics |
-| **Team** | $150K | Hire 1-2 engineers (part-time) |
-| **IP Protection** | $50K | Provisional patent, trademark |
-| **Operations** | $50K | Cloud compute, facilities, misc |
-
-**Milestones Unlocked:**
-- Single-bit wetware demo (proof of concept)
-- Provisional patent filed
-- First software license customer
-- 8-bit simulation validated
-
-**Next Raise (Series A, Month 18):** $5-10M for manufacturing scale-up
-
----
+A patent strategy and draft applications exist internally (see
+`docs/PATENT_STRATEGY.md`, `patents/`), covering the Bio-RAID
+fault-tolerance architecture and self-healing recovery protocol. **As of
+this writing, no provisional or utility patent application has been
+confirmed filed with the USPTO** — the existing documents are drafted
+strategy, not filing receipts. This section will be corrected the moment
+that status changes; we're not going to claim "patent pending" in a formal
+application until it's true.
 
 ## Team
 
-### Founder
-**[Your Name]** - [Background]
-- Technical vision: Bioelectric memory architecture
-- Identified market gap via Gemini AI analysis + competitive research
-- Built simulation + encoder software (2 weeks)
-
-### Advisors (Target)
-
-**Scientific:**
-- **Dr. Michael Levin** (Tufts) - World expert on bioelectric morphogenesis
-- Target: Scientific advisory board member
-
-**Technical:**
-- Optogenetics expert (Stanford/MIT)
-- Microfluidics engineer (Wyss Institute)
-
-**Business:**
-- Biotech commercialization (preferably hardware)
-- Space industry connections (NASA/SpaceX)
-
-### Hiring Plan (Post-Seed)
-
-**Immediate (Month 1-3):**
-1. **Cell Biologist** - Planarian culture expert
-2. **Software Engineer** - Encoder optimization
-
-**After Validation (Month 6-12):**
-3. **Hardware Engineer** - Optogenetics, DMD
-4. **Business Development** - Licensing, partnerships
+**Founder:** [background: cybersecurity, UCF] — brings computational
+modeling, error-correction/fault-tolerance system design, and the
+discipline of red-teaming your own claims before someone else does. Not a
+biologist by training, which is disclosed here as a fact, not hidden — the
+technical partnerships this program would help unlock are exactly how that
+gap gets closed.
 
 ---
 
-## Why Now?
+**Contact:** sanchezleal1989@gmail.com
+**Repository:** github.com/rewired89/Acheron (open — includes the full
+simulation code, the audit that found our own result didn't hold up, and
+the corrected path forward)
 
-### 1. Wetware Market is Forming
-- Cortical Labs just launched CL-1 ($35K, March 2025)
-- FinalSpark, Koniku both active
-- **Market education happening** - we don't need to explain "biocomputing"
-
-### 2. Levin Lab Science is Mature
-- 15+ years of planarian bioelectric research
-- BETSE simulator is open-source (we validated it works)
-- **Science de-risked** - we're engineering, not discovering
-
-### 3. Space Economy Booming
-- SpaceX Starship operational
-- NASA Artemis moon missions
-- Commercial space stations (Axiom, Blue Origin)
-- **They need radiation-hard, self-healing hardware**
-
-### 4. DARPA Loves This Stuff
-- Biological Technologies Office (BTO) active
-- Recent programs: Living Foundries, Engineered Living Materials
-- **We fit their thesis** - sovereign, unclonable biocomputing
-
----
-
-## Risk Mitigation
-
-### Technical Risks
-
-**Risk:** Patterns don't persist in real cells (only in simulation)
-**Mitigation:** Levin Lab already demonstrated planarian bioelectric memory persists. We're applying it differently.
-
-**Risk:** Optogenetic writing doesn't work precisely enough
-**Mitigation:** Channelrhodopsin is mature technology (Nobel Prize 2024). Precision is engineering problem, not science problem.
-
-### Market Risks
-
-**Risk:** No one wants bioelectric memory
-**Mitigation:** Cortical Labs sold out first production run. Koniku has Airbus partnership. Market exists.
-
-**Risk:** Competitors copy us
-**Mitigation:**
-1. Patent filing (Month 3)
-2. First-mover advantage (Cortical took 3 years from science → product)
-3. Software licensing generates revenue before hardware
-
-### Execution Risks
-
-**Risk:** Can't get lab partnership
-**Mitigation:** Multiple targets (Tufts, Wyss, Stanford). Science is publishable even if commercial path slows.
-
-**Risk:** Regulatory issues (FDA?)
-**Mitigation:** NOT medical device. Industrial computing = no FDA. Export controls possible (bonus - proves value to military).
-
----
-
-## Exit Scenarios
-
-### Acquisition Targets (3-5 years)
-
-**Strategic Acquirers:**
-1. **Cortical Labs** - Adds persistent memory to their platform ($50-100M)
-2. **Koniku** - Adds computing to their sensing ($30-80M)
-3. **Intel/NVIDIA** - Defensive biocomputing position ($100M+)
-4. **Lockheed Martin / Northrop Grumman** - Space/military applications ($200M+)
-
-**Timeline:** Year 4-5 (after demonstrating self-healing + space certification)
-
-### IPO Path (8-10 years)
-
-**Precedent:** Organovo (3D bioprinting) IPO'd at $200M market cap
-**Our Advantage:** Actual revenue from hardware + software (not just research)
-
----
-
-## The Unfair Advantage
-
-**Everyone else is trying to make biology work like silicon.**
-
-**We're making silicon work like biology.**
-
-Neurons evolved for speed. Planarian somatic cells evolved for resilience.
-
-**Space doesn't need nanoseconds. It needs self-healing.**
-
----
-
-## Appendix: Technical Deep Dive
-
-### How It Works (3 Steps)
-
-**1. Write**
-- Shine blue light on cells (channelrhodopsin) → depolarize to -10mV = '1'
-- Shine yellow light (halorhodopsin) → hyperpolarize to -70mV = '0'
-- Gap junctions spread pattern, stabilizes into morphogenetic attractor
-
-**2. Store**
-- Voltage pattern persists due to bioelectric feedback loops
-- No active energy required (unlike neurons)
-- Can refresh weekly if needed (but not required for months)
-
-**3. Read**
-- Voltage-sensitive fluorescent dye imaging
-- Above -40mV = '1', below -40mV = '0'
-- Error correction via spatial redundancy (9 cells per bit)
-
-### Proof Points from Simulation
-
-**Test:** Write "10110101" (8 bits), simulate 24 hours
-**Results:**
-- Integrity ratio: 0.76 (>0.7 threshold)
-- Bit error rate: <1%
-- Pattern distinguishable from noise
-
-**Conclusion:** Physics supports our thesis.
-
-### Why Planarians are Perfect
-
-**Radiation Resistance:**
-- Survive 10x radiation dose that kills neurons
-- Space application validated
-
-**Temperature Range:**
-- Function from 4°C to 30°C
-- Deep-sea application validated
-
-**Regeneration Speed:**
-- Full body regrowth in 7-14 days
-- Self-healing validated
-
-**Bioelectric Pattern Memory:**
-- Levin Lab: Patterns persist through tissue turnover
-- Two-headed planarians regenerate with two heads indefinitely
-- Memory validated
-
----
-
-## Call to Action
-
-**We are not building another neuron chip.**
-
-**We are building the bio-hard drive.**
-
-**Join us in creating persistent, self-healing bioelectric memory for the next frontier: space, ocean, and sovereign computing.**
-
----
-
-### Contact
-
-**Founder:** [Your Name]
-**Email:** [Your Email]
-**GitHub:** github.com/[repo]/Acheron (open-source simulator)
-**Website:** [To be created]
-
-**Calendar:** [Schedule 30-min intro call]
-
----
-
-**Appendix Materials:**
-- 📄 Technical White Paper (40 pages)
-- 📊 Competitive Analysis
-- 💻 Open-Source Simulator (runnable demo)
-- 📈 Detailed Financial Model
-
-**Patent Status:** Provisional filing in progress (Month 3)
-**Team Slide:** [Detailed bios]
-**References:** Available upon request (cannot publicly share Levin Lab contacts)
-
----
-
-*"The best way to predict the future is to invent it."*
-*- Alan Kay*
-
-**We're not predicting biocomputing. We're building it.**
-
----
-
-**CONFIDENTIAL - DO NOT DISTRIBUTE**
-*This pitch deck contains proprietary information. By reading this, you agree to maintain confidentiality unless otherwise agreed in writing.*
+*This document intentionally leads with what we got wrong and how we found
+out, because that process is the actual asset here — not a projection
+nobody could verify.*
