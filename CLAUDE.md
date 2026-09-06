@@ -116,6 +116,29 @@ rather than assuming they're present.
   feature branches) at the founder's explicit direction. Confirm this is
   still wanted rather than assuming it as a permanent rule.
 
+## CodeMap Protocol
+
+`CODEMAP.md` (project root) is a structural reference for `analysis/`,
+`encoder/`, `simulations/`, `experiments/`, `tests/`,
+`third_party/electric_morphogenesis/`, `docs/pitch/build_deck.js`, and
+`NEXT_STEPS.py`, not a replacement for reading the source.
+
+- At the start of a task, read only the `CODEMAP.md` section(s) relevant to
+  it, not the whole file.
+- Before modifying a symbol documented there, verify its current
+  implementation in the source file, the source is always authoritative if
+  the two disagree.
+- After adding, deleting, or materially changing an architecturally
+  meaningful symbol (a class, or a function that's either an entry point or
+  imported by another module), update its `CODEMAP.md` entry. Trivial
+  local-variable-level changes don't need an update.
+- `CODEMAP.md` must be committed together with the structural code change
+  that prompted the update, not separately.
+- If the repository grows past 150 source files or gains a genuinely
+  separate service/app, re-map incrementally per unit (see `CODEMAP.md`'s
+  own header for why it was mapped in one pass at 44 files) rather than
+  regenerating the whole file at once.
+
 ## Next steps (as of September 2026, so a new session doesn't have to re-derive this)
 
 1. **Decide on `partnerships/ORLANDO_LAB_PARTNERSHIPS.md`**: still contains
@@ -130,5 +153,6 @@ rather than assuming they're present.
    the pptx skill's validate + markitdown text-dump QA before sending, the
    founder has flagged small wording/tone issues multiple times and wants a
    careful read-through, not a fast turnaround.
-4. **No CODEMAP.md exists yet.** The founder said she'd provide steps to
-   create one in a future session.
+4. **`CODEMAP.md` now exists** (created September 2026, single-pass, 44
+   source files). Keep it updated per the CodeMap Protocol above rather than
+   letting it drift, and re-map incrementally if the repo passes 150 files.
