@@ -296,11 +296,7 @@ underlying documents). Status: filed / pending examination.
 concept and has led all technical work to date: the simulation
 architecture, the encoder software, and the audit process that found and
 corrected this project's own central assumption before anyone outside the
-project did. Background: cybersecurity, University of Central Florida.
-Brings computational modeling and error-correction/fault-tolerance system
-design. Not a biologist by training, which is disclosed here as a fact,
-not hidden, the technical partnerships this program would help unlock are
-exactly how that gap gets closed.
+project did.
 
 **Jacqueline Solano, Co-Founder.** Leads business operations, and
 satisfies the program's requirement that at least one founder be a U.S.
