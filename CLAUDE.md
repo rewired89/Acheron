@@ -86,6 +86,15 @@ rather than assuming they're present.
   script is `docs/pitch/build_deck.js` (Node + pptxgenjs), edit that and
   rerun it, don't hand-edit the compiled `.pptx`. See the pptx skill's
   validate/QA workflow before shipping any rebuild.
+  `Acheron_Validation_Proposal.docx` is the existing staged wet-lab funding
+  ask (Stages 0-3, cost/time ranges, honest risk disclosure) that the
+  crowdfunding drafts below are built from, don't re-derive its numbers.
+  `EXPERIMENT_COM_CAMPAIGN.md` and `WEFUNDER_REPUBLIC_REG_CF_CAMPAIGN.md`
+  (added September 2026) are draft campaign copy for rewards-based
+  science crowdfunding and Reg CF equity crowdfunding respectively, not
+  yet reviewed by the founder or (for the Reg CF one) a securities
+  attorney; treat both as drafts pending that review, not as ready to
+  publish.
 - **Never invent or carry forward unverified personal/biographical facts about
   the founders** (name, school, background) into any document without an
   explicit confirmation in the current conversation. This has happened once
