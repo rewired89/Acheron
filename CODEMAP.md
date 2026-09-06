@@ -481,6 +481,16 @@ they depend on each other.
   used_by: `main` (in the same file)
   side_effects: none
 
+- name: `sweep_design_space`, `rank_designs`
+  type: function
+  file: simulations/circuit_variant_predictor.py
+  purpose: composes gardner_toggle_circuit.py's promoter-strength-ratio sweep with bacterial_colony_regrowth.py's division-based damage-regrowth mechanism into one design-space grid (ratio x surviving fraction), then ranks the already-BBB-grounded promoter pairings by how little surviving fraction each needs to still clear the 70% combined-fidelity bar, to prioritize which construct to build for the wet-lab damage-regrowth test (CLAUDE.md throughline item 6). Introduces no new numeric parameters, only recombines already-cited ones
+  inputs: `ratios: List[float]`, `fractions: List[float]`, `n_trials: int = 10`
+  outputs: per-cell bit0/bit1/combined fidelity dict; a ranked list of ratios by min surviving fraction needed
+  dependencies: `simulations.gardner_toggle_circuit.GardnerParams`, `simulations.bacterial_colony_regrowth.run_colony_trial`
+  used_by: `main` (in the same file)
+  side_effects: none
+
 ---
 
 ## experiments/ — runnable demonstrations and diagnostic scripts
