@@ -1,4 +1,4 @@
-# Acheron: Does an Engineered Genetic Toggle Switch Actually Flip in Living Bacteria?
+# Building a Stable On/Off Switch Inside Living Bacteria
 
 **Draft campaign copy for Experiment.com. Written to that platform's standard section
 structure so it can be pasted into a new project with minimal editing. Confirm current
@@ -12,7 +12,7 @@ since those have changed over time and are not something to assume from this dra
 
 Testing whether a real, freely available synthetic-biology circuit design creates two
 stable, switchable genetic states in living *Bacillus subtilis*, the first wet-lab test
-behind a from a computational research project into engineered biological memory.
+from a computational research project into engineered biological memory.
 
 ## Funding goal
 
