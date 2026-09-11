@@ -195,7 +195,7 @@ function kicker(s, text, x, y, color) {
   s.addText([
     { text: "Living cell", options: { bold: true, color: INK } }, { text: " = a reusable notebook.  ", options: { color: MUTED } },
     { text: "Writing a bit", options: { bold: true, color: INK } }, { text: " = a pencil note in it.  ", options: { color: MUTED } },
-    { text: "The organism splitting/regrowing", options: { bold: true, color: INK } }, { text: " = photocopying the notebook.  ", options: { color: MUTED }, breakLine: true },
+    { text: "The organism splitting/regrowing", options: { bold: true, color: INK } }, { text: " = photocopying the notebook.  ", options: { color: MUTED, breakLine: true } },
     { text: "The new organism", options: { bold: true, color: INK } }, { text: " = a new notebook that already has the note copied in.  ", options: { color: MUTED } },
     { text: "Self-healing", options: { bold: true, color: INK } }, { text: " = the original notebook erases its own note and is ready to write a new one.", options: { color: MUTED } },
   ], { x: 1.0, y: 5.4, w: 11.4, h: 1.25, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 13.5, lineSpacingMultiple: 1.3 });
@@ -291,7 +291,7 @@ function kicker(s, text, x, y, color) {
   s.addShape("line", { x: 1.0, y: py + 0.05, w: 6.8, h: 0, line: { color: "E4E9EA", width: 1 } });
   s.addText("What running the combined model found", { x: 1.0, y: py + 0.2, w: 6.8, h: 0.4, isTextBox: true, margin: 0, fontFace: HEAD_FONT, fontSize: 15, bold: true, color: INK });
   s.addText([
-    { text: "The real finding isn't that a matched circuit works (it does, 100% fidelity at 24 hours), it's what happens at severe promoter mismatch: ", options: { color: MUTED }, breakLine: true },
+    { text: "The real finding isn't that a matched circuit works (it does, 100% fidelity at 24 hours), it's what happens at severe promoter mismatch: ", options: { color: MUTED, breakLine: true } },
     { text: "the circuit doesn't degrade gracefully, it loses bistability entirely and always relaxes to the same state.", options: { bold: true, color: INK } },
   ], { x: 1.0, y: py + 0.65, w: 6.8, h: 1.3, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 12.5, lineSpacingMultiple: 1.2 });
 
@@ -592,10 +592,11 @@ function kicker(s, text, x, y, color) {
   });
 
   s.addText([
-    { text: "Dayana: sanchezleal1989@gmail.com", options: { color: WHITE, bold: true }, breakLine: true, paraSpaceAfter: 3 },
-    { text: "Jacqueline: jackiea.solano@gmail.com", options: { color: WHITE, bold: true }, breakLine: true, paraSpaceAfter: 3 },
-    { text: "github.com/rewired89/Acheron", options: { color: "AEC2C8" } },
-  ], { x: 0.7, y: 6.15, w: 8, h: 1.0, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 14 });
+    { text: "Dayana Sanchez: sanchezleal1989@gmail.com", options: { color: WHITE, bold: true, breakLine: true, paraSpaceAfter: 4 } },
+    { text: "https://github.com/rewired89/Acheron.git", options: { color: "AEC2C8", breakLine: true, paraSpaceAfter: 4 } },
+    { text: " ", options: { breakLine: true, paraSpaceAfter: 4 } },
+    { text: "Jacqueline Solano: jackiea.solano@gmail.com", options: { color: WHITE, bold: true } },
+  ], { x: 0.7, y: 6.0, w: 9.5, h: 1.4, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 13 });
   pageNum(s, 16, true);
 }
 
