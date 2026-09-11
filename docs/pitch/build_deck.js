@@ -397,9 +397,9 @@ function kicker(s, text, x, y, color) {
     ["Passive persistence fails",
       "24h bit integrity collapses from 100% (zero-noise) to ~50-58% under realistic channel/metabolic/thermal noise.",
       "A cell just holding a charge on its own is like a coin balanced on its edge, it falls over almost immediately."],
-    ["Engineered circuit works, with a catch",
-      "Matched-strength promoter pair (Gardner topology + Bacillus BioBrick Box parts) holds state at 100% fidelity at 24 hours; severe mismatch (0.1x) collapses to 50%, a monostable dead switch.",
-      "The circuit is like a light switch held by two matched springs. Mismatched springs and the switch falls back to \"off\" no matter what you do."],
+    ["Engineered circuit works across its whole practical design range",
+      "Gardner topology + Bacillus BioBrick Box parts holds state at 100% fidelity at 24 hours for any promoter pair within the BBB's entire characterized 1.0x-10.0x strength range; only pushing far outside the catalog, to a severe 0.1x mismatch, collapses fidelity to 50%, a monostable dead switch.",
+      "The circuit is a light switch held by two springs. Any pair of springs from the parts catalog, even fairly different strengths, holds the switch fine. Only deliberately grabbing two wildly mismatched springs, far outside what the catalog offers, gets the switch stuck at \"off\"."],
     ["Bacteria beats planaria on evidence, for now",
       "Cross-organism sweep: B. subtilis engineered circuit ranks highest-confidence (inheritance is mechanistically forced by cell division); planarian circuit ranks lowest (coupling strength is an unmeasured assumption).",
       "Betting on the organism with a measured mechanism is like betting on a scale you've calibrated, not one you're guessing the weight of."],
@@ -562,7 +562,7 @@ function kicker(s, text, x, y, color) {
   s.addShape("roundRect", { x: 0.7, y: 6.05, w: 12.0, h: 0.95, rectRadius: 0.08, fill: { color: "EAF6F4" }, line: { color: TEAL_DARK, width: 1.25 } });
   s.addText([
     { text: "IP status:  ", options: { bold: true, color: TEAL_DARK } },
-    { text: "patent applications filed with the USPTO covering the Bio-RAID fault-tolerance architecture, self-healing recovery protocol, and environment-adaptive longevity system. Status: filed, pending examination.", options: { color: INK } },
+    { text: "patent applications filed with the USPTO covering the Bio-RAID fault-tolerance architecture, self-healing recovery protocol, and environment-adaptive longevity system.", options: { color: INK } },
   ], { x: 0.95, y: 6.05, w: 11.5, h: 0.95, isTextBox: true, margin: 0, valign: "middle", fontFace: BODY_FONT, fontSize: 12.5, lineSpacingMultiple: 1.1 });
   pageNum(s, 15, false);
 }
@@ -581,7 +581,7 @@ function kicker(s, text, x, y, color) {
 
   s.addText("Jacqueline Solano", { x: 6.95, y: 0.9, w: 5.7, h: 0.5, isTextBox: true, margin: 0, fontFace: HEAD_FONT, fontSize: 23, bold: true, color: WHITE });
   s.addText("Co-Founder, Head of Business", { x: 6.95, y: 1.38, w: 5.7, h: 0.35, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 12.5, color: TEAL });
-  s.addText("Leads business operations, and satisfies the program requirement that at least one founder be a U.S. citizen.", {
+  s.addText("Leads business operations.", {
     x: 6.95, y: 1.78, w: 5.7, h: 1.4, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 11.5, color: "CFE0DD", lineSpacingMultiple: 1.2,
   });
 
