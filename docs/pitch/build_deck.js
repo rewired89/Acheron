@@ -80,7 +80,7 @@ function kicker(s, text, x, y, color) {
     { text: "sanchezleal1989@gmail.com", options: { color: WHITE } },
   ], { x: 0.9, y: 4.9, w: 6.6, h: 0.35, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 13 });
   s.addText([
-    { text: "Co-Founder: ", options: { color: "8FA6AE" } },
+    { text: "Co-Founder, Head of Business: ", options: { color: "8FA6AE" } },
     { text: "Jacqueline Solano", options: { color: WHITE, bold: true } },
   ], { x: 0.9, y: 5.25, w: 6.6, h: 0.35, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 13 });
   s.addText([
@@ -228,6 +228,10 @@ function kicker(s, text, x, y, color) {
     s.addText(body, { x: 5.2, y, w: 7.4, h: 1.4, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 13, color: MUTED, valign: "top", lineSpacingMultiple: 1.15 });
     y += 1.6;
   });
+  s.addText([
+    { text: "Modeling approach: ", options: { bold: true, color: TEAL_DARK } },
+    { text: "physics-based, BETSE-inspired simulation (gap-junction diffusion, ion-channel membrane dynamics), the same framework underlying the Levin Lab's own BETSE tool, cross-validated against tasmorpho (Blattner, 2026, bioRxiv), an independently published BETSE-based method whose reference values we reproduce to 6 decimal places.", options: { color: MUTED } },
+  ], { x: 0.7, y: 6.55, w: 12.0, h: 0.6, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 11, italic: true, lineSpacingMultiple: 1.15 });
   pageNum(s, 5, false);
 }
 
@@ -496,8 +500,8 @@ function kicker(s, text, x, y, color) {
     x: 7.05, y: 3.8, w: 5.3, h: 2.5, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 12, color: "CFE0DD", lineSpacingMultiple: 1.2,
   });
 
-  s.addText("This upside is entirely conditional on the roadmap experiment below succeeding. We're not asking anyone to price the risk in advance, we're asking for what it costs to find out.", {
-    x: 0.7, y: 6.6, w: 12, h: 0.6, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 13.5, italic: true, color: "AEC2C8",
+  s.addText("The same underlying need, radiation-tolerant, low-maintenance memory with no technician access, recurs across extreme-environment computing broadly: spacecraft, deep-sea systems, remote infrastructure. This upside is entirely conditional on the roadmap experiment below succeeding. We're not asking anyone to price the risk in advance, we're asking for what it costs to find out.", {
+    x: 0.7, y: 6.5, w: 12, h: 0.75, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 12.5, italic: true, color: "AEC2C8", lineSpacingMultiple: 1.15,
   });
   pageNum(s, 13, true);
 }
@@ -576,7 +580,7 @@ function kicker(s, text, x, y, color) {
   });
 
   s.addText("Jacqueline Solano", { x: 6.95, y: 0.9, w: 5.7, h: 0.5, isTextBox: true, margin: 0, fontFace: HEAD_FONT, fontSize: 23, bold: true, color: WHITE });
-  s.addText("Co-Founder", { x: 6.95, y: 1.38, w: 5.7, h: 0.35, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 12.5, color: TEAL });
+  s.addText("Co-Founder, Head of Business", { x: 6.95, y: 1.38, w: 5.7, h: 0.35, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 12.5, color: TEAL });
   s.addText("Leads business operations, and satisfies the program requirement that at least one founder be a U.S. citizen.", {
     x: 6.95, y: 1.78, w: 5.7, h: 1.4, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 11.5, color: "CFE0DD", lineSpacingMultiple: 1.2,
   });
