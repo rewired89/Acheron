@@ -206,7 +206,43 @@ function kicker(s, text, x, y, color) {
   pageNum(s, 4, false);
 }
 
-// ============================================================ Slide 4, Scientific Foundation
+// ============================================================ Slide 4b, What's Simulated vs. What's Measured
+{
+  const s = bgSlide(true);
+  kicker(s, "Read This Before Any Number Ahead", 0.7, 0.5, AMBER);
+  s.addText("Every number in this deck, so far, comes from a computational model. None of it has been measured in a wet lab yet", {
+    x: 0.7, y: 0.9, w: 11.9, h: 0.95, isTextBox: true, margin: 0,
+    fontFace: HEAD_FONT, fontSize: 22, bold: true, color: WHITE,
+  });
+
+  s.addShape("roundRect", { x: 0.7, y: 2.15, w: 5.85, h: 4.05, rectRadius: 0.08, fill: { color: NAVY2 }, line: { type: "none" } });
+  s.addText("Simulated (100% of results below)", { x: 1.0, y: 2.4, w: 5.3, h: 0.5, isTextBox: true, margin: 0, fontFace: HEAD_FONT, fontSize: 15.5, bold: true, color: TEAL });
+  const simItems = [
+    "Bit integrity under noise: 100% (zero-noise) vs. ~50% (realistic noise)",
+    "Toggle-circuit fidelity: 100% (matched/mismatched-within-range) vs. 50% (severe mismatch)",
+    "Cross-organism recovery threshold: ~2% surviving cells, for all three mechanisms",
+    "EIS voltage-read collapse: 50-59% under native biofilm oscillation",
+  ];
+  s.addText(simItems.map((t, i) => ({ text: t, options: { bullet: { code: "2022" }, color: "CFE0DD", breakLine: i < simItems.length - 1, paraSpaceAfter: 9 } })), {
+    x: 1.0, y: 2.95, w: 5.3, h: 3.1, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 12, lineSpacingMultiple: 1.15,
+  });
+
+  s.addShape("roundRect", { x: 6.75, y: 2.15, w: 5.9, h: 4.05, rectRadius: 0.08, fill: { color: NAVY2 }, line: { color: AMBER, width: 1 } });
+  s.addText("Measured (0% of results below)", { x: 7.05, y: 2.4, w: 5.3, h: 0.5, isTextBox: true, margin: 0, fontFace: HEAD_FONT, fontSize: 15.5, bold: true, color: AMBER });
+  s.addText([
+    { text: "Nothing yet.\n\n", options: { bold: true, color: WHITE, breakLine: true } },
+    { text: "The $10K-$30K wet-lab experiment on the roadmap slide is the first physical test of any of this, in any organism. Until it runs, every figure on the surrounding slides is a model's prediction, not a result.", options: { color: "CFE0DD" } },
+  ], { x: 7.05, y: 2.95, w: 5.3, h: 3.1, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 13, lineSpacingMultiple: 1.2 });
+
+  s.addShape("roundRect", { x: 0.7, y: 6.4, w: 11.95, h: 0.75, rectRadius: 0.08, fill: { color: "18314F" }, line: { color: AMBER, width: 1 } });
+  s.addText([
+    { text: "Why we're leading with this:  ", options: { bold: true, color: AMBER } },
+    { text: "simulation tells us where to spend wet-lab money wisely, it is not evidence the mechanism works in a real cell.", options: { color: "E7ECEF" } },
+  ], { x: 0.95, y: 6.4, w: 11.5, h: 0.75, isTextBox: true, margin: 0, valign: "middle", fontFace: BODY_FONT, fontSize: 13 });
+  pageNum(s, 5, true);
+}
+
+// ============================================================ Slide 5, Scientific Foundation
 {
   const s = bgSlide(false);
   kicker(s, "Scientific Foundation", 0.7, 0.5, TEAL_DARK);
@@ -232,10 +268,10 @@ function kicker(s, text, x, y, color) {
     { text: "Modeling approach: ", options: { bold: true, color: TEAL_DARK } },
     { text: "physics-based, BETSE-inspired simulation (gap-junction diffusion, ion-channel membrane dynamics), the same framework underlying the Levin Lab's own BETSE tool, cross-validated against tasmorpho (Blattner, 2026, bioRxiv), an independently published BETSE-based method whose reference values we reproduce to 6 decimal places.", options: { color: MUTED } },
   ], { x: 0.7, y: 6.55, w: 12.0, h: 0.6, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 11, italic: true, lineSpacingMultiple: 1.15 });
-  pageNum(s, 5, false);
+  pageNum(s, 6, false);
 }
 
-// ============================================================ Slide 5, What we found (dark, honest)
+// ============================================================ Slide 6, What we found (dark, honest)
 {
   const s = bgSlide(true);
   kicker(s, "What We Found When We Tested Our Own Claim", 0.7, 0.5, AMBER);
@@ -264,10 +300,10 @@ function kicker(s, text, x, y, color) {
     { text: "The fix is specific, not a mystery:  ", options: { bold: true, color: AMBER } },
     { text: "an actively engineered bistable circuit, not passive cell behavior. See next.", options: { color: "E7ECEF" } },
   ], { x: 5.1, y: 5.15, w: 7.3, h: 1.4, isTextBox: true, margin: 0, valign: "middle", fontFace: BODY_FONT, fontSize: 14 });
-  pageNum(s, 6, true);
+  pageNum(s, 7, true);
 }
 
-// ============================================================ Slide 6, The Fix
+// ============================================================ Slide 7, The Fix
 {
   const s = bgSlide(false);
   kicker(s, "The Fix", 0.7, 0.5, TEAL_DARK);
@@ -303,10 +339,39 @@ function kicker(s, text, x, y, color) {
   s.addShape("roundRect", { x: 8.25, y: 4.3, w: 4.4, h: 2.3, rectRadius: 0.08, fill: { color: NAVY }, line: { type: "none" } });
   s.addText("50%", { x: 8.5, y: 4.45, w: 3.9, h: 0.85, isTextBox: true, margin: 0, fontFace: HEAD_FONT, fontSize: 36, bold: true, color: CORAL });
   s.addText("Fidelity at severe promoter mismatch (0.1x), a design constraint found before any wet-lab spend", { x: 8.5, y: 5.25, w: 3.9, h: 1.2, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 11.5, color: "CFE0DD" });
-  pageNum(s, 7, false);
+  pageNum(s, 8, false);
 }
 
-// ============================================================ Slide 7, Cross-organism ranking (chart)
+// ============================================================ Slide 7b, Why B. subtilis, not E. coli
+{
+  const s = bgSlide(false);
+  kicker(s, "Chassis Choice", 0.7, 0.5, TEAL_DARK);
+  s.addText("Why B. subtilis, not E. coli, the organism the original toggle switch was built in", {
+    x: 0.7, y: 0.85, w: 11.9, h: 0.9, isTextBox: true, margin: 0,
+    fontFace: HEAD_FONT, fontSize: 23, bold: true, color: INK,
+  });
+
+  const cols = [
+    ["Chassis-matched parts", "Gardner's original 2000 toggle switch was built and characterized in E. coli. But the free, chromosomally-integrating promoter library this project actually uses, the Bacillus BioBrick Box (Radeck et al. 2013, 2017), was characterized in B. subtilis specifically. Porting to E. coli would mean re-characterizing every promoter from scratch, work nobody has funded.", TEAL_DARK],
+    ["Built to survive extremes", "B. subtilis sporulates under starvation, desiccation, heat, and radiation stress, a real, well-documented survival mechanism E. coli lacks. That's a direct match to this project's extreme-environment storage thesis (spacecraft, seafloor, remote infrastructure), not a cosmetic preference.", TEAL_DARK],
+    ["The trade-off we're not hiding", "B. subtilis's biofilm-forming behavior helps physical resilience and self-healing, but it's also the source of the native potassium-wave oscillation this deck already flags as a readout risk two slides from now. We chose the organism with the better extreme-survival and parts story, and disclosed the cost that comes with it.", CORAL],
+  ];
+  let x = 0.7;
+  const w = 3.9;
+  cols.forEach(([t, d, c]) => {
+    s.addShape("roundRect", { x, y: 2.05, w, h: 4.3, rectRadius: 0.08, fill: { color: WHITE }, line: { color: "DCE3E6", width: 1 } });
+    s.addShape("rect", { x, y: 2.05, w: w, h: 0.09, fill: { color: c }, line: { type: "none" } });
+    s.addText(t, { x: x + 0.28, y: 2.35, w: w - 0.56, h: 0.6, isTextBox: true, margin: 0, fontFace: HEAD_FONT, fontSize: 15.5, bold: true, color: INK });
+    s.addText(d, { x: x + 0.28, y: 3.0, w: w - 0.56, h: 3.1, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 12, color: MUTED, lineSpacingMultiple: 1.2 });
+    x += w + 0.24;
+  });
+  s.addText("Net effect: B. subtilis costs us a known, already-quantified readout complication in exchange for chassis-matched genetic parts and a real extreme-survival mechanism. We think that's the better trade, and we're showing our work either way.", {
+    x: 0.7, y: 6.55, w: 12, h: 0.7, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 12.5, italic: true, color: MUTED,
+  });
+  pageNum(s, 9, false);
+}
+
+// ============================================================ Slide 8, Cross-organism ranking (chart)
 {
   const s = bgSlide(false);
   kicker(s, "Honest Risk Ranking", 0.7, 0.5, TEAL_DARK);
@@ -315,21 +380,25 @@ function kicker(s, text, x, y, color) {
     fontFace: HEAD_FONT, fontSize: 23, bold: true, color: INK,
   });
 
-  const chartData = [{
-    name: "Recovery threshold (% surviving cells needed for ≥70% fidelity)",
-    labels: ["B. subtilis,\nengineered circuit", "B. subtilis,\nmethylation", "Planarian,\nbioelectric circuit"],
-    values: [2, 2, 2],
-  }];
-  s.addChart(pres.ChartType.bar, chartData, {
-    x: 0.7, y: 1.95, w: 6.7, h: 4.5,
-    barDir: "col", showTitle: true, title: "All three numerically tie at ~2% surviving, the number alone is misleading",
-    titleFontSize: 12, titleColor: MUTED,
-    showValue: true, dataLabelPosition: "outEnd", dataLabelColor: INK, dataLabelFontSize: 12,
-    chartColors: [TEAL],
-    catAxisLabelColor: MUTED, catAxisLabelFontSize: 10.5,
-    valAxisLabelColor: MUTED, valAxisHidden: true,
-    valGridLine: { style: "none" }, catGridLine: { style: "none" },
-    showLegend: false, barGapWidthPct: 40,
+  s.addText("Grounding confidence (qualitative, not a measured score)", {
+    x: 0.7, y: 1.9, w: 6.7, h: 0.35, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 11.5, italic: true, color: MUTED,
+  });
+  const confRows = [
+    ["B. subtilis, engineered circuit", "Highest", 1.0, TEAL],
+    ["B. subtilis, methylation", "Medium", 0.6, AMBER],
+    ["Planarian, bioelectric circuit", "Lowest", 0.3, CORAL],
+  ];
+  let cy = 2.35;
+  const barMaxW = 5.6;
+  confRows.forEach(([label, tier, frac, color]) => {
+    s.addText(label, { x: 0.7, y: cy, w: 6.7, h: 0.3, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 12.5, bold: true, color: INK });
+    s.addShape("roundRect", { x: 0.7, y: cy + 0.35, w: barMaxW, h: 0.5, rectRadius: 0.04, fill: { color: "E4E9EA" }, line: { type: "none" } });
+    s.addShape("roundRect", { x: 0.7, y: cy + 0.35, w: barMaxW * frac, h: 0.5, rectRadius: 0.04, fill: { color }, line: { type: "none" } });
+    s.addText(tier, { x: 0.7 + barMaxW * frac + 0.1, y: cy + 0.32, w: 1.0, h: 0.55, isTextBox: true, margin: 0, valign: "middle", fontFace: BODY_FONT, fontSize: 12, bold: true, color: INK });
+    cy += 1.1;
+  });
+  s.addText("All three numerically tie at ~2% surviving-cell recovery threshold, that number alone doesn't rank them; grounding confidence, shown above, does.", {
+    x: 0.7, y: cy + 0.05, w: 6.7, h: 0.65, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 11, italic: true, color: MUTED, lineSpacingMultiple: 1.15,
   });
 
   const rows = [
@@ -347,10 +416,10 @@ function kicker(s, text, x, y, color) {
   s.addText("Our original organism choice (planarian) is currently our weakest-evidence option. We're reporting that now, before spending wet-lab money on it.", {
     x: 0.7, y: 6.6, w: 12, h: 0.6, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 13, italic: true, color: MUTED,
   });
-  pageNum(s, 8, false);
+  pageNum(s, 10, false);
 }
 
-// ============================================================ Slide 8, New risk found
+// ============================================================ Slide 9, New risk found
 {
   const s = bgSlide(false);
   kicker(s, "Stress-Testing Our Own Design", 0.7, 0.5, TEAL_DARK);
@@ -376,10 +445,10 @@ function kicker(s, text, x, y, color) {
   s.addText("Fidelity at 10-20mV of ambient oscillation (well below the circuit's own 70mV signal range) collapsed to 50-59% for single-snapshot voltage reads, this is a solvable engineering problem, not a fatal one, but a real, previously-unflagged design requirement.", {
     x: 0.7, y: 6.55, w: 12, h: 0.7, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 12.5, italic: true, color: MUTED,
   });
-  pageNum(s, 9, false);
+  pageNum(s, 11, false);
 }
 
-// ============================================================ Slide 8b, What we've already proven, in two languages
+// ============================================================ Slide 9b, What we've already proven, in two languages
 {
   const s = bgSlide(false);
   kicker(s, "What We Already Have", 0.7, 0.45, TEAL_DARK);
@@ -412,10 +481,10 @@ function kicker(s, text, x, y, color) {
     fontFace: BODY_FONT, fontSize: 10.5, color: INK, border: { type: "solid", color: "D8DEE1", pt: 1 },
     autoPage: false, valign: "middle", colW: [2.6, 4.9, 4.5], rowH: [0.5, 1.15, 1.15, 1.15, 1.15],
   });
-  pageNum(s, 10, false);
+  pageNum(s, 12, false);
 }
 
-// ============================================================ Slide 9, Competitive landscape
+// ============================================================ Slide 10, Competitive landscape
 {
   const s = bgSlide(false);
   kicker(s, "Real Storage Competitors", 0.7, 0.5, TEAL_DARK);
@@ -444,10 +513,10 @@ function kicker(s, text, x, y, color) {
     { text: "Not included above, on purpose:  ", options: { bold: true, color: TEAL_DARK } },
     { text: "Cortical Labs, Koniku, and FinalSpark all build neuron-based wetware for cognition and sensing (playing games, detecting explosives, training AI), a different product category, not a memory-storage competitor. Their hardware is still worth studying, see next slide.", options: { color: INK } },
   ], { x: 0.95, y: 5.65, w: 11.5, h: 1.35, isTextBox: true, margin: 0, valign: "middle", fontFace: BODY_FONT, fontSize: 12.5, lineSpacingMultiple: 1.2 });
-  pageNum(s, 11, false);
+  pageNum(s, 13, false);
 }
 
-// ============================================================ Slide 10, Why We're Actually Different
+// ============================================================ Slide 11, Why We're Actually Different
 {
   const s = bgSlide(false);
   kicker(s, "Differentiation & Borrowable Research", 0.7, 0.5, TEAL_DARK);
@@ -474,39 +543,39 @@ function kicker(s, text, x, y, color) {
     s.addText(body, { x: x + 0.28, y: 3.35, w: cardW - 0.56, h: 2.95, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 11.5, color: MUTED, lineSpacingMultiple: 1.15 });
     x += cardW + gap;
   });
-  pageNum(s, 12, false);
+  pageNum(s, 14, false);
 }
 
-// ============================================================ Slide 11, Market opportunity (real cited numbers)
+// ============================================================ Slide 12, Market opportunity (real cited numbers, evidence not sizing)
 {
   const s = bgSlide(true);
-  kicker(s, "If The Core Mechanism Validates", 0.7, 0.5, TEAL);
-  s.addText("Two real, externally-verifiable numbers, not an invented forecast", {
-    x: 0.7, y: 0.9, w: 11.9, h: 0.85, isTextBox: true, margin: 0,
-    fontFace: HEAD_FONT, fontSize: 26, bold: true, color: WHITE,
+  kicker(s, "Evidence The Need Is Real, Not A Market-Size Claim", 0.7, 0.5, TEAL);
+  s.addText("We are not sizing a market yet. Here are two real, externally-verifiable numbers showing the underlying need", {
+    x: 0.7, y: 0.9, w: 11.9, h: 0.9, isTextBox: true, margin: 0,
+    fontFace: HEAD_FONT, fontSize: 22, bold: true, color: WHITE,
   });
 
   s.addShape("roundRect", { x: 0.7, y: 2.0, w: 5.75, h: 4.4, rectRadius: 0.08, fill: { color: NAVY2 }, line: { type: "none" } });
   s.addText("$350K / 5 yrs", { x: 1.0, y: 2.3, w: 5.2, h: 0.9, isTextBox: true, margin: 0, fontFace: HEAD_FONT, fontSize: 32, bold: true, color: TEAL });
-  s.addText("What customers already pay for the closest existing alternative", { x: 1.0, y: 3.15, w: 5.2, h: 0.5, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 13, bold: true, color: WHITE });
-  s.addText("Cortical Labs' CL-1 (neuron-based): $35,000/unit, replaced every 6 months, zero self-repair. A live, public data point for what this market already tolerates paying to avoid downtime, from a substrate that can't heal itself.", {
+  s.addText("What one customer already pays to avoid downtime, on a different product", { x: 1.0, y: 3.15, w: 5.2, h: 0.5, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 13, bold: true, color: WHITE });
+  s.addText("Cortical Labs' CL-1 (neuron-based cognition, not memory storage): $35,000/unit, replaced every 6 months, zero self-repair. Not a price for storage, a data point that this market already tolerates paying real money to avoid unplanned downtime, from a substrate that can't heal itself.", {
     x: 1.0, y: 3.7, w: 5.2, h: 2.5, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 12.5, color: "CFE0DD", lineSpacingMultiple: 1.2,
   });
 
   s.addShape("roundRect", { x: 6.75, y: 2.0, w: 5.9, h: 4.4, rectRadius: 0.08, fill: { color: NAVY2 }, line: { type: "none" } });
   s.addText("$1.2B–$2.0B", { x: 7.05, y: 2.3, w: 5.3, h: 0.9, isTextBox: true, margin: 0, fontFace: HEAD_FONT, fontSize: 32, bold: true, color: TEAL });
-  s.addText("Radiation-hardened space electronics, 2026 (independent analyst range)", { x: 7.05, y: 3.15, w: 5.3, h: 0.6, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 13, bold: true, color: WHITE });
-  s.addText("Growing ~4-5.6% CAGR into the early 2030s (Grand View Research, Fortune Business Insights, Research and Markets), driven by LEO satellite constellations (Starlink, Kuiper, OneWeb) needing more radiation-tolerant memory. We claim no specific share of this, it's evidence the underlying need is real and growing, not a number we made up.", {
+  s.addText("The whole radiation-hardened electronics market, not a memory-specific figure", { x: 7.05, y: 3.15, w: 5.3, h: 0.6, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 13, bold: true, color: WHITE });
+  s.addText("Growing ~4-5.6% CAGR into the early 2030s (Grand View Research, Fortune Business Insights, Research and Markets), driven by LEO satellite constellations (Starlink, Kuiper, OneWeb) needing more radiation-tolerant memory. Memory is only a slice of this figure, and we are not estimating that slice. We're citing it as evidence the demand driver is real and growing, nothing more.", {
     x: 7.05, y: 3.8, w: 5.3, h: 2.5, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 12, color: "CFE0DD", lineSpacingMultiple: 1.2,
   });
 
-  s.addText("The same underlying need, radiation-tolerant, low-maintenance memory with no technician access, recurs across extreme-environment computing broadly: spacecraft, deep-sea systems, remote infrastructure. This upside is entirely conditional on the roadmap experiment below succeeding. We're not asking anyone to price the risk in advance, we're asking for what it costs to find out.", {
+  s.addText("Neither number is a forecast for Acheron. This upside is entirely conditional on the roadmap experiment below succeeding, and we haven't tried to price it in advance. We're asking for what it costs to find out.", {
     x: 0.7, y: 6.5, w: 12, h: 0.75, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 12.5, italic: true, color: "AEC2C8", lineSpacingMultiple: 1.15,
   });
-  pageNum(s, 13, true);
+  pageNum(s, 15, true);
 }
 
-// ============================================================ Slide 12, Roadmap (dark, stat callouts)
+// ============================================================ Slide 13, Roadmap (dark, stat callouts)
 {
   const s = bgSlide(true);
   kicker(s, "Roadmap", 0.7, 0.5, TEAL);
@@ -530,10 +599,39 @@ function kicker(s, text, x, y, color) {
   s.addText("Deliberately the cheapest, fastest experiment that produces a real answer, not a moonshot ask.", {
     x: 0.7, y: 5.4, w: 11.5, h: 0.5, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 14, italic: true, color: "8FA6AE",
   });
-  pageNum(s, 14, true);
+  pageNum(s, 16, true);
 }
 
-// ============================================================ Slide 13, What we're asking for + IP status
+// ============================================================ Slide 13b, Biosafety & Containment
+{
+  const s = bgSlide(false);
+  kicker(s, "Biosafety & Containment", 0.7, 0.5, TEAL_DARK);
+  s.addText("Engineering bacteria to hold data raises real containment questions. We're addressing them before any wet-lab work starts", {
+    x: 0.7, y: 0.85, w: 11.9, h: 0.95, isTextBox: true, margin: 0,
+    fontFace: HEAD_FONT, fontSize: 21, bold: true, color: INK,
+  });
+
+  const cols = [
+    ["Organism & containment level", "B. subtilis lab strains, including the strain 168 background used with the Bacillus BioBrick Box parts, are non-pathogenic and handled at Biosafety Level 1 (BSL-1), the lowest containment tier, standard in academic synthetic-biology teaching labs."],
+    ["Kill-switch, planned, not yet built", "A release-prevention mechanism (e.g. an auxotrophic dependency or inducible kill-switch) is a design requirement we're scoping into the toggle-circuit build for the roadmap experiment, not an afterthought added later."],
+    ["Regulatory path", "Wet-lab work proceeds under the partner lab's Institutional Biosafety Committee (IBC) review and the NIH Guidelines for recombinant/synthetic nucleic acid research, the standard oversight path for this kind of academic or contract lab work. Storing data confers no pathogenicity, virulence, or toxin production, there is no dual-use mechanism here."],
+  ];
+  let x = 0.7;
+  const w = 3.9;
+  cols.forEach(([t, d]) => {
+    s.addShape("roundRect", { x, y: 2.05, w, h: 4.3, rectRadius: 0.08, fill: { color: WHITE }, line: { color: "DCE3E6", width: 1 } });
+    s.addShape("rect", { x, y: 2.05, w: w, h: 0.09, fill: { color: TEAL_DARK }, line: { type: "none" } });
+    s.addText(t, { x: x + 0.28, y: 2.35, w: w - 0.56, h: 0.6, isTextBox: true, margin: 0, fontFace: HEAD_FONT, fontSize: 15, bold: true, color: INK });
+    s.addText(d, { x: x + 0.28, y: 3.0, w: w - 0.56, h: 3.1, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 12, color: MUTED, lineSpacingMultiple: 1.2 });
+    x += w + 0.24;
+  });
+  s.addText("None of this is unusual for synthetic biology. We're naming it now so it's never a surprise later.", {
+    x: 0.7, y: 6.55, w: 12, h: 0.5, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 13, italic: true, color: MUTED,
+  });
+  pageNum(s, 17, false);
+}
+
+// ============================================================ Slide 14, What we're asking for + IP status
 {
   const s = bgSlide(false);
   kicker(s, "What We're Asking For", 0.7, 0.5, TEAL_DARK);
@@ -564,10 +662,10 @@ function kicker(s, text, x, y, color) {
     { text: "IP status:  ", options: { bold: true, color: TEAL_DARK } },
     { text: "patent applications filed with the USPTO covering the Bio-RAID fault-tolerance architecture, self-healing recovery protocol, and environment-adaptive longevity system.", options: { color: INK } },
   ], { x: 0.95, y: 6.05, w: 11.5, h: 0.95, isTextBox: true, margin: 0, valign: "middle", fontFace: BODY_FONT, fontSize: 12.5, lineSpacingMultiple: 1.1 });
-  pageNum(s, 15, false);
+  pageNum(s, 18, false);
 }
 
-// ============================================================ Slide 14, Team + closing
+// ============================================================ Slide 15, Team + closing
 {
   const s = bgSlide(true);
   s.addShape("ellipse", { x: 10.6, y: -1.2, w: 5.5, h: 5.5, fill: { color: TEAL, transparency: 92 }, line: { type: "none" } });
@@ -597,7 +695,7 @@ function kicker(s, text, x, y, color) {
     { text: " ", options: { breakLine: true, paraSpaceAfter: 4 } },
     { text: "Jacqueline Solano: jackiea.solano@gmail.com", options: { color: WHITE, bold: true } },
   ], { x: 0.7, y: 6.0, w: 9.5, h: 1.4, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 13 });
-  pageNum(s, 16, true);
+  pageNum(s, 19, true);
 }
 
 pres.writeFile({ fileName: "Acheron_Pitch_Deck.pptx" }).then(() => console.log("done"));

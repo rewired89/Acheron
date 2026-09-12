@@ -82,7 +82,7 @@ rather than assuming they're present.
   founder (confirmed September 2026), these have been filed with the USPTO,
   state IP status as "filed, pending examination," not "in progress."
 - **`docs/pitch/`** holds investor/incubator materials.
-  `Acheron_Pitch_Deck.pptx` is the current deck (16 slides); its generator
+  `Acheron_Pitch_Deck.pptx` is the current deck (19 slides); its generator
   script is `docs/pitch/build_deck.js` (Node + pptxgenjs), edit that and
   rerun it, don't hand-edit the compiled `.pptx`. See the pptx skill's
   validate/QA workflow before shipping any rebuild.
@@ -157,11 +157,21 @@ rather than assuming they're present.
 2. **The wet-lab experiment is the actual next milestone** for the science
    (see throughline item 6 above), everything else is downstream of it.
 3. **Pitch deck is current and was heavily iterated** this session (founder
-   info, patent status, competitor framing, tone). If asked to update it
-   again, start from `docs/pitch/build_deck.js`, not from scratch, and rerun
-   the pptx skill's validate + markitdown text-dump QA before sending, the
-   founder has flagged small wording/tone issues multiple times and wants a
-   careful read-through, not a fast turnaround.
+   info, patent status, competitor framing, tone) and again in a later
+   session (September 2026) to act on external reviewer feedback: it now
+   has 19 slides, adding an unmissable "simulated vs. measured" disclosure
+   slide near the front, a B. subtilis-vs-E. coli chassis-justification
+   slide, a biosafety/containment slide, a qualitative (not numeric) risk
+   confidence visual on the risk-ranking slide replacing a bar chart that
+   showed three identical bars, and a market slide reframed to explicitly
+   disclaim being a market-size estimate. Jacqueline Solano's team-slide
+   bio is still a single line by the founder's explicit choice (asked and
+   declined to expand it beyond already-confirmed facts as of September
+   2026), not an oversight. If asked to update the deck again, start from
+   `docs/pitch/build_deck.js`, not from scratch, and rerun the pptx skill's
+   validate + markitdown text-dump QA before sending, the founder has
+   flagged small wording/tone issues multiple times and wants a careful
+   read-through, not a fast turnaround.
 4. **`CODEMAP.md` now exists** (created September 2026, single-pass, 44
    source files). Keep it updated per the CodeMap Protocol above rather than
    letting it drift, and re-map incrementally if the repo passes 150 files.

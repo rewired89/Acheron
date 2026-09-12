@@ -712,7 +712,7 @@ silently.
 - name: (script, no exported symbols, runs top-to-bottom)
   type: script
   file: docs/pitch/build_deck.js
-  purpose: pptxgenjs source that generates `docs/pitch/Acheron_Pitch_Deck.pptx` (16 slides); see the file's own header comment for the run/QA workflow
+  purpose: pptxgenjs source that generates `docs/pitch/Acheron_Pitch_Deck.pptx` (19 slides); see the file's own header comment for the run/QA workflow
   inputs: none (all content is hardcoded in the script)
   outputs: `Acheron_Pitch_Deck.pptx` written to the current working directory
   dependencies: `pptxgenjs` (npm, not committed, install separately)
