@@ -160,33 +160,36 @@ nav{
 .hero .lede{ margin-block:.9rem 1.7rem; font-size:1.03rem; }
 .hero-ctas{ display:flex; gap:.9rem; flex-wrap:wrap; }
 
-.hero-visual{ position:relative; min-height:25rem; }
+.hero-visual{ position:relative; min-height:26rem; }
 .scope-wrap{
   position:absolute; inset:0; border-radius:20px; overflow:hidden;
-  background:radial-gradient(125% 145% at 72% 18%, #123a63 0%, var(--bg-1) 55%, #050b1a 100%);
+  background:radial-gradient(125% 145% at 72% 12%, #123a63 0%, var(--bg-1) 55%, #050b1a 100%);
   border:1px solid var(--line);
 }
 .scope-wrap svg{ position:absolute; inset:0; width:100%; height:100%; }
 
+/* filmstrip card row: flexbox handles spacing, no manual overlap math */
+.hero-card-row{
+  position:absolute; left:1rem; right:1rem; bottom:1rem; z-index:3;
+  display:flex; align-items:flex-end; gap:.7rem;
+}
 .float-card{
-  position:absolute; width:14.5rem; max-width:64vw;
-  background:linear-gradient(180deg, rgba(23,46,82,.94), rgba(7,16,34,.94));
-  border:1px solid var(--line-bright); border-radius:16px; padding:1rem 1.1rem;
-  backdrop-filter:blur(8px); box-shadow:0 26px 42px -20px rgba(0,0,0,.6);
+  flex:1 1 0; min-width:0;
+  background:linear-gradient(180deg, rgba(23,46,82,.95), rgba(7,16,34,.95));
+  border:1px solid var(--line-bright); border-radius:14px; padding:.85rem .8rem;
+  backdrop-filter:blur(8px); box-shadow:0 20px 34px -18px rgba(0,0,0,.6);
   transition:transform .2s ease, border-color .2s ease;
 }
-.float-card:hover{ border-color:var(--accent); transform:translateY(-4px) scale(1.02); }
-.float-card .tag{ display:block; margin-bottom:.5rem; }
-.float-card .stat-num{ font-size:1.45rem; display:block; }
-.float-card .stat-label{ margin-top:.3rem; }
-.float-card .pill{
-  display:inline-block; margin-top:.8rem; font-family:var(--mono); font-size:.66rem;
-  padding:.28rem .6rem; border-radius:999px; background:rgba(46,196,182,.14); color:var(--accent-bright);
-  border:1px solid rgba(46,196,182,.35); text-decoration:none;
+.float-card:hover{ border-color:var(--accent); transform:translateY(-4px); }
+.float-card.is-featured{
+  transform:translateY(-14px); z-index:2; border-color:var(--line-bright);
+  box-shadow:0 28px 48px -18px rgba(0,0,0,.7), 0 0 0 1px rgba(127,234,214,.15);
 }
-.fc-1{ top:2%; left:1%; }
-.fc-2{ top:27%; left:32%; z-index:2; }
-.fc-3{ top:47%; left:5%; }
+.float-card.is-featured:hover{ transform:translateY(-18px); }
+.float-card .tag{ display:block; margin-bottom:.4rem; font-size:.62rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.float-card .stat-num{ font-size:1.15rem; display:block; }
+.float-card.is-featured .stat-num{ font-size:1.3rem; }
+.float-card .stat-label{ margin-top:.3rem; font-size:.72rem; line-height:1.35; display:block; }
 
 .hero-bottom-row{
   display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.8rem;
@@ -336,7 +339,8 @@ footer a:hover{ color:var(--accent-bright); }
   .navlinks{ order:3; width:100%; gap:1rem 1.4rem; }
   .hero-visual{ min-height:0; }
   .scope-wrap{ position:relative; inset:auto; min-height:11rem; }
-  .float-card{ position:relative; inset:auto !important; width:100%; max-width:none; margin-top:.9rem; top:auto; left:auto; }
+  .hero-card-row{ position:relative; left:auto; right:auto; bottom:auto; flex-direction:column; margin-top:.9rem; }
+  .float-card, .float-card.is-featured{ transform:none; width:100%; }
 }
 @media (max-width:560px){
   .rank-row{ grid-template-columns:1fr; }
@@ -383,35 +387,36 @@ footer a:hover{ color:var(--accent-bright); }
 
           <div class="hero-visual">
             <div class="scope-wrap">
-              <svg id="scope-svg" viewBox="0 0 560 340" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Animated bioelectric voltage trace">
+              <svg id="scope-svg" viewBox="0 0 560 400" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Generative bacterial colony network with a live bioelectric voltage trace">
                 <defs>
-                  <filter id="glow" x="-40%" y="-140%" width="180%" height="380%">
+                  <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
                     <feGaussianBlur stdDeviation="4.4" result="blur"/>
                     <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
                   </filter>
                 </defs>
-                <line x1="0" y1="170" x2="560" y2="170" stroke="rgba(127,234,214,0.14)" stroke-width="1"/>
-                <path id="scope-path" d="" fill="none" stroke="#2ec4b6" stroke-width="2.6" filter="url(#glow)" stroke-linecap="round" stroke-linejoin="round"/>
+                <g id="colony-group" filter="url(#glow)"></g>
+                <rect x="0" y="0" width="560" height="70" fill="#050b1a" fill-opacity="0"/>
+                <line x1="16" y1="40" x2="544" y2="40" stroke="rgba(127,234,214,0.14)" stroke-width="1"/>
+                <path id="scope-path" d="" fill="none" stroke="#2ec4b6" stroke-width="2.2" filter="url(#glow)" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
             </div>
 
-            <div class="float-card fc-1">
-              <span class="tag">GARDNER TOGGLE CIRCUIT</span>
-              <span class="stat-num tnum">100%</span>
-              <span class="stat-label">Fidelity at 24h, any promoter ratio in the BBB's characterized range</span>
-              <a class="pill" href="#results">See the result</a>
-            </div>
-            <div class="float-card fc-2">
-              <span class="tag">ADJACENT MARKET, 2026</span>
-              <span class="stat-num tnum">$1.2B&ndash;$2.0B</span>
-              <span class="stat-label">Radiation-hardened space electronics (independent analyst range)</span>
-              <a class="pill" href="#market">See sourcing</a>
-            </div>
-            <div class="float-card fc-3">
-              <span class="tag">WET-LAB VALIDATION</span>
-              <span class="stat-num tnum">$10K&ndash;$30K</span>
-              <span class="stat-label">The one experiment that answers the open question</span>
-              <a class="pill" href="#roadmap">See roadmap</a>
+            <div class="hero-card-row">
+              <div class="float-card">
+                <span class="tag">GARDNER CIRCUIT</span>
+                <span class="stat-num tnum">100%</span>
+                <span class="stat-label">fidelity, full BBB promoter range</span>
+              </div>
+              <div class="float-card is-featured">
+                <span class="tag">ADJACENT MARKET, 2026</span>
+                <span class="stat-num tnum">$1.2B&ndash;$2.0B</span>
+                <span class="stat-label">radiation-hardened space electronics</span>
+              </div>
+              <div class="float-card">
+                <span class="tag">WET-LAB ASK</span>
+                <span class="stat-num tnum">$10K&ndash;$30K</span>
+                <span class="stat-label">the one validation experiment</span>
+              </div>
             </div>
           </div>
         </div>
@@ -771,12 +776,11 @@ footer a:hover{ color:var(--accent-bright); }
     statNums.forEach(function(n){ ioStat.observe(n); });
   }
 
-  /* ---- procedural bioelectric trace (action-potential shape, not hand-authored) ---- */
+  /* ---- procedural bioelectric trace, thin readout strip along the top ---- */
   var svgPath = document.getElementById('scope-path');
   if(svgPath){
-    var W = 560, H = 340, base = 170, cycles = 3;
+    var W = 560, base = 40, cycles = 4;
     function actionPotential(x0, width, amp){
-      // returns array of [x,y] points tracing one resting -> spike -> repolarize cycle
       var pts = [];
       var restLen = width * 0.28, upLen = width * 0.10, peakLen = width * 0.06,
           downLen = width * 0.22, underLen = width * 0.16, tailLen = width * 0.18;
@@ -791,9 +795,9 @@ footer a:hover{ color:var(--accent-bright); }
       return pts;
     }
     var allPts = [];
-    var segW = W / cycles;
+    var usable = W - 32, segW = usable / cycles;
     for(var c = 0; c < cycles; c++){
-      allPts = allPts.concat(actionPotential(c * segW, segW, 92));
+      allPts = allPts.concat(actionPotential(16 + c * segW, segW, 24));
     }
     var d = 'M ' + allPts.map(function(p){ return p[0].toFixed(1) + ' ' + p[1].toFixed(1); }).join(' L ');
     svgPath.setAttribute('d', d);
@@ -808,6 +812,44 @@ footer a:hover{ color:var(--accent-bright); }
           requestAnimationFrame(function(){ svgPath.style.strokeDashoffset = '0'; });
         });
       }catch(e){ /* getTotalLength unsupported: leave path fully drawn */ }
+    }
+  }
+
+  /* ---- procedural colony network: the hero's dominant visual, a phyllotaxis
+     cell cluster (golden-angle spiral) with branching connections, standing
+     in for a bacterial biofilm, generated in code rather than hand-drawn ---- */
+  var colonyGroup = document.getElementById('colony-group');
+  if(colonyGroup){
+    var svgNS = 'http://www.w3.org/2000/svg';
+    var N = 26, k = 19, golden = 137.508 * Math.PI / 180;
+    var cx = 350, cy = 235;
+    var nodes = [];
+    for(var i = 0; i < N; i++){
+      var ang = i * golden;
+      var r = k * Math.sqrt(i);
+      nodes.push({ x: cx + r * Math.cos(ang), y: cy + r * Math.sin(ang), r: Math.max(2.6, 7.4 - r * 0.045) });
+    }
+    var linesHtml = '';
+    nodes.forEach(function(n, idx){
+      [idx - 1, idx - 6].forEach(function(j){
+        if(j >= 0){
+          var o = nodes[j];
+          linesHtml += '<line x1="' + n.x.toFixed(1) + '" y1="' + n.y.toFixed(1) + '" x2="' + o.x.toFixed(1) + '" y2="' + o.y.toFixed(1) + '" stroke="rgba(127,234,214,0.22)" stroke-width="1"></line>';
+        }
+      });
+    });
+    var nodesHtml = nodes.map(function(n, idx){
+      var delay = (idx % 6) * 0.35;
+      var style = reduceMotion ? '' : ' style="animation:cellPulse 3.6s ease-in-out ' + delay.toFixed(2) + 's infinite"';
+      return '<circle cx="' + n.x.toFixed(1) + '" cy="' + n.y.toFixed(1) + '" r="' + n.r.toFixed(1) + '" fill="#2ec4b6"' + style + '></circle>';
+    }).join('');
+    colonyGroup.innerHTML = linesHtml + nodesHtml;
+
+    if(!reduceMotion && !document.getElementById('cell-pulse-style')){
+      var styleTag = document.createElement('style');
+      styleTag.id = 'cell-pulse-style';
+      styleTag.textContent = '@keyframes cellPulse{0%,100%{opacity:.55}50%{opacity:1}}';
+      document.head.appendChild(styleTag);
     }
   }
 })();
