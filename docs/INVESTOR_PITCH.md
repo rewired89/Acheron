@@ -186,8 +186,9 @@ numbers than a spreadsheet that doesn't survive a follow-up question:
   justify the pitch.
 
 **The honest framing: this upside is entirely conditional on the roadmap
-experiment below succeeding.** We're not asking anyone to price that risk
-in advance, we're asking for the ~$10K-$30K it costs to find out.
+experiments below succeeding.** We're not asking anyone to price that risk
+in advance, we're asking for the ~$2K-$5K it costs to fund Stage 0 and find
+out whether the core circuit even works.
 
 ## Why This Is Different From Every Real Competitor We Found
 
@@ -239,36 +240,51 @@ why:
   different one specific to genome editing in the target organism, not a
   shortcut past having an open question at all.
 
-## Roadmap: The One Experiment That Changes Everything
+## Roadmap: Four Staged Experiments, Not One Combined Bet
 
-Per our own audit's conclusion, this is the actual next step, not a general
-research program:
+Earlier versions of this roadmap asked for one combined experiment, build
+the circuit, damage the colony, regrow it, and read the result back with
+electrical impedance spectroscopy, all in a single $10K-$30K ask. That
+bundled three separate open questions (does the circuit hold two states at
+all, does the state survive damage and regrowth, and does the electrical
+readout work) into one pass/fail result. Per our own audit
+(`docs/SCIENTIFIC_AUDIT_2026.md`, Parts 13 and 15) and the full staged plan
+in `docs/pitch/Acheron_Validation_Proposal.docx`, we've split it into four
+independent, cheaper stages, each a clean go/no-go gate:
 
-**Experiment:** Build the matched-promoter Gardner-style toggle circuit
-(using the already-characterized Bacillus BioBrick Box parts our simulation
-identified) in *B. subtilis*, write a bit, damage the colony, let it regrow
-from survivors, and measure whether the bit reads back correctly,
-non-destructively, using electrical impedance spectroscopy as the readout
-method.
+| Stage | Question answered | Est. cost | Est. time |
+|---|---|---|---|
+| 0 — *B. subtilis* toggle confirmation | Does the matched-promoter Gardner-style toggle circuit (Bacillus BioBrick Box parts) actually show two stable, switchable states, read with a simple reporter assay (lacZ/lux), no electrical readout involved yet? | $2K–$5K | 6–10 weeks |
+| 1 — HEK293 gap-junction persistence | Do arbitrary voltage patterns persist 24h+ in a fast, simple gap-junction-coupled culture? | $2.4K–$10K | 3–6 months |
+| 2 — Planarian minimal viable experiment | Do arbitrary patterns persist in the target regenerative organism, including damage and regrowth? | $10K–$30K | 6–12 months |
+| 3 — Voltage-interface build | Can the toggle circuit's repressor output be coupled to a real, measurable membrane-voltage bit, and read back non-destructively? | To be scoped with a synthetic-biology partner | TBD |
 
-- **Cost:** ~$10K–$30K (reagents, plasmid synthesis/cloning, a lab
-  partnership providing bench access and culturing expertise)
-- **Timeline:** 6–12 months
-- **Outcome:** Either validates the core mechanism (clear path to a
-  multi-bit prototype) or falsifies it cleanly (redirect to the
-  methylation-based mechanism, which is next in line by our own confidence
-  ranking)
+We recommend funding Stage 0 first: it's the fastest, cheapest way to test
+the single design constraint (promoter matching) our own circuit simulation
+flagged as make-or-break, using parts that already exist and are free to
+obtain, and it deliberately avoids the electrical-readout problem entirely
+by using a reporter assay instead. Stage 3 is scoped last and separately on
+purpose: our own follow-up simulation (Part 13) found that a single
+electrical-impedance reading of the circuit's voltage state does not
+survive the biofilm's own native potassium-wave signaling unless the
+reading is integrated over close to a full oscillation cycle (roughly
+three hours), a real design constraint for that stage specifically, not a
+reason to avoid it, but a reason not to fund it before Stage 0 confirms the
+underlying circuit even works.
 
-This is deliberately the cheapest, fastest experiment that produces a real
-yes/no answer, not a moonshot ask.
+A negative result at any stage is a fast, cheap answer that redirects
+effort, not a wasted spend, see the full success criteria and honest risk
+disclosure in `docs/pitch/Acheron_Validation_Proposal.docx`.
 
 ## What We're Looking For, Deliberately Small, Not a Seed Round
 
 We are not raising a general-purpose seed round right now. What this stage
 actually needs is narrower and cheaper than that:
 
-1. **Funding for the wet-lab validation experiment** described above
-   (~$10K-$30K: reagents, plasmid synthesis/cloning, lab bench access).
+1. **Funding for Stage 0** described above (~$2K-$5K: reagents, plasmid
+   synthesis/cloning, a lab partnership providing bench access), the
+   fastest, cheapest gate on the whole roadmap, with the later stages
+   funded separately once each prior gate passes.
 2. **Budget to hire a paid synthetic-biology / genetic-circuit design
    consultant**, someone with real hands-on expertise to review and help
    execute the toggle-circuit build, not just informal mentoring hours. We

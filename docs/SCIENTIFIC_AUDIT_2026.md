@@ -1341,24 +1341,25 @@ or to anything already in this project's simulations, per the
 no-numeric-invention rule in `docs/THIRD_PARTY_METHODS.md`.
 
 **Claim 3: use a fluorescent reporter (GFP/RFP) as the first readout,
-before attempting a non-destructive electrical readout.** This is the one
-genuinely new, well-founded idea in the feedback. The Gardner toggle
-switch's state is fundamentally a transcriptional state, whichever
-repressor arm is active, so reading it through a standard fluorescent
-transcriptional reporter (GFP driven by one arm, RFP by the other) is a
-far more direct readout than anything this project has proposed so far.
-Every readout path considered until now (voltage-sensitive dye imaging,
-EIS) depends on first solving the repressor-to-ion-channel expression
-link, which Part 9 explicitly flagged as having "no prior art at all,"
-and which Parts 12-13 then showed is vulnerable to the colony's own
-potassium-wave interference once built. A fluorescent reporter sidesteps
-that unbuilt link entirely for a first proof-of-concept: it tests
-bistability and heritability directly at the transcriptional level, and
-defers the harder, ion-channel-linked, non-optical readout (still needed
-for the project's actual non-optical, sealed-environment end goal) to a
-separate, later stage. **This has not been built, simulated, or costed by
-this project.** It is a legitimate design option to add to the roadmap,
-not a validated result.
+before attempting a non-destructive electrical readout.** Checked against
+`docs/pitch/Acheron_Validation_Proposal.docx`, this is not new to the
+project: its Stage 0 ("*B. subtilis* toggle confirmation") already reads
+bistability through a transcriptional reporter assay, lacZ/lux, not the
+voltage-linked EIS path, before any electrical readout is attempted. That
+document predates this feedback and reaches the same structural
+conclusion independently. What the feedback adds is narrower than first
+read: GFP/RFP specifically instead of lacZ/lux (a real, minor variant,
+fluorescence gives a continuous, imageable signal, lacZ/lux typically an
+endpoint or plate-reader one, but both are transcriptional reporters
+solving the same problem the same way), and the explicit argument for why
+this class of readout is the right first step: every voltage-linked path
+(dye imaging, EIS) depends on first solving the repressor-to-ion-channel
+expression link, which Part 9 flagged as having "no prior art at all," and
+which Parts 12-13 then showed is vulnerable to the colony's own
+potassium-wave interference once built. A transcriptional reporter
+sidesteps that unbuilt link entirely for a first proof-of-concept. That
+reasoning is worth having stated explicitly, even though the project's own
+staged plan had already arrived at reporter-first by a different route.
 
 **Claim 4: DNA sequence recording (CRISPR-based) and methylation as
 alternative memory mechanisms.** Matches, without adding new information,
@@ -1369,27 +1370,36 @@ characterized in Part 11 with the same caveat this feedback also lands
 on, that the fidelity anchor which would actually apply to *B. subtilis*
 is unmeasured. No revision needed to those sections.
 
-**The staged plan (Stage 0 computational, already done; Stage 1
-fluorescent toggle build; Stage 2 damage/regrowth with the same
-fluorescent readout; Stage 3 non-destructive ion-channel/EIS readout;
-Stage 4 addressable array; $27K-$55K, 13-18 months total) is structurally
-sound** and consistent with how this project has actually made progress
-so far, Parts 8 through 14 each isolated one variable at a time rather
-than testing everything at once. Its specific dollar and month figures
-are the feedback author's own estimates, not sourced to anything in this
-project's own cost research, log them as a proposal to evaluate, not an
-adopted budget.
+**The staged plan the feedback proposes (its own Stage 0 computational,
+already done; Stage 1 fluorescent toggle build; Stage 2 damage/regrowth
+with the same fluorescent readout; Stage 3 non-destructive ion-channel/EIS
+readout; Stage 4 addressable array; $27K-$55K, 13-18 months total) is
+structurally sound**, and consistent with how this project has actually
+made progress so far, Parts 8 through 14 each isolated one variable at a
+time rather than testing everything at once. Its specific dollar and
+month figures are the feedback author's own estimates, not sourced to
+anything in this project's own cost research, and its stage numbering is
+the feedback's own, not this project's: it does not line up one-to-one
+with the project's existing Stage 0-3 plan in
+`docs/pitch/Acheron_Validation_Proposal.docx` (whose Stage 0 is the
+B. subtilis toggle/reporter build, Stage 1 is HEK293 persistence, Stage 2
+is the planarian minimal viable experiment, and Stage 3 is the
+voltage-interface build), which predates this feedback and was not
+replaced by it, only reinforced on the "split the readout out" point.
 
-**Recommendation, not yet acted on:** revise `docs/INVESTOR_PITCH.md`'s
-Roadmap section and `docs/pitch/Acheron_Validation_Proposal.docx` so
-Stage 1, a matched-promoter Gardner toggle with a fluorescent reporter
-only, no damage/regrowth, no EIS, is the first funded milestone, with
-damage/regrowth and non-destructive electrical readout following as
-separate, later-stage asks. Part 13's own EIS finding already supports
-splitting the readout problem out on its own; this feedback is an
-independent reason arriving at the same conclusion. Both documents are
-investor-facing, so this change should be confirmed with the founder
-before either is rewritten, not made unilaterally.
+**Action taken:** `docs/INVESTOR_PITCH.md`'s Roadmap section previously
+asked for one combined experiment, matched-promoter circuit, damage,
+regrowth, and EIS readout together, in a single $10K-$30K ask, which
+contradicted the project's own already-staged plan in
+`docs/pitch/Acheron_Validation_Proposal.docx` and is exactly the pattern
+this feedback (Claim 1) warned against. Founder confirmed revising both
+documents (September 2026). The Roadmap section now presents the
+project's existing four-stage plan instead of the combined ask, and the
+Validation Proposal gained a third empirical claim (Claim C, readout
+timing) plus a matching risk-disclosure bullet, both citing Part 13's
+oscillation-interference finding directly, since that finding predates
+this feedback but had not yet been reflected in either investor-facing
+document.
 
 ---
 
