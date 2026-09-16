@@ -121,9 +121,18 @@ rather than assuming they're present.
   Rely on `scripts/office/validate.py` (schema/structure) and a full
   `markitdown` text-dump read-through instead, and say so explicitly rather
   than claiming a visual check that didn't happen.
-- **Git workflow:** recent sessions have worked directly on `main` (no
-  feature branches) at the founder's explicit direction. Confirm this is
-  still wanted rather than assuming it as a permanent rule.
+- **Git workflow, permanent rule (confirmed September 2026, do not ask
+  again):** commit and push everything directly to `main`. Do not create
+  feature/side branches. If a session is forced onto a branch other than
+  `main` by the harness/environment it's running in, merge that branch
+  into `main` and push `main` before finishing, that override doesn't
+  change this rule.
+- **Scope discipline:** when a task says "read X" or "understand this
+  feedback," that means read and report back, not implement changes off
+  your own read of what the feedback implies. Don't take action beyond
+  what was actually asked, confirming a follow-up question mid-task isn't
+  the same as being asked for that follow-up in the first place. If the
+  next step seems obvious, say what you'd do and let the founder say go.
 
 ## CodeMap Protocol
 
