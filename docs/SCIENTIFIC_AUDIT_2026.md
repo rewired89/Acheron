@@ -1300,6 +1300,99 @@ SubtiWiki-sourced search.
 
 ---
 
+## Part 15: External Review (DeepSeek), the Combined Experiment Is the Wrong Ask, and a Fluorescent Reporter as an Overlooked Readout Path (September 2026)
+
+Feedback from DeepSeek, brought to this audit by the founder, reviewed
+against the project's actual current state rather than accepted at face
+value.
+
+**Claim 1: the project is trying to prove three things in one experiment,
+and should not be.** The feedback argues for testing the circuit, the
+readout, and damage/regrowth survival as three separate questions, only
+combining them once each is independently proven. This is a correct
+description of a real problem, not a restatement of something already
+fixed. `docs/INVESTOR_PITCH.md`'s current Roadmap section ("Roadmap: The
+One Experiment That Changes Everything") asks for exactly the combined
+experiment this feedback warns against: build the matched-promoter
+Gardner circuit, damage the colony, let it regrow, and read the result
+back with EIS, all inside one $10K-$30K, 6-12 month ask. `docs/pitch/
+Acheron_Validation_Proposal.docx` is built from that same combined
+framing. Neither has been revised in response to this yet, see the
+recommendation below.
+
+**Claim 2: EIS is too weak a signal, buried in the colony's own noise.**
+This matches, and does not add new information beyond, this audit's own
+Part 13 finding: a single realistic EIS sweep (seconds to a few minutes,
+per the Akabuogu et al. 2024 protocol) does not survive the colony's
+native potassium-wave oscillation (2-4h period), and accuracy only
+recovers once the integration window reaches roughly one full oscillation
+period (about 180 minutes). The feedback's proposed fix, an engineered
+high-conductance channel plus a lock-in amplifier reading at that
+channel's own characteristic frequency, is a more specific version of the
+narrower, real advantage Part 13 already identified for EIS: repeatable,
+non-destructive measurement over a long window, not one-shot immunity to
+the oscillation. Read this as independent convergence on the same
+finding, which is worth noting, not as new evidence. **One specific
+number in the feedback is not verified and should not be repeated as a
+project claim without a citation**: that the engineered circuit changes
+membrane impedance "a few percent" against "20-40%" native biofilm
+heterogeneity. Neither figure traces to a citation in the feedback itself
+or to anything already in this project's simulations, per the
+no-numeric-invention rule in `docs/THIRD_PARTY_METHODS.md`.
+
+**Claim 3: use a fluorescent reporter (GFP/RFP) as the first readout,
+before attempting a non-destructive electrical readout.** This is the one
+genuinely new, well-founded idea in the feedback. The Gardner toggle
+switch's state is fundamentally a transcriptional state, whichever
+repressor arm is active, so reading it through a standard fluorescent
+transcriptional reporter (GFP driven by one arm, RFP by the other) is a
+far more direct readout than anything this project has proposed so far.
+Every readout path considered until now (voltage-sensitive dye imaging,
+EIS) depends on first solving the repressor-to-ion-channel expression
+link, which Part 9 explicitly flagged as having "no prior art at all,"
+and which Parts 12-13 then showed is vulnerable to the colony's own
+potassium-wave interference once built. A fluorescent reporter sidesteps
+that unbuilt link entirely for a first proof-of-concept: it tests
+bistability and heritability directly at the transcriptional level, and
+defers the harder, ion-channel-linked, non-optical readout (still needed
+for the project's actual non-optical, sealed-environment end goal) to a
+separate, later stage. **This has not been built, simulated, or costed by
+this project.** It is a legitimate design option to add to the roadmap,
+not a validated result.
+
+**Claim 4: DNA sequence recording (CRISPR-based) and methylation as
+alternative memory mechanisms.** Matches, without adding new information,
+what Parts 10-11 already established: DNA-sequence storage is archival
+and write-once (Yachie & Tomita 2007; BioCompute Inc.), methylation is the
+rewritable epigenetic mechanism, and its fidelity numbers are already
+characterized in Part 11 with the same caveat this feedback also lands
+on, that the fidelity anchor which would actually apply to *B. subtilis*
+is unmeasured. No revision needed to those sections.
+
+**The staged plan (Stage 0 computational, already done; Stage 1
+fluorescent toggle build; Stage 2 damage/regrowth with the same
+fluorescent readout; Stage 3 non-destructive ion-channel/EIS readout;
+Stage 4 addressable array; $27K-$55K, 13-18 months total) is structurally
+sound** and consistent with how this project has actually made progress
+so far, Parts 8 through 14 each isolated one variable at a time rather
+than testing everything at once. Its specific dollar and month figures
+are the feedback author's own estimates, not sourced to anything in this
+project's own cost research, log them as a proposal to evaluate, not an
+adopted budget.
+
+**Recommendation, not yet acted on:** revise `docs/INVESTOR_PITCH.md`'s
+Roadmap section and `docs/pitch/Acheron_Validation_Proposal.docx` so
+Stage 1, a matched-promoter Gardner toggle with a fluorescent reporter
+only, no damage/regrowth, no EIS, is the first funded milestone, with
+damage/regrowth and non-destructive electrical readout following as
+separate, later-stage asks. Part 13's own EIS finding already supports
+splitting the readout problem out on its own; this feedback is an
+independent reason arriving at the same conclusion. Both documents are
+investor-facing, so this change should be confirmed with the founder
+before either is rewritten, not made unilaterally.
+
+---
+
 ## Next Action: One Experiment Changes Everything
 
 **The experiment:**
