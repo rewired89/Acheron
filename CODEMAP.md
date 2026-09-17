@@ -551,6 +551,16 @@ they depend on each other.
   used_by: `main` (in the same file)
   side_effects: none
 
+- name: `ReinforcedGardnerCell`, `run_colony_trial`, `sweep`
+  type: class + functions
+  file: simulations/damage_sensing_reinforcement.py
+  purpose: proposes and tests a damage-triggered reinforcement circuit (modeled on the real bacterial SOS/RecA-LexA damage response, Maslowska et al. 2019) that transiently boosts whichever toggle arm currently dominates during regrowth, then relaxes at settling. Re-tests it specifically against Part 22's one documented weak point (~1-molecule partition noise, 66-87% recovery). Found a 10x promoter-strength boost during regrowth fully rescues that weak point back to 100% at every damage level tested; a 5x boost already recovers to 97-99%. A real, buildable circuit addition, not yet built or wet-lab tested
+  inputs: `fractions/boost_multipliers/n_trials`
+  outputs: genetic fidelity per (boost multiplier, surviving fraction) (printed)
+  dependencies: `simulations.gardner_toggle_circuit.GardnerParams/GardnerToggleCell`, `simulations.bacterial_colony_regrowth.DOUBLING_TIME_MIN/SETTLE_WINDOW_HOURS`, `simulations.partition_noise_regrowth.partition_value`
+  used_by: `main` (in the same file)
+  side_effects: none
+
 ---
 
 ## experiments/ — runnable demonstrations and diagnostic scripts
