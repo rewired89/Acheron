@@ -1528,6 +1528,57 @@ knockout's own documented biofilm-formation cost (Lundberg et al. 2013).
 
 ---
 
+## Part 19: Does Levin's Lab Have a Planarian Equivalent of the B. subtilis Interference Problem? Searched, Not Found (September 2026)
+
+Founder question, checked directly against PubMed rather than assumed:
+does Levin's own lab already document a native, competing electrical
+signal in planarians, comparable to the potassium-wave interference this
+audit found for B. subtilis (Parts 12-13)? Part 13 already flagged this
+as an open gap ("no comparable planarian interference test exists yet...
+no citation for a planarian equivalent was found"). Multiple PubMed
+searches this session (varying terms: bioelectric noise, voltage
+imaging, membrane potential variability, spontaneous electrical
+activity, all crossed with "planarian" and/or "Levin") turned up two
+real, relevant, previously-uncited papers, but not a direct hit.
+
+1. Oviedo, Nicolas, Adams & Levin (2008), "Live Imaging of Planarian
+   Membrane Potential Using DiBAC4(3)," CSH Protocols, DOI
+   10.1101/pdb.prot5055, PMID 21356693, PMC10468776. A real Levin-lab
+   imaging protocol whose own abstract states the method produces
+   "qualitative... variations in time-averaged membrane potential" and
+   requires "proper controls." This confirms Levin's own lab already
+   treats raw planarian voltage imaging as noisy enough to need
+   time-averaging and controls, the same general strategy (integrate
+   over time rather than trust one snapshot) this project's own EIS fix
+   (Part 13) independently arrived at for B. subtilis. It does not name
+   a specific competing signal or its timescale, so it supports the
+   averaging strategy in general without answering the specific
+   question asked.
+2. Grodstein & Levin (2021), "Stability and robustness properties of
+   bioelectric networks: A computational approach," Biophysics Reviews
+   2(3):031305, DOI 10.1063/5.0062442, PMID 38505634, PMC10903393. A
+   Levin-lab computational analysis using the regenerating planarian as
+   its example system, studying how bioelectric patterning stays
+   correct despite changing cell number and anatomical configuration
+   during regeneration. Full text was not retrievable (abstract only),
+   so this project cannot yet say whether it characterizes an
+   electrical noise source the way this audit needs, only that its
+   subject (robustness of the pattern to structural change during
+   regeneration) reads as closer to this project's own Part 6 question
+   (do arbitrary patterns persist through damage the way natural ones
+   do) than to a documented competing background signal. Worth a closer
+   read if the planarian track is revisited.
+
+**Bottom line: the search did not find a planarian equivalent of the
+B. subtilis potassium-wave problem.** That is consistent with, not a
+correction to, what Part 13 already said, this project's literature
+search still has not found one, which is different from planarians being
+established as free of an equivalent issue. Both papers above are real
+and worth citing if the planarian track is picked back up, neither
+closes the gap Part 13 flagged.
+
+---
+
 ## Next Action: One Experiment Changes Everything
 
 **The experiment:**
