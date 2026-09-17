@@ -1488,6 +1488,46 @@ own docstring rather than glossed over.
 
 ---
 
+## Part 18: Reducing the Native Signal's Coupling Strength, Instead of Timing Around It (September 2026)
+
+Part 17 ruled out timing as a fix. This tests the founder's other two
+ideas from the same conversation: engineer the circuit's voltage output
+through a different ion channel than yugO (the one carrying the native
+signal, Lundberg, Becker & Choe 2013), or delete yugO from the
+engineering strain entirely. Both do the same thing to this project's
+model: reduce how much of the native oscillation actually reaches the
+engineered circuit's voltage. Neither mechanism's real-world coupling
+reduction has ever been measured, so
+`simulations/decoupled_channel_readout.py` sweeps a residual-coupling
+fraction (100% = today's worst-case shared-channel assumption, 0% = a
+perfect knockout/isolation) instead of assuming a number, at a moderate
+(30mV) and the worst-case documented (70mV) real oscillation amplitude.
+
+**Result, and it depends on how strong the interference actually is:**
+- At the moderate amplitude (30mV), cutting coupling down to just 10% of
+  today's assumed strength, nowhere near a perfect knockout, is enough to
+  make even a fast, 1-minute read work well (94% accuracy, up from 54% at
+  full coupling). You do not need to eliminate the native signal, just
+  substantially weaken it.
+- At the worst-case documented amplitude (70mV), that same partial
+  reduction is not enough, a fast read stays poor (55-61%) all the way
+  down to 10% coupling, and only recovers at a complete, 0% coupling
+  knockout. At this amplitude, the 180-minute averaging fix from Part 13
+  still works regardless of coupling level, so it remains the fallback
+  that doesn't depend on how well a knockout or channel swap performs in
+  practice.
+
+**Bottom line:** reducing the native signal's coupling strength is a
+genuinely more promising lever than the timing trick Part 17 tested, at
+real-world amplitudes on the milder end of the documented range. At the
+worst-case end, it is not a substitute for the long-averaging fix, only a
+possible complement to it, and how much real coupling reduction a
+different channel or a yugO knockout would actually achieve is a wet-lab
+question this project cannot resolve computationally, along with the
+knockout's own documented biofilm-formation cost (Lundberg et al. 2013).
+
+---
+
 ## Next Action: One Experiment Changes Everything
 
 **The experiment:**

@@ -511,6 +511,16 @@ they depend on each other.
   used_by: `main` (in the same file)
   side_effects: none
 
+- name: `sweep_coupling_and_window`
+  type: function
+  file: simulations/decoupled_channel_readout.py
+  purpose: models a different-channel design or a yugO-knockout strain (both reduce how much of the native oscillation reaches the engineered circuit's voltage) as a swept residual-coupling fraction (100% = today's shared-channel assumption, 0% = perfect isolation), crossed with reading-window length. Found the benefit is amplitude-dependent: at a moderate real amplitude (30mV) even a partial (10%) coupling reduction makes a fast 1-minute read work well; at the worst-case documented amplitude (70mV) only a near-complete knockout does, and the 180min-averaging fix from `eis_readout_interference.py` remains the fallback that works regardless of coupling level
+  inputs: `base_amplitudes/coupling_fractions/window_minutes/period_hours` (coupling fraction is an explicitly unmeasured, swept design target, not a literature value)
+  outputs: accuracy table per (base amplitude, coupling fraction, window) (printed)
+  dependencies: `simulations.eis_readout_interference.run_trial_trajectory/eis_style_read`, `simulations.gardner_toggle_circuit.GardnerParams`
+  used_by: `main` (in the same file)
+  side_effects: none
+
 ---
 
 ## experiments/ — runnable demonstrations and diagnostic scripts
