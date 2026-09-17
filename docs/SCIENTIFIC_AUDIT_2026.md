@@ -1616,6 +1616,48 @@ protocol would also have to contend with.
 
 ---
 
+## Part 21: The Electrical Reader, Damage/Regrowth, and the Native Oscillation, All Three Combined (September 2026)
+
+Continuing the pattern from Part 20 (which did this for the fluorescent
+reporter): three previously-separate results, `bacterial_colony_regrowth.py`
+(damage/regrowth), `native_oscillation_interference.py` (single-snapshot
+voltage reads collapse under the native oscillation), and
+`eis_readout_interference.py` (a ~180-minute average recovers accuracy),
+had never been run together on the SAME simulated colony.
+`simulations/voltage_colony_regrowth.py` does that: damages a colony,
+regrows it by division while the native oscillation runs continuously
+throughout both regrowth and settling, then reads the result both ways.
+
+**Result: each piece behaved exactly as its own source file predicted.**
+Genetic fidelity stayed at 100% throughout (the oscillation is only ever
+added to voltage, never fed into u/v, matching every prior file's
+scoping choice). A single voltage snapshot collapsed to ~50% at every
+damage level and both tested amplitudes (30mV, 70mV). The 180-minute
+averaged read recovered to ~100% at every damage level, undisturbed by
+having gone through actual damage and regrowth first.
+
+**The one genuinely new finding: the existing 6-hour settle budget has
+zero margin at the worst damage level this model can represent.** Worse
+damage takes longer to regrow (more doubling rounds needed before the
+colony is back to full size), which eats into the fixed 6-hour window
+`bacterial_colony_regrowth.py` already uses. At the most extreme
+survival this model can represent (a single surviving cell, the floor
+`run_colony_trial`'s `max(1, ...)` allows), regrowth to 64 cells takes
+exactly 6 doubling rounds, 180 minutes, at the project's already-assumed
+30-minute doubling time, leaving EXACTLY 180 minutes of settle time,
+precisely enough for one 180-minute EIS-style average and not a minute
+more. This is not a coincidence discovered after the fact, it falls out
+of `bacterial_colony_regrowth.py`'s own SETTLE_WINDOW_HOURS=6h choice
+relative to Part 13's 180-minute finding, but it had never been checked
+directly before this file, and it means there is currently no slack: if
+real regrowth is any slower than the assumed 30-minute doubling time, or
+a real colony needs a moment before the electrical read can begin, this
+exact combination (worst-case damage plus the long averaging fix) would
+not fit inside the budget this project's own roadmap documents already
+assume.
+
+---
+
 ## Next Action: One Experiment Changes Everything
 
 **The experiment:**

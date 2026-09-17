@@ -531,6 +531,16 @@ they depend on each other.
   used_by: `main` (in the same file)
   side_effects: none
 
+- name: `run_colony_trial`, `sweep_surviving_fraction`
+  type: function
+  file: simulations/voltage_colony_regrowth.py
+  purpose: combines all three of `bacterial_colony_regrowth.py` (damage/regrowth), `native_oscillation_interference.py` (continuous native-oscillation interference, applied throughout growth AND settling, not just to an undisturbed cell), and `eis_readout_interference.py` (long-window vs. single-snapshot voltage readout) into one trial. Also tracks `settle_minutes_available`, since worse damage takes longer to regrow within the fixed 6h settle budget, directly competing with the time left for a long EIS-style read - a previously-untested interaction. Found V-snapshot collapses to ~50% and V-window recovers to ~100% exactly as the source files predicted separately, and the existing 6h budget leaves EXACTLY 180 minutes of settle time even at the worst damage level the model can represent (1 surviving cell), zero margin, not a comfortable cushion
+  inputs: `fractions/amplitude_mv/period_hours/n_trials`
+  outputs: genetic / voltage-snapshot / voltage-window / settle-minutes-available per surviving fraction (printed)
+  dependencies: `simulations.gardner_toggle_circuit.GardnerParams/GardnerToggleCell`, `simulations.bacterial_colony_regrowth.DOUBLING_TIME_MIN/SETTLE_WINDOW_HOURS`, `simulations.native_oscillation_interference.ambient_oscillation_offset`, `simulations.eis_readout_interference.eis_style_read`
+  used_by: `main` (in the same file)
+  side_effects: none
+
 ---
 
 ## experiments/ — runnable demonstrations and diagnostic scripts
