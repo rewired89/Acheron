@@ -501,6 +501,16 @@ they depend on each other.
   used_by: `main` (in the same file)
   side_effects: none
 
+- name: `phase_locked_reads`, `blind_single_reads`, `sweep_phase_lock`
+  type: function
+  file: simulations/phase_locked_readout.py
+  purpose: tests whether timing a quick voltage read to the native oscillation's predicted zero-crossings (instead of averaging over a long window) recovers accuracy, swept across how much timing error that prediction has. Found the hopeful hypothesis mostly does NOT hold: even with perfect timing knowledge, a quick read only matches the 180min-averaging fix at the lowest tested amplitude (10mV); at 20mV+ a perfectly-timed quick read lands at ~50%, no better than a blind read, because the oscillation drags cell voltage around continuously, not just at the sample instant, so a single sample stays contaminated by residual drift regardless of when it's taken
+  inputs: `amplitudes/period_hours/phase_error_levels` (reuses `eis_readout_interference.run_trial_trajectory`'s amplitude/period ranges)
+  outputs: blind vs. 180min-average vs. phase-locked-at-various-timing-errors accuracy table (printed)
+  dependencies: `simulations.eis_readout_interference.run_trial_trajectory/eis_style_read`, `simulations.gardner_toggle_circuit.GardnerParams`
+  used_by: `main` (in the same file)
+  side_effects: none
+
 ---
 
 ## experiments/ — runnable demonstrations and diagnostic scripts

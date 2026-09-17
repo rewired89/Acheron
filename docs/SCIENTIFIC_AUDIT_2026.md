@@ -1436,6 +1436,60 @@ already applies to keeping the oscillation out of the genetic (u/v)
 state. This is a design/sensitivity tool, not a wet-lab measurement,
 same status as every other simulation in this project.
 
+---
+
+## Part 17: Phase-Locked Reading - Testing Whether Timing Dodges the Oscillation (September 2026)
+
+Founder question, tested directly rather than just reasoned about: instead
+of averaging a voltage read over the native oscillation's full ~3h period
+(Part 13's fix), could a quick read timed to the oscillation's predicted
+zero-crossing skip the problem instead of averaging through it?
+`simulations/phase_locked_readout.py` tests this on the identical
+trajectories `eis_readout_interference.py` already generates, comparing
+three strategies head to head: a blind random-moment snapshot, the
+180-minute averaging fix, and a quick read scheduled at the oscillation's
+predicted quiet moments, swept across how much timing error that
+prediction carries (0 to 90 minutes).
+
+**Result: the hopeful hypothesis mostly did not hold up.** Even with
+perfect timing knowledge (zero error), the quick read only matched the
+180-minute average at the lowest tested amplitude (10mV, where it hit
+100%). At 20mV and above, a perfectly-timed quick read landed at ~50%, a
+coin flip, no better than the blind baseline and sometimes slightly
+worse. Likely reason: the oscillation is added into the cell's voltage
+continuously, every minute, not just at the read instant, so by the time
+the external wave's value returns to zero, the cell's own voltage has
+already been dragged around for most of a half-cycle and hasn't settled
+back. A single sample stays contaminated by that residual drift
+regardless of where in the cycle it's taken.
+
+**This sharpens Part 13's finding rather than contradicting it:** the
+problem was never really about the waveform's instantaneous value at
+sample time, it's about how much cumulative drift has built up, and only
+integrating over enough of the cycle to average that out actually works.
+Timing a quick read cleverly is not a shortcut around that, at least not
+in this model.
+
+**The one real exception:** at the lowest tested amplitude (10mV), timing
+does help substantially and tolerates real timing error gracefully (86%
+at +/-5 min, 71% at +/-15 min). That keeps this idea relevant, just not
+as a way to tolerate the full documented interference range, more as a
+reason to also pursue keeping the native signal's effective amplitude
+small in the first place, e.g., a different, non-shared ion channel, or a
+yugO-knockout chassis strain (both raised in the same founder
+conversation, neither simulated or wet-lab tested yet).
+
+**What this doesn't and can't resolve:** whether a real colony's
+oscillation is regular enough for a "predicted schedule" to mean anything
+over 24 hours, and how a real protocol would establish the phase at all
+without already having a working non-destructive readout, a genuine
+bootstrapping problem no simulation resolves, stated plainly in the file's
+own docstring rather than glossed over.
+
+---
+
+## Next Action: One Experiment Changes Everything
+
 **The experiment:**
 - 2mm × 2mm planarian tissue
 - Write one voltage pattern (optogenetic or electrical)
