@@ -521,6 +521,16 @@ they depend on each other.
   used_by: `main` (in the same file)
   side_effects: none
 
+- name: `run_colony_trial`, `sweep_surviving_fraction`
+  type: function
+  file: simulations/reporter_colony_regrowth.py
+  purpose: combines `bacterial_colony_regrowth.py`'s division-based damage/regrowth mechanism with `gardner_toggle_reporter_readout.py`'s GFP/RFP reporter cell (instead of the plain genetic-only cell), so daughters inherit reporter pools at division the same way they already inherit u/v (concentration-matching, not the original file's own new assumption). Answers a question neither source file could alone: does the fluorescent reporter still read correctly after a colony is smashed down to a few survivors and regrows. Found reporter fidelity tracks genetic fidelity exactly (100% from 2% survivors up, 0% gap at every level tested)
+  inputs: `fractions: List[float]`, `n_trials: int = 12`
+  outputs: genetic vs. reporter fidelity per surviving fraction (printed)
+  dependencies: `simulations.gardner_toggle_reporter_readout.GardnerToggleReporterCell`, `simulations.bacterial_colony_regrowth.DOUBLING_TIME_MIN/SETTLE_WINDOW_HOURS`, `simulations.gardner_toggle_circuit.GardnerParams`
+  used_by: `main` (in the same file)
+  side_effects: none
+
 ---
 
 ## experiments/ — runnable demonstrations and diagnostic scripts

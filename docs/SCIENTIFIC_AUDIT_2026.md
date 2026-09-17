@@ -1579,6 +1579,43 @@ closes the gap Part 13 flagged.
 
 ---
 
+## Part 20: The Fluorescent Reporter, Tested Through Damage and Regrowth (September 2026)
+
+Two results existed separately and had never been combined: Part 8's/
+`bacterial_colony_regrowth.py`'s finding that the genetic memory survives
+division-based damage/regrowth down to 2% surviving cells, and Part
+16's/`gardner_toggle_reporter_readout.py`'s finding that a GFP/RFP
+reporter tracks that genetic state accurately when nothing disturbs the
+colony. Neither answers the question that actually matters for a real
+experiment: after a colony is smashed down and regrows, does the GLOWING
+COLOR still say the right thing, not just the genes underneath it.
+`simulations/reporter_colony_regrowth.py` runs that combined test
+directly, extending `bacterial_colony_regrowth.py`'s existing
+daughter-inherits-the-mother's-concentration treatment (already used for
+the repressor state u/v) to the reporter pools as well, for consistency,
+not as a new assumption.
+
+**Result: reporter fidelity tracks genetic fidelity exactly.** Both
+recover to 100% from as little as 2% surviving cells up through no
+damage at all, a 0% gap between the two columns at every surviving
+fraction tested. The fluorescent readout does not add any additional
+fragility on top of what the underlying circuit already tolerates.
+
+**What this means for the roadmap:** this is the computational case for
+treating a damage-and-regrowth test with a fluorescent/reporter readout
+as a reasonable next step for B. subtilis specifically, something the
+existing staged plan (`docs/pitch/Acheron_Validation_Proposal.docx`)
+does not yet have, its Stage 2 (damage/regrowth) is planarian-specific,
+not B. subtilis. **What this doesn't resolve:** the same limitation
+already stated in `bacterial_colony_regrowth.py`, division here is
+deterministic inheritance plus ongoing noise, not stochastic partition
+noise (real, unequal splitting of protein between daughters), and this
+file adds no new wet-lab-only factors of its own (photobleaching,
+autofluorescence, population imaging noise) that a real microscopy
+protocol would also have to contend with.
+
+---
+
 ## Next Action: One Experiment Changes Everything
 
 **The experiment:**
