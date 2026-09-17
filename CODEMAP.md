@@ -491,6 +491,16 @@ they depend on each other.
   used_by: `main` (in the same file)
   side_effects: none
 
+- name: `GardnerToggleReporterCell`, `run_persistence`, `sweep_ratio_and_noise`, `sweep_maturation_and_measurement_noise`
+  type: class + functions
+  file: simulations/gardner_toggle_reporter_readout.py
+  purpose: same Gardner repressor ODE as `gardner_toggle_circuit.py`, read out through a two-arm GFP/RFP transcriptional reporter (maturation + growth-dilution kinetics) instead of the hypothetical repressor->ion-channel->voltage link, so `gardner_toggle_circuit.py`'s genetic/voltage fidelity table has a directly comparable reporter-fidelity column. Deliberately excludes a native-oscillation interference sweep (unlike `native_oscillation_interference.py`) because the potassium-wave mechanism acts on membrane voltage specifically and no cited source proposes it affecting transcription/translation/maturation; see file docstring for that reasoning stated in full
+  inputs: `GardnerParams` (imported), `ratios/tx_noise_levels` for the main sweep, `maturation_halflife_min`/`reporter_measurement_noise_std` for the reporter-sensitivity sweep (both explicitly unmeasured placeholders, not literature values)
+  outputs: genetic/reporter fidelity tables (printed)
+  dependencies: `simulations.gardner_toggle_circuit.GardnerParams`
+  used_by: `main` (in the same file)
+  side_effects: none
+
 ---
 
 ## experiments/ — runnable demonstrations and diagnostic scripts

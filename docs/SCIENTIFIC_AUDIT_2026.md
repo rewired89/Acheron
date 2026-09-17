@@ -1403,7 +1403,38 @@ document.
 
 ---
 
-## Next Action: One Experiment Changes Everything
+## Part 16: The Fluorescent Reporter Readout, Simulated (September 2026)
+
+Part 15's Claim 3 argued a transcriptional reporter (GFP/RFP) sidesteps
+the interference problem the voltage-linked readout has, but that was
+reasoning, not a run simulation. `simulations/gardner_toggle_reporter_readout.py`
+is the missing one: the same Gardner repressor ODE as
+`gardner_toggle_circuit.py`, read out through a two-arm GFP/RFP
+transcriptional reporter (maturation + growth-dilution kinetics) instead
+of through the hypothetical repressor-to-ion-channel-to-voltage link.
+
+**Result:** reporter fidelity tracks genetic fidelity exactly, matching
+`gardner_toggle_circuit.py`'s own voltage-fidelity numbers in the
+undisturbed case (100% at matched-to-10x promoter ratios, 50% at the 0.1
+severe-mismatch ratio, both with and without transcriptional noise), and
+stays at 100% across a swept maturation half-life (5-60 minutes) and
+measurement noise (0-30%), both explicitly unmeasured placeholders for
+this system rather than literature values.
+
+**What this does and doesn't establish:** in the undisturbed case
+simulated here, both readouts are equally clean, so this result alone
+doesn't favor one over the other. The actual case for reporter-first is
+the one `native_oscillation_interference.py` and `eis_readout_interference.py`
+already made: only the voltage-linked readout has an identified,
+cited corruption mechanism (the biofilm's own potassium-wave signaling
+acting on membrane voltage). No cited source proposes that mechanism
+also acting on transcription, translation, or chromophore maturation, so
+`gardner_toggle_reporter_readout.py` deliberately does not add an
+oscillation term to the reporter pathway, on the same "don't simulate an
+unproposed coupling" discipline `native_oscillation_interference.py`
+already applies to keeping the oscillation out of the genetic (u/v)
+state. This is a design/sensitivity tool, not a wet-lab measurement,
+same status as every other simulation in this project.
 
 **The experiment:**
 - 2mm × 2mm planarian tissue
