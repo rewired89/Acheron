@@ -541,6 +541,16 @@ they depend on each other.
   used_by: `main` (in the same file)
   side_effects: none
 
+- name: `partition_value`, `run_colony_trial`, `sweep`
+  type: function
+  file: simulations/partition_noise_regrowth.py
+  purpose: replaces `bacterial_colony_regrowth.py`'s deterministic daughter-inherits-mother's-value-exactly division with real binomial partitioning noise (Huh & Paulsson 2011, kappa=1/<X>), applied to BOTH resulting daughters at every division, not just the newly-created object. Sweeps an unmeasured molecules-per-unit conversion (this model's u/v are dimensionless, not real molecule counts) from ~1 to ~2500 effective molecules. Found the circuit's own bistability makes it robust down to ~5 molecules (99-100% recovery, matching the noise-free result), only degrading at an extreme, probably-unrealistic ~1 molecule (66-87%, worse at higher damage since more surviving-fraction-driven divisions means more compounding noisy events per lineage), and even then never collapsing to chance
+  inputs: `fractions/molecules_per_unit_values/n_trials`
+  outputs: genetic fidelity per (molecules_per_unit, surviving fraction) (printed)
+  dependencies: `simulations.gardner_toggle_circuit.GardnerParams/GardnerToggleCell`, `simulations.bacterial_colony_regrowth.DOUBLING_TIME_MIN/SETTLE_WINDOW_HOURS`
+  used_by: `main` (in the same file)
+  side_effects: none
+
 ---
 
 ## experiments/ — runnable demonstrations and diagnostic scripts

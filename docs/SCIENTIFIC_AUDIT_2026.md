@@ -1658,6 +1658,56 @@ assume.
 
 ---
 
+## Part 22: Stochastic Partition Noise at Division - Does Uneven Splitting Break Recovery? (September 2026)
+
+Every damage/regrowth simulation so far (Parts 8, 20, 21) gives each
+daughter cell exactly the mother's own repressor concentration at
+division, explicitly flagged in each of those files as a simplification:
+real division splits actual molecule counts randomly, not perfectly
+evenly. `simulations/partition_noise_regrowth.py` replaces that
+simplification with the real math for it: Huh & Paulsson (2011,
+"Non-genetic heterogeneity from stochastic partitioning at cell
+division," Nature Genetics 43(2):95-100, DOI 10.1038/ng.729, PMID
+21186354) derive that binomial partitioning (each molecule independently
+50/50 into either daughter) contributes noise with variance kappa =
+1/<X>, <X> being the molecule's average copy number, applied here to
+BOTH resulting daughters at every division, not just the newly-created
+one, using an explicitly swept, unmeasured conversion from this project's
+dimensionless u/v units to an assumed real molecule count (this project
+has no citation for that conversion; real bacterial transcription factor
+copy numbers span single digits to thousands depending on the protein).
+
+**Result: the circuit's own bistability makes it robust to this noise
+down to a strikingly low copy number.** At ~5 molecules per cell and
+above, recovery stayed at 99-100%, matching the noise-free result,
+across every damage level tested (2% to 100% surviving). Manually
+verified the noise itself is real and large at this scale (single
+divisions swinging a daughter's value across the circuit's full range),
+not a modeling no-op, before trusting the result. Only at an extreme,
+probably-unrealistic ~1 molecule per cell did recovery degrade (66-87%),
+and even there it never collapsed to chance.
+
+**A genuinely new, non-obvious pattern at the ~1-molecule extreme: worse
+damage made the noise problem WORSE, not better** (66% at 2% survival vs.
+100% at no damage), the opposite direction from every other stressor
+this project has tested. The reason: worse damage means fewer surviving
+lineages, each of which needs MORE divisions to regrow back to full
+colony size, and more divisions means more independent chances for
+partition noise to compound within that lineage. This is a different
+mechanism than Part 21's time-budget finding, that one was about
+regrowth eating into a fixed clock; this one is about noise accumulating
+per generation, and it only shows up at the extreme end of this sweep.
+
+**What this doesn't resolve:** binomial partitioning is Huh & Paulsson's
+own best-case, most-ordered scenario, their paper states real
+segregation is often less ordered (clustered/vesicle-bound molecules,
+kappa > 1/<X>), so this result is a floor on the real effect, not a
+ceiling. Which real copy number applies to this project's actual chosen
+promoter pair is unmeasured, and this file does not yet extend the test
+to the fluorescent reporter or voltage readouts layered on top.
+
+---
+
 ## Next Action: One Experiment Changes Everything
 
 **The experiment:**
