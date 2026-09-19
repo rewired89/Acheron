@@ -197,3 +197,46 @@ purpose. Feedback loop = a thermostat, where the room's temperature
 changes what the thermostat does next. BioBrick = a Lego piece, so
 circuits can be built from interchangeable parts instead of from
 scratch.
+
+---
+
+## Chapter 6: The Core Idea 101
+
+**What Acheron actually is (one line):**
+Acheron is a research project testing whether arbitrary binary data (any
+0s and 1s, not just biological information) can be stored as a
+rewritable, self-healing signal inside living tissue, mainly *B.
+subtilis* bacteria.
+
+**Key parts, in your style:**
+
+- **Data storage medium** = whatever physically holds the 0s and 1s = a
+  hard drive's platter. A USB stick uses electrical charge trapped in a
+  chip. Acheron is testing whether a living cell's own voltage
+  (Chapter 3) or gene circuit state (Chapter 5) can play that same role.
+- **Self-healing storage** = a storage medium that repairs its own
+  damage = a hard drive that regrows a scratched platter back to
+  working order. Regular hard drives can't do this. Living tissue, in
+  principle, can, because cells regenerate and divide.
+- **Bioelectric memory** = using a cell's voltage state (Chapter 3) as
+  the stored bit = writing to the rubber band's tension instead of to a
+  magnetic platter.
+- **Epigenetic memory** = using a gene circuit's on/off state (Chapter 5)
+  as the stored bit, instead of voltage = writing to which recipes are
+  currently being cooked, instead of to the rubber band.
+
+**The connection that matters for this book:**
+This is Acheron's actual bet: take the voltage concept from Part 1
+(Chapters 1-3) or the gene-circuit concept from Chapters 4-5, and use
+either one as a data bit that survives damage and regrowth, something no
+conventional hard drive or flash chip can do. Nobody has fully proven
+this works yet, that's the whole point of the rest of this book: what's
+been tested, what broke, and what's still an open question.
+
+**Analogy chain:**
+Hard drive = dead storage, can't heal itself. Living cell = storage that
+can heal itself, if it can be made to hold a bit reliably. Bioelectric
+memory = storing that bit in voltage (the rubber band from Chapter 3).
+Epigenetic memory = storing that bit in a gene circuit's state (the muted
+or unmuted instruments from Chapter 5). Acheron = testing whether either
+version of "living hard drive" actually works.
