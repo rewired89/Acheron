@@ -119,3 +119,38 @@ band's normal stretched state, held there by the ion pumps working
 constantly. Depolarization = the band snapping looser as ions cross.
 Bioelectric state = the band's position, read as a light switch: this
 tension level means "1," that one means "0."
+
+---
+
+## Chapter 4: DNA & Genes 101
+
+**What DNA actually is (one line):**
+DNA is a long molecule made of a 4-letter code (A, T, C, G) that stores
+the instructions for building and running a cell.
+
+**Key parts, in your style:**
+
+- **Gene** = a chunk of DNA that codes for one specific protein = a
+  single recipe in the recipe book. One recipe, one dish (protein).
+- **Protein** = the thing a gene actually builds = the finished dish.
+  Proteins are the workers: they build structures, speed up reactions,
+  form the ion channels and pumps from Chapter 2.
+- **Promoter** = a DNA switch sitting in front of a gene, controlling how
+  often it's read = a volume knob. Turn it up, the cell makes more of
+  that protein. Turn it down or off, it makes less or none.
+- **Expression** = a gene actually being read and turned into protein =
+  the recipe being cooked. A gene sitting unused in the DNA is a recipe
+  in the book that nobody's cooking yet.
+
+**The connection that matters for this book:**
+Acheron's plan is to add a new, custom gene circuit into the cell's
+existing recipe book. A promoter (volume knob) is what an engineer can
+attach in front of a custom gene to control it deliberately, rather than
+letting the cell decide on its own. Chapter 5 (Genetic Circuits 101) is
+about wiring several of these gene + promoter pairs together on purpose.
+
+**Analogy chain:**
+DNA = the recipe book. Gene = one recipe in it. Protein = the dish that
+recipe produces. Promoter = the volume knob in front of the recipe,
+controlling how often it gets cooked. Expression = the recipe actually
+being cooked right now, not just sitting on the page.
