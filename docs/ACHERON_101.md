@@ -240,3 +240,51 @@ memory = storing that bit in voltage (the rubber band from Chapter 3).
 Epigenetic memory = storing that bit in a gene circuit's state (the muted
 or unmuted instruments from Chapter 5). Acheron = testing whether either
 version of "living hard drive" actually works.
+
+---
+
+## Chapter 7: Bistable Switches 101
+
+**What a bistable switch actually is (one line):**
+A bistable switch is a circuit built to rest comfortably in only two
+states (fully on or fully off) and resist sitting anywhere in between,
+the way a real light switch snaps to one side instead of hovering in
+the middle.
+
+**Key parts, in your style:**
+
+- **Gardner toggle switch** = the specific two-gene circuit Acheron
+  builds on = two people arm-wrestling. Two genes each make a repressor
+  (Chapter 5's mute button) that mutes the other gene. Whichever one
+  wins the arm-wrestle stays on and keeps the other muted, stably, until
+  someone deliberately flips it.
+- **Cooperativity** = how sharply a repressor's muting effect kicks in
+  once it reaches a threshold = a light switch's snap, not a dimmer.
+  High cooperativity is what makes the arm-wrestle end in a clean win
+  instead of a permanent tie.
+- **Promoter strength mismatch** = when the two genes' volume knobs
+  (Chapter 4) aren't equally strong = an arm-wrestle where one arm is
+  much stronger than the other. Real measured promoters used in this
+  design vary in strength by more than three orders of magnitude, so a
+  mismatch is a realistic risk, not a hypothetical one.
+- **Monostable dead switch** = what happens when that mismatch is too
+  large = the arm-wrestle has a foregone winner. The circuit stops being
+  a switch at all and just permanently sits in one state, unable to
+  store a second value.
+
+**The connection that matters for this book:**
+This is the actual engineering constraint the project's own simulation
+(`simulations/gardner_toggle_circuit.py`) found: using real,
+BioBrick-measured promoter strengths instead of a made-up placeholder
+number reveals that mismatched promoters can collapse the switch into
+the "monostable dead switch" failure above. Getting two promoters
+close enough in strength is a real design requirement, not a detail.
+
+**Analogy chain:**
+Genetic circuit (Chapter 5) = two instruments muting each other.
+Bistable switch = the same idea, but built specifically to snap
+cleanly to one of two states, like an arm-wrestle with a clear winner.
+Cooperativity = how sharp that snap is. Promoter mismatch = one arm
+being much stronger than the other, which can rig the match every time.
+Monostable dead switch = a rigged match: no real toggle left, no
+second value it can ever store.
