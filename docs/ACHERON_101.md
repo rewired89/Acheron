@@ -77,3 +77,45 @@ marbles (positive). Ion channel = a door in the wall shaped for one kind
 of box. Ion pump = a bouncer with a motor, forcing boxes through even
 uphill. Membrane = the wall holding different box-counts on each side,
 which is where voltage comes from.
+
+---
+
+## Chapter 3: Voltage & Membranes 101
+
+**What voltage actually is (one line):**
+Voltage is just a measured difference in charge between two points. In a
+cell, it's the difference in charge between the inside and the outside
+of the membrane, created by the ion imbalance from Chapter 2.
+
+**Key parts, in your style:**
+
+- **Membrane potential** = the cell's voltage = a stretched rubber band.
+  It's the tension that builds up because there are more negative ions
+  inside than outside (in most resting cells). That tension is stored
+  energy, ready to be released or used.
+- **Resting potential** = the cell's baseline voltage = the rubber band's
+  relaxed-but-still-stretched state. A living cell is never at zero
+  volts, it sits at a steady negative voltage (commonly around -70
+  millivolts in many cells) and actively maintains it using the ion
+  pumps from Chapter 2.
+- **Depolarization** = the voltage moving toward zero or positive = the
+  rubber band snapping looser. Ions rush across the membrane, the charge
+  gap shrinks. This is how a cell "fires" a signal.
+- **Bioelectric state** = the cell's voltage treated as a piece of
+  information, not just biology = a light switch's position. Off/on,
+  low/high voltage, read as data instead of just as physiology.
+
+**The connection that matters for this book:**
+Acheron's core idea depends on reading a cell's voltage as if it were a
+stored bit (a 0 or a 1). Chapter 2's ion imbalance is the physical cause;
+this chapter's voltage is the measurable effect; the next chapters
+(Bistable Switches) are about forcing that voltage to stay locked at one
+of two states on purpose, instead of drifting.
+
+**Analogy chain:**
+Ion imbalance (Chapter 2) = the cause. Voltage = a stretched rubber band
+= the stored tension that imbalance creates. Resting potential = the
+band's normal stretched state, held there by the ion pumps working
+constantly. Depolarization = the band snapping looser as ions cross.
+Bioelectric state = the band's position, read as a light switch: this
+tension level means "1," that one means "0."
