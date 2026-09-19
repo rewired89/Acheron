@@ -154,3 +154,46 @@ DNA = the recipe book. Gene = one recipe in it. Protein = the dish that
 recipe produces. Promoter = the volume knob in front of the recipe,
 controlling how often it gets cooked. Expression = the recipe actually
 being cooked right now, not just sitting on the page.
+
+---
+
+## Chapter 5: Genetic Circuits 101
+
+**What a genetic circuit actually is (one line):**
+A genetic circuit is a small set of genes wired together so their
+promoters (volume knobs) control each other, the same way electronic
+circuits wire components together so they control each other.
+
+**Key parts, in your style:**
+
+- **Repressor** = a protein that turns a promoter's volume knob down or
+  off = a mute button. It's made by one gene and physically blocks
+  another gene's promoter.
+- **Feedback loop** = when a gene's output eventually affects its own
+  input = a thermostat. The result of the circuit reaches back and
+  changes the circuit's own next step.
+- **Synthetic biology** = deliberately designing and inserting a genetic
+  circuit that doesn't occur naturally = writing new sheet music for an
+  existing orchestra (the cell). The musicians (proteins, ribosomes) are
+  already there; you're handing them a new score.
+- **BioBrick** = a standardized, reusable genetic circuit part = a Lego
+  brick. Interchangeable pieces (a promoter, a gene, a repressor) that
+  different labs can snap together in different combinations.
+
+**The connection that matters for this book:**
+Chapter 4's single gene + promoter pair was one instrument. A genetic
+circuit is several of those wired so they mute or unmute each other. The
+specific circuit Acheron is built around, two genes that each repress
+the other, is a **toggle switch**: a circuit designed to sit stably in
+one of two states and flip only when deliberately pushed. That's exactly
+the "1 or 0, held on purpose" idea from Chapter 3's bioelectric state.
+Chapter 7 (Bistable Switches 101) covers that specific circuit in depth.
+
+**Analogy chain:**
+Gene + promoter (Chapter 4) = one instrument with one volume knob.
+Repressor = a mute button one instrument can press on another. Genetic
+circuit = several instruments wired to mute and unmute each other on
+purpose. Feedback loop = a thermostat, where the room's temperature
+changes what the thermostat does next. BioBrick = a Lego piece, so
+circuits can be built from interchangeable parts instead of from
+scratch.
