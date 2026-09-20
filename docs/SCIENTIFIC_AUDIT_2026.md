@@ -1745,6 +1745,76 @@ the bit rather than protect it? Not tested here.
 
 ---
 
+## Part 24: The Readout Method Checked Against Published Work, and a Prior-Art Correction (September 2026)
+
+Parts 12, 13, 17 and 18 are this project's own search for a way to read the
+bit electrically despite the colony's native potassium-wave oscillation. This
+part is the literature check that should have run alongside them: what do
+published engineered-cell-state experiments actually use as a readout, and
+what do the cheap versions of those methods cost? Written up in full in
+`docs/READOUT_METHODS_LITERATURE_CHECK.md`. Summary of what it found:
+
+**No canonical engineered-memory paper reads state as membrane potential.**
+Gardner, Cantor & Collins (2000), the toggle switch
+`gardner_toggle_circuit.py` is modeled on, read GFP by flow cytometry.
+Bonnet, Subsoontorn & Endy (2012) read mutually exclusive GFP/RFP by flow
+cytometry and microscopy. Huang et al. (2025), already cited here, read a
+reporter. The electrical route has no precedent as a bit readout anywhere
+this check could find.
+
+**The bacterial-bioelectricity field says absolute membrane-potential
+quantification is itself unsettled.** Cianflone, Keller, Subramaniam &
+Paternò (2026), "Bacterial bioelectricity, the first 15 years," *Frontiers in
+Photobiology* 4:1834373, DOI 10.3389/fphbi.2026.1834373, states that the
+standard Nernstian dyes (ThT, DiBAC, TMRM) "tend to measure the steady-state
+Vm rather than fast transients" and can be "altered by membrane permeability
+changes, the activity of the efflux pump or other variations in the membrane
+physiology independent from the Vm," that they "may influence bacterial
+growth even at low concentrations," and that across the field "many studies
+excel at dynamics but remain limited in absolute Vm quantification." The
+interference problem Parts 12 and 13 found is one instance of a broader
+measurement problem, not a quirk of this project's model.
+
+**Three alternatives, ranked, with the blunt cost picture:** (1) two-color
+fluorescent reporter, already simulated in Part 16 and already the Stage 0
+plan, cheap on reagents and gated entirely by instrument access, with flow
+cytometry out of reach and a phone-camera substitute unable to show the
+single-cell bimodality that is the actual evidence for bistability; (2)
+bioluminescence read on an open-source luminometer, the only end-to-end
+home-budget-reachable option, cited at approximately $40 to assemble
+(Weissová et al. 2022, LuminoCell, *Life Science Alliance* 5(8):e202201421)
+with its own stated ~40 pW/s detection limit, population-level only, and
+validated on mammalian cultures rather than bacterial lux; (3) moving the
+state into DNA orientation via a serine-integrase latch, read by PCR, the
+cheapest quantitative readout and the only mechanism on the list with
+multi-generation persistence actually measured in a living organism, at the
+cost of changing what the stored state is and reading destructively.
+
+**A correction to Part 10.** Part 10 concludes that every existing example of
+data in a living organism is either an analog device with no addressable
+write layer, or archival DNA-sequence storage. Bonnet, Subsoontorn & Endy
+(2012), "Rewritable digital data storage in live cells via engineered control
+of recombination directionality," *PNAS* 109(23):8884-8889, DOI
+10.1073/pnas.1202344109, PMID 22615351, is a third category that sentence
+does not cover, and it was absent from this repository until now. It is
+addressable, digital, rewritable across multiple set/reset duty cycles
+(set >95%, reset ~85% to >90% efficiency), heritable over 100+ cell
+divisions with no input and no selection, and read non-destructively by
+fluorescence. It is one bit per register rather than a scalable array and it
+is not a bioelectric state, so Acheron's approach is not duplicated by it,
+but Part 10's "nothing found stores arbitrary data as a dynamic, rewritable
+state" is too strong as written and should be narrowed before any investor
+or examiner finds the paper first.
+
+**Recommendation, not an action taken:** take the electrical readout off the
+critical path for Stage 0. Parts 12, 13, 17 and 18 were a good-faith search
+for a fix, and the fix that survives the full documented interference range
+is to read a reporter instead, with the voltage interface as a later research
+goal. Nothing in the pitch materials, `README.md` or this audit's earlier
+parts was edited to match that view.
+
+---
+
 ## Next Action: One Experiment Changes Everything
 
 **The experiment:**
