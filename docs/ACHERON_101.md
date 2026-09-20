@@ -512,3 +512,112 @@ Stage 2 = the actual target organism, tested against real damage and
 regrowth, the one bridge everything else depends on. Stage 3 = wiring a
 real voltmeter to the circuit last, once everything before it has
 already proven worth wiring up.
+
+---
+
+## Chapter 12: Glossary 101
+
+Every term from this book, one line each: what it means, then the
+analogy that locks it in. Alphabetical, for quick lookup.
+
+- **Assumed** = a claim the project currently needs, but nobody has
+  tested yet = an untested bridge the blueprint says should hold.
+- **Bacteria** = a one-room living factory, no internal walls = the
+  organism Acheron actually builds in, because a one-room house is
+  easier to rewire.
+- **BioBrick** = a standardized, reusable genetic circuit part = a Lego
+  brick that snaps together with other parts.
+- **Bioelectric memory** = using a cell's voltage as a stored bit =
+  writing to the rubber band's tension instead of to a hard drive.
+- **Bioelectric state** = a cell's voltage read as data, not just
+  biology = a light switch's position, read as a 1 or a 0.
+- **Bistable switch** = a circuit built to rest only in one of two
+  states = an arm-wrestle with a clean winner, no in-between.
+- **Cell** = the smallest self-running unit of life = a sealed bag that
+  is also a tiny factory.
+- **Cell membrane** = the wall around a cell = a bouncer deciding what
+  gets in or out.
+- **Cell-coupling assumption** = the untested idea that neighboring
+  planarian cells reliably pass a state to each other = an unproven
+  bucket brigade.
+- **Cooperativity** = how sharply a repressor's effect kicks in past a
+  threshold = a light switch's snap, not a dimmer.
+- **Cytoplasm** = the fluid inside a cell = the workshop where the work
+  happens.
+- **Data storage medium** = whatever physically holds the 0s and 1s = a
+  hard drive's platter.
+- **Depolarization** = a cell's voltage moving toward zero or positive =
+  the rubber band snapping looser.
+- **DNA** = the molecule storing a cell's instructions = the recipe
+  book.
+- **Engineered bistable circuit** = a deliberately built toggle switch
+  installed in a cell = a real deadbolt, instead of hoping the door
+  stays shut.
+- **Epigenetic memory** = using a gene circuit's on/off state as a
+  stored bit = writing to which recipes are currently being cooked.
+- **Expression** = a gene actually being read into protein = a recipe
+  actually being cooked, not just sitting on the page.
+- **Feedback loop** = when a circuit's output changes its own next step
+  = a thermostat.
+- **Gap-junction-coupled culture** = cells wired together through
+  direct channels, used as a fast stand-in system = a quick prototype
+  in an easier material.
+- **Gardner toggle switch** = the specific two-gene mutual-repression
+  circuit this project builds on = two people arm-wrestling, winner
+  stays on.
+- **Gene** = a chunk of DNA coding for one protein = one recipe in the
+  book.
+- **Go/no-go gate** = a stage built to give a clear yes or no before
+  spending on the next stage = a toll booth.
+- **Ion** = an atom or molecule that gained or lost electrons, ending up
+  charged = a box with extra or missing marbles. Not the same thing as
+  an electron.
+- **Ion channel** = a protein tunnel through the membrane, shaped for
+  one kind of ion = the actual door, not the ion itself.
+- **Ion pump** = a protein that forces ions through against the flow,
+  using energy = a bouncer with a motor.
+- **Membrane potential** = a cell's voltage = a stretched rubber band
+  storing tension.
+- **Minimal viable experiment** = the smallest test that still gives a
+  real answer = the smallest bridge you'd trust a truck on.
+- **Monostable dead switch** = a bistable circuit collapsed into only
+  one permanent state = a rigged arm-wrestle with a foregone winner.
+- **Native potassium-wave signaling** = a real, already-published
+  electrical rhythm *B. subtilis* does naturally, unrelated to this
+  project = a neighbor's radio bleeding through the wall.
+- **Noise floor** = the real electrical jitter a living cell actually
+  has = static on a phone line.
+- **Open question** = an assumption flagged honestly instead of hidden =
+  a warning sign left on an untested bridge.
+- **Passive persistence** = a cell naturally holding a voltage state on
+  its own, with nothing actively engineered = a phone left on a table,
+  hoping the battery holds.
+- **Promoter** = a DNA switch controlling how often a gene is read = a
+  volume knob.
+- **Promoter strength mismatch** = when two genes' volume knobs aren't
+  equally strong = an arm-wrestle where one arm is much stronger.
+- **Protein** = what a gene actually builds = the finished dish.
+- **Proven (cited)** = a claim backed by someone else's published lab
+  work = a fact borrowed from a trusted textbook.
+- **Proven (simulated)** = a result from an actual model run, caveats
+  included = a test drive in a simulator, not the real car yet.
+- **Readout** = measuring a cell's voltage to find its state = glancing
+  at a light switch's position.
+- **Reporter assay** = checking a circuit's state with a visible signal
+  instead of an electrical reading = a mood ring instead of a voltmeter.
+- **Repressor** = a protein that mutes another gene's promoter = a mute
+  button.
+- **Resting potential** = a cell's steady baseline voltage = the rubber
+  band's normal, relaxed-but-stretched state.
+- **Self-healing storage** = a storage medium that repairs its own
+  damage = a hard drive that regrows a scratched platter.
+- **Signal corruption** = interference distorting a voltage reading = a
+  neighbor's static drowning out the station you're tuning in.
+- **Synthetic biology** = deliberately designing and inserting a
+  genetic circuit that doesn't occur naturally = writing new sheet music
+  for an existing orchestra.
+- **Underlying state vs. reading** = the real stored state can be fine
+  while the measurement of it is corrupted = the switch never moved,
+  but someone's shaking the wall it's mounted on.
+- **Voltage** = a measured difference in charge between two points = the
+  tension in a stretched rubber band.
