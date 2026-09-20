@@ -443,3 +443,72 @@ blueprint says should hold. Open question = a warning sign left
 honestly on that bridge instead of hidden. The damage-and-regrowth
 question = the one bridge the whole project still needs someone to
 actually drive across.
+
+---
+
+## Chapter 11: The Wet-Lab Experiment 101
+
+**What this chapter actually is (one line):**
+The real, staged lab plan for testing the open questions from Chapter
+10, split into four separate, cheaper experiments instead of one large
+bet, so a "no" answer comes fast and cheap instead of after everything
+is already spent.
+
+**Key parts, in your style:**
+
+- **Go/no-go gate** = a stage designed so its result is a clear yes or
+  no before any money moves to the next stage = a toll booth. You don't
+  get to the next road without paying (proving) this one first.
+- **Reporter assay** = a way to check a circuit's state using a visible
+  signal (like a color-producing gene) instead of an electrical reading
+  = a mood ring instead of a voltmeter. Cheaper and simpler, but it
+  sidesteps the readout problem from Chapter 9 rather than solving it.
+- **Gap-junction-coupled culture** = human cells (HEK293) wired together
+  through direct cell-to-cell channels, used as a fast, simple stand-in
+  system = a quick prototype built in an easier material before trying
+  the real one.
+- **Minimal viable experiment** = the smallest version of a test that
+  can still give a real yes/no answer = the smallest bridge you'd
+  actually trust a truck to drive across, not the full highway yet.
+
+**The four stages, in order:**
+
+- **Stage 0, *B. subtilis* toggle confirmation** (~$2K-$5K, 6-10 weeks):
+  does the promoter-matched toggle circuit from Chapter 7 actually hold
+  two stable, switchable states at all, checked with a cheap reporter
+  assay, no electrical readout involved yet. This is funded and run
+  first because it's the fastest, cheapest test of the single
+  make-or-break constraint (promoter matching) the simulation already
+  flagged.
+- **Stage 1, HEK293 gap-junction persistence** (~$2.4K-$10K, 3-6
+  months): do arbitrary voltage patterns persist 24+ hours in a fast,
+  simple stand-in culture, before testing the harder target organism.
+- **Stage 2, planarian minimal viable experiment** (~$10K-$30K, 6-12
+  months): do arbitrary patterns persist in the real target organism,
+  including surviving actual damage and regrowth. This is the one
+  Chapter 10 called the single biggest open question, and this is the
+  stage designed to actually answer it.
+- **Stage 3, voltage-interface build** (cost and time to be scoped with
+  a synthetic-biology partner): can the toggle circuit's output actually
+  be wired to a real, measurable voltage bit and read back without
+  destroying the sample. Deliberately scoped last, because a separate
+  finding already showed an electrical reading needs to be taken over
+  roughly a full oscillation cycle (about three hours) to not get
+  drowned out by the native potassium-wave interference from Chapter 9.
+
+**The connection that matters for this book:**
+Every chapter before this one was reasoning about what should happen.
+This chapter is the actual plan for finding out what does happen. A "no"
+at Stage 0 or Stage 2 isn't a failure of the project, it's the fast,
+cheap answer the staged design was built to get, instead of discovering
+the same "no" after a much larger, combined experiment.
+
+**Analogy chain:**
+Go/no-go gate = a toll booth you must clear before the next road opens.
+Stage 0 = the cheapest, fastest toll booth, testing the bacteria
+circuit with a mood ring instead of a voltmeter. Stage 1 = a quick
+prototype in an easier material (human cells) before the real target.
+Stage 2 = the actual target organism, tested against real damage and
+regrowth, the one bridge everything else depends on. Stage 3 = wiring a
+real voltmeter to the circuit last, once everything before it has
+already proven worth wiring up.
