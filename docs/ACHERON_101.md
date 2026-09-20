@@ -386,3 +386,60 @@ corruption = static that makes the switch's position hard to read
 correctly. Underlying state vs. reading = the switch itself never
 moved, only your ability to see it clearly did, which means the fix is
 a better way to look, not a better switch.
+
+---
+
+## Chapter 10: What's Proven vs. What's Assumed 101
+
+**What this chapter actually is (one line):**
+A plain accounting of which claims in Chapters 6-9 rest on a real
+citation or a labeled simulation result, and which ones are still
+untested assumptions, so nothing gets overstated.
+
+**Key parts, in your style:**
+
+- **Proven (simulated)** = a result that came out of an actual model run,
+  with its caveats stated = a test drive in a simulator. It tells you
+  something real about how the design behaves under the assumptions you
+  fed it, but it's not the same as driving the real car.
+- **Proven (cited)** = a result backed by someone else's real,
+  published lab work = borrowing a fact from a textbook you trust,
+  instead of guessing.
+- **Assumed** = something the project currently needs to be true, but
+  nobody has actually tested = a bridge nobody has driven a truck over
+  yet, even though the blueprint says it should hold.
+- **Open question** = an assumption that's explicitly flagged instead of
+  quietly relied on = a warning sign left on that untested bridge,
+  instead of pretending the sign isn't needed.
+
+**The status board so far:**
+
+- Gardner toggle switch topology and promoter-mismatch risk (Chapter 7):
+  **proven, simulated**, using real BioBrick-measured promoter numbers,
+  not invented ones.
+- Passive planarian persistence holding for 24+ hours (Chapter 8):
+  **disproven under realistic noise**, simulated with and without noise,
+  both results kept and reported.
+- Native potassium-wave interference corrupting readout (Chapter 9):
+  **proven, cited**, a real published *B. subtilis* phenomenon, not
+  something invented for this project.
+- Planarian cell-to-cell coupling reliably passing a bioelectric state
+  (Chapter 8): **assumed, open question**, never directly measured in
+  any organism.
+- Whether an engineered circuit's state survives actual tissue damage
+  and regrowth, not just ordinary cell division: **the single biggest
+  open question**, nobody has tested this in any organism, in any lab,
+  yet.
+
+**The connection that matters for this book:**
+That last item, damage-and-regrowth survival, is the one thing every
+other chapter's optimism depends on. Chapter 11 is the actual wet-lab
+experiment designed to answer it.
+
+**Analogy chain:**
+Proven (simulated) = a test drive in a simulator. Proven (cited) = a
+fact borrowed from a trusted textbook. Assumed = an untested bridge the
+blueprint says should hold. Open question = a warning sign left
+honestly on that bridge instead of hidden. The damage-and-regrowth
+question = the one bridge the whole project still needs someone to
+actually drive across.
