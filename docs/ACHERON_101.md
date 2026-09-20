@@ -338,3 +338,51 @@ bistable circuit = swapping "hoping it holds" for an actual deadbolt
 bucket-brigade handoff the planarian path still leans on. Result:
 bacteria's deadbolt is tested and holds up better than the worm's
 bucket brigade, so bacteria now leads.
+
+---
+
+## Chapter 9: Reading the Signal 101
+
+**What the readout problem actually is (one line):**
+Even if a *B. subtilis* toggle switch (Chapter 7) correctly stores a bit,
+correctly reading that bit back out can still fail, because the cell has
+its own natural electrical activity that has nothing to do with the
+stored data.
+
+**Key parts, in your style:**
+
+- **Readout** = the act of measuring a cell's voltage to find out which
+  state it's in = checking a light switch's position. It should be a
+  simple lookup, but only if nothing else is jiggling the switch while
+  you look.
+- **Native potassium-wave signaling** = a real, already-published
+  electrical rhythm that *B. subtilis* colonies do naturally, for their
+  own reasons, unrelated to anything this project builds = a neighbor's
+  radio playing through the wall. It was there before Acheron, and it
+  doesn't care about the stored bit.
+- **Signal corruption** = when that unrelated rhythm distorts the voltage
+  reading = static drowning out the actual radio station you're trying
+  to tune in. The reading looks wrong even if nothing is actually broken.
+- **Underlying state vs. reading** = the crucial distinction: the gene
+  circuit's real stored state (Chapter 5-7) can still be intact and
+  correct, while the voltage reading taken from it is corrupted = the
+  light switch never moved, but someone's shaking the wall it's mounted
+  on, so a glance at it gives you the wrong answer.
+
+**The connection that matters for this book:**
+This is a separate failure mode from Chapter 8's noise floor problem.
+Chapter 8 was about the stored state itself degrading. This chapter is
+about the stored state being fine, but the readout method (measuring
+voltage) picking up interference from the bacteria's own normal biology
+on top of it. Both have to be solved, and they're solved differently:
+one needs a better-engineered circuit, the other needs a better or
+different way to read the signal out.
+
+**Analogy chain:**
+Readout = glancing at a light switch to check its position. Native
+potassium-wave signaling = a neighbor's radio bleeding through the wall,
+present for reasons that have nothing to do with your switch. Signal
+corruption = static that makes the switch's position hard to read
+correctly. Underlying state vs. reading = the switch itself never
+moved, only your ability to see it clearly did, which means the fix is
+a better way to look, not a better switch.
