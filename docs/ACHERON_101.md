@@ -288,3 +288,53 @@ Cooperativity = how sharp that snap is. Promoter mismatch = one arm
 being much stronger than the other, which can rig the match every time.
 Monostable dead switch = a rigged match: no real toggle left, no
 second value it can ever store.
+
+---
+
+## Chapter 8: Why Planaria First, Then B. subtilis 101
+
+**What actually happened (one line):**
+Acheron started with planarian flatworms, then moved bacteria
+(*B. subtilis*) to the front, because the planarian approach's core
+assumption broke under closer testing and bacteria's didn't.
+
+**Key parts, in your style:**
+
+- **Passive persistence** = the original planarian idea: a cell just
+  naturally holds a voltage state on its own = a phone left on a table,
+  hoping the battery doesn't drain. The first simulation showed this
+  could hold a bit for 24+ hours, but only in a perfectly quiet,
+  noise-free model.
+- **Noise floor** = the real-world electrical jitter every living cell
+  actually has, that a clean simulation leaves out = static on a phone
+  line. When realistic biological noise was added back in, that same
+  "24+ hour" result collapsed to about a coin flip's worth of accuracy,
+  the stored bit became unreliable.
+- **Engineered bistable circuit** = the fix: instead of hoping a cell
+  passively holds a state, actively build the toggle switch from
+  Chapter 7 into it = installing a real deadbolt instead of hoping a
+  door stays shut on its own.
+- **Cell-coupling assumption** = the specific thing the planarian
+  approach still depends on and has never been directly measured: that
+  neighboring planarian cells reliably pass a bioelectric state to each
+  other = assuming a bucket brigade works without ever testing whether
+  one worker actually hands the bucket to the next.
+
+**The connection that matters for this book:**
+Ranking all three candidate approaches by how much unproven risk each
+one still hides put the *B. subtilis* engineered toggle switch
+(Chapters 5 and 7) as the best-grounded option, and the original
+planarian passive-persistence idea as the weakest-evidence one. That's
+why this book, and the project itself, now treats *B. subtilis* as the
+main path and planaria as a less-grounded fallback, the reverse of
+where the project started.
+
+**Analogy chain:**
+Passive persistence = a phone left on a table, hoping the battery
+holds. Noise floor = the static that phone actually has to survive in
+the real world, which the first, too-clean test left out. Engineered
+bistable circuit = swapping "hoping it holds" for an actual deadbolt
+(Chapter 7's toggle switch). Cell-coupling assumption = an unproven
+bucket-brigade handoff the planarian path still leans on. Result:
+bacteria's deadbolt is tested and holds up better than the worm's
+bucket brigade, so bacteria now leads.
