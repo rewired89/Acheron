@@ -222,16 +222,18 @@ function kicker(s, text, x, y, color) {
     "Toggle-circuit fidelity: 100% (matched/mismatched-within-range) vs. 50% (severe mismatch)",
     "Cross-organism recovery threshold: ~2% surviving cells, for all three mechanisms",
     "EIS voltage-read collapse: 50-59% under native biofilm oscillation",
+    "Fluorescent reporter through damage/regrowth: 100%, 0% gap vs. genetic state",
+    "A proposed damage-sensing reinforcement circuit: rescues our one found weak point back to 100%",
   ];
-  s.addText(simItems.map((t, i) => ({ text: t, options: { bullet: { code: "2022" }, color: "CFE0DD", breakLine: i < simItems.length - 1, paraSpaceAfter: 9 } })), {
-    x: 1.0, y: 2.95, w: 5.3, h: 3.1, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 12, lineSpacingMultiple: 1.15,
+  s.addText(simItems.map((t, i) => ({ text: t, options: { bullet: { code: "2022" }, color: "CFE0DD", breakLine: i < simItems.length - 1, paraSpaceAfter: 7 } })), {
+    x: 1.0, y: 2.8, w: 5.3, h: 3.3, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 11, lineSpacingMultiple: 1.12,
   });
 
   s.addShape("roundRect", { x: 6.75, y: 2.15, w: 5.9, h: 4.05, rectRadius: 0.08, fill: { color: NAVY2 }, line: { color: AMBER, width: 1 } });
   s.addText("Measured (0% of results below)", { x: 7.05, y: 2.4, w: 5.3, h: 0.5, isTextBox: true, margin: 0, fontFace: HEAD_FONT, fontSize: 15.5, bold: true, color: AMBER });
   s.addText([
     { text: "Nothing yet.\n\n", options: { bold: true, color: WHITE, breakLine: true } },
-    { text: "The $10K-$30K wet-lab experiment on the roadmap slide is the first physical test of any of this, in any organism. Until it runs, every figure on the surrounding slides is a model's prediction, not a result.", options: { color: "CFE0DD" } },
+    { text: "Stage 0 on the roadmap slide, ~$2K-$5K, is the first physical test of any of this, in any organism. Until it runs, every figure on the surrounding slides is a model's prediction, not a result.", options: { color: "CFE0DD" } },
   ], { x: 7.05, y: 2.95, w: 5.3, h: 3.1, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 13, lineSpacingMultiple: 1.2 });
 
   s.addShape("roundRect", { x: 0.7, y: 6.4, w: 11.95, h: 0.75, rectRadius: 0.08, fill: { color: "18314F" }, line: { color: AMBER, width: 1 } });
@@ -431,7 +433,7 @@ function kicker(s, text, x, y, color) {
   const cols = [
     ["The natural signal", "B. subtilis biofilms run a continuous potassium-wave electrical signal of their own (Prindle lab, 2015), independent of anything Acheron builds.", TEAL_DARK],
     ["What we found", "In simulation, this natural oscillation can corrupt an instantaneous voltage reading even when the underlying engineered circuit's data is 100% intact.", CORAL],
-    ["The fix, and its limit", "Reading via impedance (EIS) instead of raw voltage helps, but a single fast EIS sweep isn't immune either, it needs to integrate across a full oscillation cycle (~3h) to recover accuracy.", TEAL_DARK],
+    ["We tested three fixes, honestly", "Reading longer works (integrate ~3h, back to ~100%). Timing a quick read to the oscillation's quiet moments mostly doesn't, even with perfect timing. Reducing the interference at its source helps a lot, but only at moderate real-world strength, not the worst case.", TEAL_DARK],
   ];
   let x = 0.7;
   const w = 3.9;
@@ -439,20 +441,54 @@ function kicker(s, text, x, y, color) {
     s.addShape("roundRect", { x, y: 2.05, w, h: 4.3, rectRadius: 0.08, fill: { color: WHITE }, line: { color: "DCE3E6", width: 1 } });
     s.addShape("rect", { x, y: 2.05, w: w, h: 0.09, fill: { color: c }, line: { type: "none" } });
     s.addText(t, { x: x + 0.28, y: 2.35, w: w - 0.56, h: 0.6, isTextBox: true, margin: 0, fontFace: HEAD_FONT, fontSize: 15.5, bold: true, color: INK });
-    s.addText(d, { x: x + 0.28, y: 3.0, w: w - 0.56, h: 3.1, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 12.5, color: MUTED, lineSpacingMultiple: 1.2 });
+    s.addText(d, { x: x + 0.28, y: 3.0, w: w - 0.56, h: 3.1, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 12, color: MUTED, lineSpacingMultiple: 1.15 });
     x += w + 0.24;
   });
-  s.addText("Fidelity at 10-20mV of ambient oscillation (well below the circuit's own 70mV signal range) collapsed to 50-59% for single-snapshot voltage reads, this is a solvable engineering problem, not a fatal one, but a real, previously-unflagged design requirement.", {
-    x: 0.7, y: 6.55, w: 12, h: 0.7, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 12.5, italic: true, color: MUTED,
+  s.addText([
+    { text: "The cleaner fix: don't read voltage at all.  ", options: { bold: true, color: INK } },
+    { text: "A fluorescent reporter (glow instead of voltage) tracks the underlying circuit's state exactly, with no interference from this oscillation, by mechanism, not luck, it doesn't share the electrical pathway the native signal rides on. See the next slide for what that changes.", options: { color: MUTED } },
+  ], {
+    x: 0.7, y: 6.55, w: 12, h: 0.7, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 12, lineSpacingMultiple: 1.15,
   });
   pageNum(s, 11, false);
+}
+
+// ============================================================ Slide 9c, The reporter fix, tested
+{
+  const s = bgSlide(false);
+  kicker(s, "The Cleaner Readout", 0.7, 0.5, TEAL_DARK);
+  s.addText("A glow instead of a voltage, and it holds up through actual damage and regrowth", {
+    x: 0.7, y: 0.85, w: 11.9, h: 0.9, isTextBox: true, margin: 0,
+    fontFace: HEAD_FONT, fontSize: 23, bold: true, color: INK,
+  });
+
+  s.addShape("roundRect", { x: 0.7, y: 2.0, w: 7.3, h: 4.55, rectRadius: 0.08, fill: { color: WHITE }, line: { color: "DCE3E6", width: 1 } });
+  s.addText("Why it sidesteps the problem, not just avoids it", { x: 1.0, y: 2.25, w: 6.8, h: 0.4, isTextBox: true, margin: 0, fontFace: HEAD_FONT, fontSize: 15, bold: true, color: INK });
+  s.addText([
+    { text: "Every voltage-based readout depends on a repressor-to-ion-channel link nobody has built (no prior art, in any organism). A fluorescent reporter (GFP for one state, RFP for the other) reads the circuit's state directly at the transcriptional level instead, the same standard method the field already uses for exactly this kind of circuit.", options: { color: MUTED, breakLine: true, paraSpaceAfter: 10 } },
+    { text: "The native oscillation is voltage-gated potassium-channel activity. Nothing in the cited literature proposes a mechanism by which it would also affect transcription or protein maturation, so this isn't a workaround, it's a different physical pathway entirely.", options: { color: MUTED } },
+  ], { x: 1.0, y: 2.75, w: 6.8, h: 2.2, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 12.5, lineSpacingMultiple: 1.2 });
+  s.addShape("line", { x: 1.0, y: 5.1, w: 6.8, h: 0, line: { color: "E4E9EA", width: 1 } });
+  s.addText([
+    { text: "Tested through damage and regrowth, not just in isolation:  ", options: { bold: true, color: INK } },
+    { text: "smash a colony down to 2% of its cells, let it regrow by ordinary division, the glow still shows the correct bit, 100% of the time, zero gap versus the underlying genetic state.", options: { color: MUTED } },
+  ], { x: 1.0, y: 5.25, w: 6.8, h: 1.2, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 12.5, lineSpacingMultiple: 1.2 });
+
+  s.addShape("roundRect", { x: 8.25, y: 2.0, w: 4.4, h: 2.15, rectRadius: 0.08, fill: { color: NAVY }, line: { type: "none" } });
+  s.addText("100%", { x: 8.5, y: 2.15, w: 3.9, h: 0.85, isTextBox: true, margin: 0, fontFace: HEAD_FONT, fontSize: 34, bold: true, color: TEAL });
+  s.addText("Reporter fidelity through damage + regrowth, matching the genetic result exactly, at every surviving fraction from 2% up", { x: 8.5, y: 2.9, w: 3.9, h: 1.2, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 11.5, color: "CFE0DD" });
+
+  s.addShape("roundRect", { x: 8.25, y: 4.35, w: 4.4, h: 2.2, rectRadius: 0.08, fill: { color: NAVY }, line: { type: "none" } });
+  s.addText("Not new", { x: 8.5, y: 4.5, w: 3.9, h: 0.6, isTextBox: true, margin: 0, fontFace: HEAD_FONT, fontSize: 22, bold: true, color: AMBER });
+  s.addText("Our own staged validation plan already opens with this exact reporter assay, before any electrical readout is attempted", { x: 8.5, y: 5.15, w: 3.9, h: 1.3, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 11.5, color: "CFE0DD" });
+  pageNum(s, 12, false);
 }
 
 // ============================================================ Slide 9b, What we've already proven, in two languages
 {
   const s = bgSlide(false);
   kicker(s, "What We Already Have", 0.7, 0.45, TEAL_DARK);
-  s.addText("Four computational results, explained for a scientist and for everyone else", {
+  s.addText("Five computational results, explained for a scientist and for everyone else", {
     x: 0.7, y: 0.8, w: 11.9, h: 0.7, isTextBox: true, margin: 0,
     fontFace: HEAD_FONT, fontSize: 22, bold: true, color: INK,
   });
@@ -475,13 +511,16 @@ function kicker(s, text, x, y, color) {
     ["A new, real risk found before it was asked about",
       "B. subtilis biofilms' native potassium-wave signaling (Prindle et al. 2015) corrupts single-snapshot voltage reads at just 10-20mV, even when the underlying circuit data is 100% intact.",
       "Circuit = Radio station = Reading the signal at the wrong moment is like tuning in during a burst of static. The message was sent correctly; you just have to listen at the right time."],
+    ["The reporter fix holds through damage, not just in a clean run",
+      "GFP/RFP reporter fidelity matches genetic fidelity exactly through division-based damage/regrowth, 100% from 2% surviving cells up, 0% gap versus the underlying circuit at every level tested.",
+      "It's not just that the note stays legible, the photocopy of the note stays legible too, even after the notebook gets torn up and heals itself."],
   ];
   s.addTable([head, ...rows.map(r => r.map(c => ({ text: c })))], {
-    x: 0.7, y: 1.65, w: 12.0, h: 5.0,
-    fontFace: BODY_FONT, fontSize: 10.5, color: INK, border: { type: "solid", color: "D8DEE1", pt: 1 },
-    autoPage: false, valign: "middle", colW: [2.6, 4.9, 4.5], rowH: [0.5, 1.15, 1.15, 1.15, 1.15],
+    x: 0.7, y: 1.55, w: 12.0, h: 5.3,
+    fontFace: BODY_FONT, fontSize: 10, color: INK, border: { type: "solid", color: "D8DEE1", pt: 1 },
+    autoPage: false, valign: "middle", colW: [2.6, 4.9, 4.5], rowH: [0.45, 0.97, 0.97, 0.97, 0.97, 0.97],
   });
-  pageNum(s, 12, false);
+  pageNum(s, 13, false);
 }
 
 // ============================================================ Slide 10, Competitive landscape
@@ -500,7 +539,7 @@ function kicker(s, text, x, y, color) {
      { text: "Gap vs. Acheron", options: { bold: true, color: WHITE, fill: { color: NAVY } } }],
     ["Mycelium memristor\n(LaRocco et al. 2025)", "Analog resistance state", "Continuous signal", "90% accuracy; no addressable write layer"],
     ["BioCompute Inc. / Biomemory\n(w/ Yachie & Tomita 2007 precedent)", "DNA sequence (archival)", "Destructive sequencing", "Write-once archive, not rewritable state"],
-    [{ text: "Acheron", options: { bold: true, color: TEAL_DARK } }, "Dynamic physiological/\nbioelectric state", "Non-destructive (dye or EIS)", { text: "Rewritable + self-healing, the combination nobody else has", options: { bold: true } }],
+    [{ text: "Acheron", options: { bold: true, color: TEAL_DARK } }, "Dynamic physiological/\nbioelectric state", "Non-destructive (fluorescent reporter or EIS)", { text: "Rewritable + self-healing, the combination nobody else has", options: { bold: true } }],
   ];
   s.addTable(rows, {
     x: 0.7, y: 1.9, w: 12.0, h: 3.55,
@@ -513,7 +552,7 @@ function kicker(s, text, x, y, color) {
     { text: "Not included above, on purpose:  ", options: { bold: true, color: TEAL_DARK } },
     { text: "Cortical Labs, Koniku, and FinalSpark all build neuron-based wetware for cognition and sensing (playing games, detecting explosives, training AI), a different product category, not a memory-storage competitor. Their hardware is still worth studying, see next slide.", options: { color: INK } },
   ], { x: 0.95, y: 5.65, w: 11.5, h: 1.35, isTextBox: true, margin: 0, valign: "middle", fontFace: BODY_FONT, fontSize: 12.5, lineSpacingMultiple: 1.2 });
-  pageNum(s, 13, false);
+  pageNum(s, 14, false);
 }
 
 // ============================================================ Slide 11, Why We're Actually Different
@@ -543,7 +582,7 @@ function kicker(s, text, x, y, color) {
     s.addText(body, { x: x + 0.28, y: 3.35, w: cardW - 0.56, h: 2.95, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 11.5, color: MUTED, lineSpacingMultiple: 1.15 });
     x += cardW + gap;
   });
-  pageNum(s, 14, false);
+  pageNum(s, 15, false);
 }
 
 // ============================================================ Slide 12, Market opportunity (real cited numbers, evidence not sizing)
@@ -572,34 +611,109 @@ function kicker(s, text, x, y, color) {
   s.addText("Neither number is a forecast for Acheron. This upside is entirely conditional on the roadmap experiment below succeeding, and we haven't tried to price it in advance. We're asking for what it costs to find out.", {
     x: 0.7, y: 6.5, w: 12, h: 0.75, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 12.5, italic: true, color: "AEC2C8", lineSpacingMultiple: 1.15,
   });
-  pageNum(s, 15, true);
+  pageNum(s, 16, true);
 }
 
-// ============================================================ Slide 13, Roadmap (dark, stat callouts)
+// ============================================================ Slide 12b, What This Becomes (hardware concept)
+{
+  const s = bgSlide(false);
+  kicker(s, "What This Becomes, If Stage 0 Succeeds", 0.7, 0.5, TEAL_DARK);
+  s.addText("Two objects: a sealed, disposable cartridge, and a reusable reader", {
+    x: 0.7, y: 0.85, w: 11.9, h: 0.8, isTextBox: true, margin: 0,
+    fontFace: HEAD_FONT, fontSize: 24, bold: true, color: INK,
+  });
+  s.addText("Illustrative, not an engineering drawing. Every labeled part traces to a result already in this deck or our audit.", {
+    x: 0.7, y: 1.55, w: 11.9, h: 0.4, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 11.5, italic: true, color: MUTED,
+  });
+
+  // ---- Cartridge panel ----
+  s.addShape("roundRect", { x: 0.7, y: 2.15, w: 5.9, h: 4.55, rectRadius: 0.1, fill: { color: NAVY }, line: { type: "none" } });
+  s.addText("CARTRIDGE, sealed & bio-safe", { x: 1.0, y: 2.35, w: 5.3, h: 0.35, isTextBox: true, margin: 0, fontFace: BODY_FONT, bold: true, fontSize: 12, color: TEAL, charSpacing: 1 });
+
+  const wells = [
+    ["Resting", "dried spores, no power needed", "6E7F91"],
+    ["Reads 1", "colony glows green (GFP)", TEAL],
+    ["Reads 0", "colony glows red (RFP)", CORAL],
+  ];
+  let wx = 1.0;
+  const ww = 1.75;
+  wells.forEach(([t, d, c]) => {
+    s.addShape("roundRect", { x: wx, y: 2.85, w: ww, h: 1.7, rectRadius: 0.06, fill: { color: NAVY2 }, line: { color: "2A4463", width: 1 } });
+    s.addShape("ellipse", { x: wx + ww / 2 - 0.32, y: 3.05, w: 0.64, h: 0.64, fill: { color: c, transparency: c === "6E7F91" ? 60 : 25 }, line: { color: c, width: 1.5 } });
+    s.addText(t, { x: wx + 0.08, y: 3.82, w: ww - 0.16, h: 0.3, isTextBox: true, margin: 0, align: "center", fontFace: BODY_FONT, bold: true, fontSize: 10.5, color: WHITE });
+    s.addText(d, { x: wx + 0.08, y: 4.1, w: ww - 0.16, h: 0.45, isTextBox: true, margin: 0, align: "center", fontFace: BODY_FONT, fontSize: 8.5, color: "AEC2C8", lineSpacingMultiple: 1.1 });
+    wx += ww + 0.15;
+  });
+  s.addText("... repeats to fill the array, e.g. 64 wells = 64 bits", { x: 1.0, y: 4.68, w: 5.3, h: 0.3, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 9.5, italic: true, color: "6E7F91" });
+
+  s.addShape("line", { x: 1.0, y: 5.15, w: 5.3, h: 0, line: { color: AMBER, width: 2 } });
+  s.addText("shared channel, carries nutrients + write chemical to each well", { x: 1.0, y: 5.25, w: 5.3, h: 0.3, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 9.5, color: AMBER });
+  s.addText("No cable on the cartridge itself. It's a consumable, closer to a lab test strip than a memory chip.", { x: 1.0, y: 5.75, w: 5.3, h: 0.75, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 10.5, color: "CFE0DD", lineSpacingMultiple: 1.2 });
+
+  // ---- Reader panel ----
+  s.addShape("roundRect", { x: 6.85, y: 2.15, w: 5.8, h: 4.55, rectRadius: 0.1, fill: { color: WHITE }, line: { color: "DCE3E6", width: 1 } });
+  s.addText("READER, reusable instrument", { x: 7.15, y: 2.35, w: 5.2, h: 0.35, isTextBox: true, margin: 0, fontFace: BODY_FONT, bold: true, fontSize: 12, color: TEAL_DARK, charSpacing: 1 });
+
+  s.addShape("roundRect", { x: 8.35, y: 2.9, w: 2.0, h: 0.5, rectRadius: 0.06, fill: { color: OFFWHITE }, line: { color: "B9C3C7", width: 1 } });
+  s.addText("cartridge slot", { x: 8.35, y: 2.9, w: 2.0, h: 0.5, isTextBox: true, margin: 0, align: "center", valign: "middle", fontFace: BODY_FONT, fontSize: 9, color: MUTED });
+
+  s.addShape("roundRect", { x: 8.55, y: 3.6, w: 1.6, h: 0.95, rectRadius: 0.08, fill: { color: OFFWHITE }, line: { color: "B9C3C7", width: 1 } });
+  s.addShape("ellipse", { x: 9.15, y: 3.78, w: 0.4, h: 0.4, fill: { color: TEAL, transparency: 30 }, line: { color: TEAL_DARK, width: 1.5 } });
+  s.addText("fluorescence read head", { x: 8.4, y: 4.6, w: 1.9, h: 0.5, isTextBox: true, margin: 0, align: "center", fontFace: BODY_FONT, fontSize: 8.5, color: MUTED, lineSpacingMultiple: 1.1 });
+
+  s.addShape("roundRect", { x: 7.15, y: 3.6, w: 1.15, h: 0.95, rectRadius: 0.08, fill: { color: OFFWHITE }, line: { color: "B9C3C7", width: 1 } });
+  s.addText("nutrient / write reservoir", { x: 7.0, y: 4.6, w: 1.45, h: 0.55, isTextBox: true, margin: 0, align: "center", fontFace: BODY_FONT, fontSize: 8.5, color: MUTED, lineSpacingMultiple: 1.1 });
+
+  s.addShape("roundRect", { x: 10.35, y: 3.6, w: 1.15, h: 0.95, rectRadius: 0.08, fill: { color: OFFWHITE }, line: { color: "B9C3C7", width: 1 } });
+  s.addText("control board", { x: 10.2, y: 4.6, w: 1.45, h: 0.4, isTextBox: true, margin: 0, align: "center", fontFace: BODY_FONT, fontSize: 8.5, color: MUTED });
+  s.addShape("line", { x: 11.5, y: 4.05, w: 0.45, h: 0, line: { color: INK, width: 2.5 } });
+  s.addText("USB-C -> laptop", { x: 10.65, y: 5.2, w: 1.85, h: 0.3, isTextBox: true, margin: 0, align: "center", fontFace: BODY_FONT, fontSize: 9, bold: true, color: INK });
+
+  s.addText("The reader is the only part with a cable. The cartridge never plugs into anything directly.", { x: 7.15, y: 5.75, w: 5.2, h: 0.75, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 10.5, color: MUTED, lineSpacingMultiple: 1.2 });
+
+  s.addText([
+    { text: "Not built. ", options: { bold: true, color: AMBER } },
+    { text: "This is a concept sketch of the product Stage 0 de-risks toward, not a device that exists. Real spaceflight precedent for the organism itself: B. subtilis spores have already survived two years of direct exposure outside the ISS (Deshevaya et al. 2024, Scientific Reports) and 559 days in low-Earth orbit when shielded from direct solar UV (Wassmann et al. 2012, Astrobiology).", options: { color: MUTED } },
+  ], { x: 0.7, y: 6.85, w: 12.0, h: 0.55, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 10.5, lineSpacingMultiple: 1.15 });
+  pageNum(s, 17, false);
+}
+
+// ============================================================ Slide 13, Roadmap (four staged experiments, not one combined bet)
 {
   const s = bgSlide(true);
   kicker(s, "Roadmap", 0.7, 0.5, TEAL);
-  s.addText("The one experiment that changes everything", {
+  s.addText("Four staged experiments, not one combined bet", {
     x: 0.7, y: 0.9, w: 11.9, h: 0.85, isTextBox: true, margin: 0,
     fontFace: HEAD_FONT, fontSize: 28, bold: true, color: WHITE,
   });
-  s.addText("Build the matched-promoter toggle circuit in B. subtilis, write a bit, damage the colony, let it regrow, read the bit back non-destructively via EIS.", {
-    x: 0.7, y: 1.7, w: 11.5, h: 0.6, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 14, color: "AEC2C8",
+  s.addText("An earlier version of this roadmap asked for one combined experiment, build the circuit, damage it, regrow it, and read it back via EIS, in a single $10K-$30K ask. That bundled three separate open questions into one pass/fail result. We split it, and we fund the cheapest gate first.", {
+    x: 0.7, y: 1.65, w: 11.7, h: 0.75, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 13, color: "AEC2C8", lineSpacingMultiple: 1.2,
   });
 
-  const stats = [["$10K-$30K", "Cost, reagents, cloning, lab bench access"], ["6-12 mo", "Timeline to a clear yes/no answer"], ["2", "Outcomes only, validate the mechanism, or cleanly redirect to methylation, next by our own ranking"]];
-  let x = 0.7;
-  stats.forEach(([num, label]) => {
-    s.addShape("roundRect", { x, y: 2.6, w: 3.9, h: 2.5, rectRadius: 0.08, fill: { color: NAVY2 }, line: { type: "none" } });
-    s.addText(num, { x: x + 0.3, y: 2.85, w: 3.3, h: 1.0, isTextBox: true, margin: 0, fontFace: HEAD_FONT, fontSize: 34, bold: true, color: TEAL });
-    s.addText(label, { x: x + 0.3, y: 3.75, w: 3.3, h: 1.2, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 12.5, color: "CFE0DD", lineSpacingMultiple: 1.15 });
-    x += 4.1;
+  const head = [
+    { text: "Stage", options: { bold: true, color: WHITE, fill: { color: "0E2745" } } },
+    { text: "Question answered", options: { bold: true, color: WHITE, fill: { color: "0E2745" } } },
+    { text: "Cost", options: { bold: true, color: WHITE, fill: { color: "0E2745" } } },
+    { text: "Time", options: { bold: true, color: WHITE, fill: { color: "0E2745" } } },
+  ];
+  const rows = [
+    ["0, B. subtilis toggle confirmation", "Does the matched-promoter circuit show two switchable states, read with a simple reporter assay, no electrical readout involved yet.", "$2K-$5K", "6-10 wks"],
+    ["1, HEK293 gap-junction persistence", "Do arbitrary voltage patterns persist 24h+ in a fast, simple culture system.", "$2.4K-$10K", "3-6 mo"],
+    ["2, Planarian minimal viable experiment", "Do arbitrary patterns persist in the target regenerative organism, damage and regrowth included.", "$10K-$30K", "6-12 mo"],
+    ["3, Voltage-interface build", "Can the circuit's repressor output be coupled to a real, non-destructively-read voltage bit.", "Scoped with a synthetic-biology partner", "TBD"],
+  ];
+  s.addTable([head, ...rows.map(r => r.map(c => ({ text: c, options: { fill: { color: NAVY2 } } })))], {
+    x: 0.7, y: 2.65, w: 12.0, h: 3.15,
+    fontFace: BODY_FONT, fontSize: 11.5, color: "E7ECEF", border: { type: "solid", color: "2A4463", pt: 1 },
+    autoPage: false, valign: "middle", colW: [3.0, 5.6, 2.1, 1.3], rowH: [0.5, 0.8, 0.7, 0.75, 0.75],
   });
 
-  s.addText("Deliberately the cheapest, fastest experiment that produces a real answer, not a moonshot ask.", {
-    x: 0.7, y: 5.4, w: 11.5, h: 0.5, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 14, italic: true, color: "8FA6AE",
-  });
-  pageNum(s, 16, true);
+  s.addShape("roundRect", { x: 0.7, y: 6.05, w: 12.0, h: 1.0, rectRadius: 0.08, fill: { color: "18314F" }, line: { color: TEAL, width: 1 } });
+  s.addText([
+    { text: "We fund Stage 0 first:  ", options: { bold: true, color: TEAL } },
+    { text: "the fastest, cheapest test of the one design constraint (promoter matching) our own simulation flagged as make-or-break, using free, off-the-shelf parts. A negative result at any stage is a fast, cheap answer that redirects effort, not a wasted spend.", options: { color: "E7ECEF" } },
+  ], { x: 0.95, y: 6.05, w: 11.5, h: 1.0, isTextBox: true, margin: 0, valign: "middle", fontFace: BODY_FONT, fontSize: 12 });
+  pageNum(s, 18, true);
 }
 
 // ============================================================ Slide 13b, Biosafety & Containment
@@ -628,7 +742,7 @@ function kicker(s, text, x, y, color) {
   s.addText("None of this is unusual for synthetic biology. We're naming it now so it's never a surprise later.", {
     x: 0.7, y: 6.55, w: 12, h: 0.5, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 13, italic: true, color: MUTED,
   });
-  pageNum(s, 17, false);
+  pageNum(s, 19, false);
 }
 
 // ============================================================ Slide 14, What we're asking for + IP status
@@ -644,7 +758,7 @@ function kicker(s, text, x, y, color) {
   });
 
   const asks = [
-    ["1", "Funding for the wet-lab validation experiment", "The ~$10K-$30K described on the roadmap slide: reagents, plasmid synthesis/cloning, lab bench access."],
+    ["1", "Funding for Stage 0", "The ~$2K-$5K described on the roadmap slide: reagents, plasmid synthesis/cloning, a lab partnership providing bench access. The fastest, cheapest gate on the whole roadmap, later stages funded separately once each prior gate passes."],
     ["2", "Budget to hire a paid synthetic-biology consultant", "A real expert's time to review and help execute the toggle-circuit build, not just informal mentoring hours. We'd rather pay for a few weeks of real expertise than move forward on a design nobody with domain experience has pressure-tested."],
     ["3", "Lab access & partnership introductions", "Standard bacterial transformation and plasmid cloning, B. subtilis is a workhorse organism, a far more common skill than planarian-specific culture."],
   ];
@@ -662,7 +776,7 @@ function kicker(s, text, x, y, color) {
     { text: "IP status:  ", options: { bold: true, color: TEAL_DARK } },
     { text: "patent applications filed with the USPTO covering the Bio-RAID fault-tolerance architecture, self-healing recovery protocol, and environment-adaptive longevity system.", options: { color: INK } },
   ], { x: 0.95, y: 6.05, w: 11.5, h: 0.95, isTextBox: true, margin: 0, valign: "middle", fontFace: BODY_FONT, fontSize: 12.5, lineSpacingMultiple: 1.1 });
-  pageNum(s, 18, false);
+  pageNum(s, 20, false);
 }
 
 // ============================================================ Slide 15, Team + closing
@@ -695,7 +809,7 @@ function kicker(s, text, x, y, color) {
     { text: " ", options: { breakLine: true, paraSpaceAfter: 4 } },
     { text: "Jacqueline Solano: jackiea.solano@gmail.com", options: { color: WHITE, bold: true } },
   ], { x: 0.7, y: 6.0, w: 9.5, h: 1.4, isTextBox: true, margin: 0, fontFace: BODY_FONT, fontSize: 13 });
-  pageNum(s, 19, true);
+  pageNum(s, 21, true);
 }
 
 pres.writeFile({ fileName: "Acheron_Pitch_Deck.pptx" }).then(() => console.log("done"));

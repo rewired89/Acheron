@@ -82,7 +82,7 @@ rather than assuming they're present.
   founder (confirmed September 2026), these have been filed with the USPTO,
   state IP status as "filed, pending examination," not "in progress."
 - **`docs/pitch/`** holds investor/incubator materials.
-  `Acheron_Pitch_Deck.pptx` is the current deck (19 slides); its generator
+  `Acheron_Pitch_Deck.pptx` is the current deck (21 slides); its generator
   script is `docs/pitch/build_deck.js` (Node + pptxgenjs), edit that and
   rerun it, don't hand-edit the compiled `.pptx`. See the pptx skill's
   validate/QA workflow before shipping any rebuild.
@@ -165,15 +165,23 @@ rather than assuming they're present.
    whether to strip/rewrite it before it's used.
 2. **The wet-lab experiment is the actual next milestone** for the science
    (see throughline item 6 above), everything else is downstream of it.
-3. **Pitch deck is current and was heavily iterated** this session (founder
-   info, patent status, competitor framing, tone) and again in a later
-   session (September 2026) to act on external reviewer feedback: it now
-   has 19 slides, adding an unmissable "simulated vs. measured" disclosure
-   slide near the front, a B. subtilis-vs-E. coli chassis-justification
-   slide, a biosafety/containment slide, a qualitative (not numeric) risk
-   confidence visual on the risk-ranking slide replacing a bar chart that
-   showed three identical bars, and a market slide reframed to explicitly
-   disclaim being a market-size estimate. Jacqueline Solano's team-slide
+3. **Pitch deck is current and was heavily iterated** across several
+   sessions (founder info, patent status, competitor framing, tone,
+   external reviewer feedback) and again in September 2026 to fold in a
+   batch of new simulation results: it now has 21 slides. Added since the
+   19-slide version: a "Cleaner Readout" slide on the fluorescent
+   GFP/RFP reporter finding (tracks the genetic state exactly, including
+   through simulated damage/regrowth, and sidesteps the voltage-readout
+   interference problem by mechanism, not luck), and a "What This
+   Becomes" hardware-concept slide (the sealed cartridge + reader
+   device, cites real B. subtilis spaceflight survival precedent,
+   Deshevaya et al. 2024, Wassmann et al. 2012). The Roadmap slide was
+   corrected from the old single combined $10K-$30K experiment to the
+   already-established four-stage plan (Stage 0 first, ~$2K-$5K,
+   matching `docs/INVESTOR_PITCH.md` and `docs/pitch/
+   Acheron_Validation_Proposal.docx`), which the deck had drifted out of
+   sync with; the Ask slide and the "simulated vs. measured" slide's
+   dollar figure were updated to match. Jacqueline Solano's team-slide
    bio is still a single line by the founder's explicit choice (asked and
    declined to expand it beyond already-confirmed facts as of September
    2026), not an oversight. If asked to update the deck again, start from
