@@ -81,6 +81,18 @@ rather than assuming they're present.
   system, self-healing recovery, environment-adaptive longevity). Per the
   founder (confirmed September 2026), these have been filed with the USPTO,
   state IP status as "filed, pending examination," not "in progress."
+- **`docs/WETLAB_BENCH_PROTOCOL.md`** (added September 2026) is the
+  bench-level *B. subtilis* protocol derived from the simulations and the
+  audit: strain choice, BBB parts, stages B0-B6 in cheapest-first order,
+  pass/fail thresholds, and an explicit list of simulated results the plan
+  cannot test. It sits one level below
+  `docs/pitch/Acheron_Validation_Proposal.docx` (which sets stages and costs)
+  and is the *B. subtilis* counterpart to `experiments/EXPERIMENT_A_PROTOCOL.md`
+  (HEK293). Not yet reviewed by a collaborating lab; treat as a draft. It
+  flags a real strain mismatch the simulations do not show: BBB promoter
+  parts were characterized in W168, while the biofilm potassium-wave
+  literature everything in the interference simulations rests on is NCIB
+  3610, and those cannot both be used at once.
 - **`docs/pitch/`** holds investor/incubator materials.
   `Acheron_Pitch_Deck.pptx` is the current deck (21 slides); its generator
   script is `docs/pitch/build_deck.js` (Node + pptxgenjs), edit that and
