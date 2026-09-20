@@ -541,6 +541,25 @@ they depend on each other.
   used_by: `main` (in the same file)
   side_effects: none
 
+- name: `PhaseEncodedCell`
+  type: class
+  file: simulations/phase_encoded_readout.py
+  purpose: subclass of `GardnerToggleCell` that keeps the identical repressor ODE and noise magnitudes but changes what the membrane voltage tracks: the stored bit selects the SIGN of the cell's response to the ambient potassium oscillation (in-phase vs anti-phase) instead of a static V_HIGH/V_LOW level, so both bit values sit at the same mean voltage and absolute voltage carries no information by construction. Models Yang et al. 2020 (Cell Systems, DOI 10.1016/j.cels.2020.04.002) passive-vs-active potassium response phenomenologically, NOT their Hodgkin-Huxley equations
+  inputs: `params/seed/transcriptional_noise_std/channel_noise_std/thermal_noise_std/response_fraction` (response_fraction = how much of the ambient swing the cell reproduces, unmeasured, swept by callers)
+  outputs: `step_phase(t_minutes, amplitude_mv, period_hours, dt)` advances u/v via the parent then sets V from the phase model
+  dependencies: `simulations.gardner_toggle_circuit.GardnerToggleCell`, `simulations.native_oscillation_interference.ambient_oscillation_offset`
+  used_by: `run_phase_trial`
+  side_effects: none
+
+- name: `phase_read`, `run_phase_trial`, `run_level_trial`, `accuracy`
+  type: function
+  file: simulations/phase_encoded_readout.py
+  purpose: head-to-head test of phase encoding (bit = the cell's phase relationship to the native oscillation, read as the sign of the correlation against a separately measured reference trace) against this project's existing level encoding, under identical conditions and with read start times spread across the oscillation period so neither scheme gets an accidentally phase-locked read. Found the predicted inversion: level encoding is 100% with no oscillation and collapses to 54-65% once it is present (reproducing `native_oscillation_interference.py`), while phase encoding fails at exactly 50% with no carrier (the control working correctly) and climbs to 99-100% at 30mV and above. Also creates a direct conflict with `decoupled_channel_readout.py`: for level encoding yugO is the problem, for phase encoding yugO is the mechanism, so the two strategies are mutually exclusive and point at different chassis strains
+  inputs: `scheme/amplitude_mv/window_min/measurement_noise_std/n_trials/period_hours/response_fraction/n_start_phases` (measurement noise, window and response_fraction are all explicitly unmeasured and swept, not literature values)
+  outputs: four accuracy tables (inversion, measurement-noise sweep, window-length sweep, partial-coupling sweep) (printed)
+  dependencies: `simulations.gardner_toggle_circuit.GardnerParams/GardnerToggleCell`, `simulations.native_oscillation_interference.ambient_oscillation_offset`
+  used_by: `main` (in the same file)
+  side_effects: none
 - name: `partition_value`, `run_colony_trial`, `sweep`
   type: function
   file: simulations/partition_noise_regrowth.py

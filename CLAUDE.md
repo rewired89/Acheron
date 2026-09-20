@@ -59,6 +59,15 @@ rather than assuming they're present.
    found that *B. subtilis*'s own native potassium-wave signaling (real,
    published, unrelated to anything this project builds) can corrupt a
    voltage reading even when the underlying circuit data is intact.
+   **But that framing is now contested by the project's own work:** audit
+   Part 24 and `simulations/phase_encoded_readout.py` (September 2026)
+   found that if the bit is encoded as the cell's phase relationship to
+   that oscillation rather than as a static voltage level, the oscillation
+   becomes the carrier and the readout gets *better* as it gets stronger.
+   The two encoding schemes have opposite failure modes and want opposite
+   chassis strains (level encoding wants yugO weakened or deleted, phase
+   encoding needs yugO intact), so this is a fork the project has to
+   choose before committing to a strain, not a detail.
 6. **The one open question everything currently depends on:** does an
    engineered bistable circuit's state survive damage-and-regrowth
    (not just ordinary cell division)? Nobody has tested this in any
@@ -107,6 +116,18 @@ rather than assuming they're present.
   yet reviewed by the founder or (for the Reg CF one) a securities
   attorney; treat both as drafts pending that review, not as ready to
   publish.
+- **Closest prior art, know this before making a novelty claim:** Yang,
+  Bialecka-Fornal, Weatherwax, Larkin, Prindle, Liu, Garcia-Ojalvo & Süel
+  (2020), *Cell Systems* 10(5):417-423, DOI 10.1016/j.cels.2020.04.002,
+  already wrote arbitrary spatial patterns into a living *B. subtilis*
+  biofilm's membrane potential with light, read them back non-destructively
+  at single-cell resolution for over 3 hours, and framed it as digital
+  memory for biological computing. Audit Part 25 covers what this does and
+  does not take away. Do NOT write "nobody has stored data as a bioelectric
+  state" into any investor-facing document. The claim that survives is
+  narrower: their memory is a protein-level modification that would not
+  survive cell division, and surviving division is this project's actual
+  differentiator.
 - **Never invent or carry forward unverified personal/biographical facts about
   the founders** (name, school, background) into any document without an
   explicit confirmation in the current conversation. This has happened once

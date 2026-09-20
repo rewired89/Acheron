@@ -1815,6 +1815,170 @@ parts was edited to match that view.
 
 ---
 
+## Part 25: The Closest Prior Art Yet, Missed Until Now, and It Says the Native Oscillation Might Be the Readout Rather Than the Problem (September 2026)
+
+**Where this came from:** the founder asked a plain question, why nobody has
+connected a genetic switch to an actual electrical signal in a cell when
+optogenetics and neuroscience do exactly that. Checking the question properly
+instead of restating Part 9's "no prior art at all" surfaced a paper this
+project has never cited, from the same lab whose work Parts 12 through 21 are
+all built on.
+
+**The paper:** Yang, Bialecka-Fornal, Weatherwax, Larkin, Prindle, Liu,
+Garcia-Ojalvo & Süel (2020), "Encoding membrane potential-based memory within
+a microbial community," *Cell Systems* 10(5):417-423, DOI
+10.1016/j.cels.2020.04.002, PMID 32343961, PMC7286314. Same lab as Prindle et
+al. 2015, same strain (NCIB 3610), same channel (yugO).
+
+**How this sits with Part 24, which was written in parallel and points the
+other way.** Part 24 recommends taking the electrical readout off Stage 0's
+critical path in favour of a two-color reporter. That recommendation stands,
+and this part does not overturn it. Part 24's case is against reading an
+ABSOLUTE membrane-potential level, which is the same scheme the simulation
+below also finds collapses to 54-65% under the native oscillation. Phase
+encoding is a different scheme with a different failure mode, and it is more
+speculative than anything Part 24 assessed, since nobody has built the
+genetic-circuit-to-phase-response link at all. Read the two parts together as:
+reporter-first for the cheap stage, level-based electrical readout
+deprioritised, phase-based electrical readout added to the research queue
+behind both. Part 24 also found a second missed paper (Bonnet, Subsoontorn &
+Endy 2012) narrowing Part 10's novelty claim, independent of the one below.
+
+### What they actually demonstrated
+
+Taken from the paper's own text, not from its abstract alone:
+
+- A 5-second blue light (438 nm) exposure to a region of a living *B. subtilis*
+  biofilm produces a persistent change in those cells' membrane potential,
+  measured with the Nernstian dye Thioflavin T at 10 uM.
+- The effect is yugO-specific and genetically confirmed: a delta-yugO deletion
+  strain shows no noticeable membrane potential change on light exposure, and
+  excess extracellular potassium blocks the response while excess sodium does
+  not. Controls with propidium iodide and Sytox rule out cell death, and added
+  glutamine returns the cells to resting potential.
+- Their model's reading of the mechanism: light leaves a fraction of yugO
+  subunits permanently conducting, so exposed cells passively follow
+  extracellular potassium while unexposed cells retain active control and
+  counter-regulate.
+- The consequence: exposed and unexposed cells respond to potassium
+  oscillations in **anti-phase**. Cross-correlation is anti-correlated at zero
+  lag and maximally correlated at 50 minutes lag, half their imposed
+  100-minute period. This held against both an artificially imposed
+  oscillation (alternating 150 mM and 8 mM external potassium) and the
+  biofilm's own natural one.
+- Spatial patterns stayed readable at single-cell resolution for over 3 hours.
+- Their own discussion frames this for biological computing: the anti-phase
+  behavior "allows us to produce a clear signal that is either 'on' or 'off,'
+  as in traditional digital memory."
+
+### What this does to Part 9's "no prior art" claim
+
+It narrows it, and the narrowing has to be stated plainly because a diligent
+investor or reviewer will find this paper.
+
+**What is no longer novel:** writing an arbitrary spatial pattern into a living
+*B. subtilis* biofilm's membrane potential, reading it back non-destructively
+at single-cell resolution, keeping it readable for hours through the colony's
+own potassium oscillations, and framing that as digital memory for biological
+computing. All of that is published, in the target organism, since 2020.
+
+**What is still open, and it is real rather than a consolation:**
+1. **Their memory is not genetic.** It is a persistent protein-level
+   modification of existing channels, and their discussion says so directly:
+   it "does not arise from positive feedback, but rather from enduring
+   modifications at the protein level." The Gardner-toggle link this project
+   proposes is a different mechanism.
+2. **Theirs would not survive division.** A protein modification dilutes out as
+   cells divide. Their own discussion notes biofilm cells are "predominantly
+   non-replicating," which is part of why the pattern persists at all. This
+   project's whole differentiator, data surviving damage and regrowth (Parts 8,
+   20, 22), is exactly what their mechanism cannot do.
+3. **Hours, not indefinite.** Over 3 hours observed, with the model predicting
+   longer. This project's own bar has always been 24 hours and beyond.
+4. **No demonstrated rewrite cycle.** Light writes; glutamine returns cells to
+   resting potential, which hints at an erase, but a repeated write-0/write-1
+   cycle on the same cells is not shown.
+5. **No addressing, encoding or error-correction layer.** A visible pattern is
+   not the same as an addressable memory with a read/write interface.
+
+**The honest summary line for investor-facing material:** the claim to make is
+no longer "nobody has stored data as a bioelectric state." It is "the state has
+been written and read, and it does not survive cell division, which is the
+property this project is actually after."
+
+### Two things it confirms that this project had only proposed
+
+- **yugO.** Part 14 named yugO as the candidate channel from Lundberg et al.
+  2013. This paper independently calls it "the only known potassium channel"
+  in the organism and uses a delta-yugO knockout as its key control. The
+  identification was right.
+- **The strain split flagged in `docs/WETLAB_BENCH_PROTOCOL.md`.** Their work is
+  in NCIB 3610, not W168, consistent with that document's section 1.
+
+### The strategic inversion, and a simulation testing it
+
+Parts 12, 13, 17, 18 and 21 all treat the native potassium oscillation as noise
+to average out, time around, or engineer away. Yang et al. do the opposite: the
+oscillation is what makes their bit readable, because the bit IS the cell's
+phase relationship to it. That is a carrier wave, not interference.
+
+`simulations/phase_encoded_readout.py` tests that framing inside this project's
+own model. It keeps the Gardner ODE and the same noise magnitudes as
+`gardner_toggle_circuit.py`, and changes only what the voltage tracks: instead
+of the stored bit selecting a static V_HIGH or V_LOW, it selects whether the
+cell responds in phase or anti-phase with the ambient oscillation. The readout
+is the sign of the correlation between the cell's voltage trace and a
+separately measured reference trace. Both schemes are run under identical
+conditions, with read start times spread across the oscillation period so
+neither gets an accidentally phase-locked read.
+
+**Result, 60-minute read, 10mV-equivalent measurement noise:**
+
+| Ambient amplitude | Level encoding (existing scheme) | Phase encoding (new) |
+|---|---|---|
+| 0 mV (no oscillation) | 100% | 50% |
+| 10 mV | 65% | 86% |
+| 30 mV | 54% | 99% |
+| 50 mV | 55% | 100% |
+| 70 mV | 58% | 100% |
+
+The inversion holds cleanly. The level-encoding column reproduces
+`native_oscillation_interference.py`'s own 50-59% collapse, which is the
+consistency check that the two files agree. The phase-encoding 50% at zero
+amplitude is the control behaving correctly: with no carrier there is no phase
+to read, so it must fail there, and it does.
+
+**What phase encoding costs, from the same file's other sweeps:** a read of
+roughly 60 minutes or more (a 10-minute read is near chance), measurement noise
+held under about 20mV-equivalent at the low end of the amplitude range, and a
+strong coupling between the stored bit and the cell's potassium response (at
+10% coupling it degrades to 49-76%). None of those three has been measured,
+here or in the source paper, for a genetically driven version of this.
+
+### A direct conflict this creates with Part 18
+
+`decoupled_channel_readout.py` recommends weakening or deleting yugO to reduce
+how much native signal reaches the engineered circuit. Yang et al. show a
+delta-yugO strain does not respond to the write stimulus at all.
+
+So **for level encoding yugO is the problem, and for phase encoding yugO is the
+mechanism.** The two strategies are mutually exclusive, and they point at
+different chassis strains. Part 18's recommendation is not withdrawn, it is
+now conditional on which encoding scheme the project commits to, and that
+choice has to be made before a strain is chosen rather than after.
+
+### What is still unbuilt, stated as strictly as everywhere else
+
+Yang et al. wrote their bit with light onto native channels. Nobody has wired a
+genetic circuit's state to a cell's in-phase versus anti-phase potassium
+behavior. That link is unbuilt and unmeasured, the same status as the
+repressor-to-ion-channel link in `gardner_toggle_circuit.py`, and
+`phase_encoded_readout.py` says so in its own docstring. What changed is that
+the unbuilt link now has a demonstrated physical mechanism sitting underneath
+it in the same organism, rather than none at all. Also not tested: whether a
+phase-encoded bit survives damage and regrowth the way the genetic state does.
+---
+
 ## Next Action: One Experiment Changes Everything
 
 **The experiment:**
