@@ -60,7 +60,7 @@ rather than assuming they're present.
    published, unrelated to anything this project builds) can corrupt a
    voltage reading even when the underlying circuit data is intact.
    **But that framing is now contested by the project's own work:** audit
-   Part 24 and `simulations/phase_encoded_readout.py` (September 2026)
+   Part 25 and `simulations/phase_encoded_readout.py` (September 2026)
    found that if the bit is encoded as the cell's phase relationship to
    that oscillation rather than as a static voltage level, the oscillation
    becomes the carrier and the readout gets *better* as it gets stronger.
