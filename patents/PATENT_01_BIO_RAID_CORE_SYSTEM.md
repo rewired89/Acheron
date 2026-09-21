@@ -1,3 +1,10 @@
+> **EDITORIAL NOTE, ADDED SEPTEMBER 2026. NOT PART OF THE FILED APPLICATION.**
+> Several claims below rest on results the project's own later simulations
+> retired, and two pieces of material prior art are cited nowhere in this
+> document. Read `patents/PATENT_GAP_ANALYSIS_2026.md` before reusing,
+> quoting or relying on anything here. The text below is left exactly as
+> filed on purpose, so the record of what was submitted stays intact.
+
 # PATENT APPLICATION #1: BIOLOGICAL-RAID DATA STORAGE SYSTEM WITH PLANARIAN-INSPIRED SELF-HEALING
 
 ## TITLE OF THE INVENTION

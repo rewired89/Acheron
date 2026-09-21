@@ -93,6 +93,18 @@ rather than assuming they're present.
   system, self-healing recovery, environment-adaptive longevity). Per the
   founder (confirmed September 2026), these have been filed with the USPTO,
   state IP status as "filed, pending examination," not "in progress."
+  **`patents/PATENT_GAP_ANALYSIS_2026.md` (September 2026) lists every place
+  the filed text and the current science disagree, read it before reusing or
+  quoting anything from the three patent documents.** Headlines: a fabricated
+  prior-art citation sits in Patent 1's Background; Bonnet 2012 and Süel 2020
+  are disclosed nowhere; every independent claim recites planarian tissue and
+  absolute-voltage-level encoding, both of which the project retired; and the
+  current differentiator, state surviving damage and regrowth through cell
+  division, is unclaimed. **Do not edit the three patent files.** A filed
+  application is not amended by editing a markdown file, and those files are
+  the only record of what was submitted. Corrections go through the patent
+  attorney. Each file carries an editorial banner pointing at the gap
+  analysis; leave the text below the banner as filed.
 - **`experiments/BENCH_PROTOCOL_BSUBTILIS.md`** (added September 2026) is the
   bench-level *B. subtilis* protocol derived from the simulations and the
   audit: strain choice, BBB parts, stages B0-B6 in cheapest-first order,
