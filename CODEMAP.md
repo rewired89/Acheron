@@ -827,6 +827,16 @@ silently.
   used_by: run manually, not imported
   side_effects: writes a `.pptx` file
 
+- name: (script, no exported symbols, runs top-to-bottom)
+  type: script
+  file: docs/pitch/build_explainer_deck.js
+  purpose: pptxgenjs source that generates `docs/pitch/Acheron_Plain_Explainer.pptx`, an 11-slide plain-language explainer of the whole project for a reader with no science background, written for co-founder Jacqueline Solano and intended to be printed. Deliberately does NOT share `build_deck.js`'s palette or fonts, it is not an investor deck and should not look like one. Slide 7 carries the "this was a simulation, not a laboratory" framing and the "2 percent is the lowest level tested, not a measured limit" correction, keep both intact
+  inputs: none (all content is hardcoded in the script)
+  outputs: `Acheron_Plain_Explainer.pptx` written next to the script
+  dependencies: `pptxgenjs` (npm, not committed, install separately)
+  used_by: run manually, not imported
+  side_effects: writes a `.pptx` file
+
 ---
 
 ## Root-level

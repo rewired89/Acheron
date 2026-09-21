@@ -147,6 +147,17 @@ rather than assuming they're present.
   no-invented-numbers rule applies: the array size, dimensions and timings
   on it are labeled illustrative, the 2 percent survival figure is labeled
   a simulation result, and the spaceflight claim carries its citation.
+  `Acheron_Plain_Explainer.pptx` (added 21 September 2026) is an 11-slide
+  plain-language explainer of the whole project for a reader with no science
+  background, built for co-founder Jacqueline Solano and meant to be printed,
+  from `docs/pitch/build_explainer_deck.js`. It is not investor material and
+  deliberately does not share the investor deck's palette or fonts. It carries
+  the nine-sentence summary the founder signed off on, the "this was a
+  simulation, not a laboratory" framing, the correction that 2 percent is the
+  lowest survival level tested rather than a measured limit, and real funding
+  comparables (NSF SBIR up to $305K Phase I, BioCompute's ~$37.7K total per
+  Inc42, Catalog's $35M 2021 round) instead of an invented market size. Keep it
+  that way if asked to update it.
   `Acheron_Validation_Proposal.docx` is the existing staged wet-lab funding
   ask (Stages 0-3, cost/time ranges, honest risk disclosure) that the
   crowdfunding drafts below are built from, don't re-derive its numbers.
