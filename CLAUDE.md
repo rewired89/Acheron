@@ -15,9 +15,12 @@ been proven vs. assumed, patent drafts, and investor/incubator pitch materials.
 scientific or investor-facing claim.** It is the living, continuously-appended
 source of truth for what's validated, what's assumed, and what's been found
 wrong since the original pitch. Do not trust claims in the older docs
-(`README.md`, `docs/INVESTOR_PITCH_PHASE2_UPDATE.md`, the `PHASE2`/`PHASE3`/
-`PHASE4` docs) without cross-checking them against the audit first, several
-of the project's own early claims did not survive later testing.
+(`docs/INVESTOR_PITCH_PHASE2_UPDATE.md`, the `PHASE2`/`PHASE3`/`PHASE4` docs,
+`docs/WHITEPAPER_Somatic_Morphogenetic_Memory.md`) without cross-checking them
+against the audit first, several of the project's own early claims did not
+survive later testing. `README.md` and `QUICKSTART.md` were rewritten from the
+audit in September 2026 and are current; keep them that way when the audit
+gains a part that changes the headline picture.
 
 ## Commands
 
