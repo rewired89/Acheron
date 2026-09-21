@@ -411,6 +411,41 @@ smooth-nudge method borrowed from another project does not fit it.
 and tasmorpho's continuous linear write-map does not fit this substrate's
 ultrasensitive regime.
 
+### `bsubtilis_21_optical_write_replication.py`
+**What it tested, plainly:** whether the San Diego lab's published method for
+writing a bit into these exact bacteria can be rebuilt in this project's own
+code, and what happens to their kind of bit when the cells divide.
+**What it found, plainly:** the write rebuilds cleanly, four of the five things
+they report come straight out of the model, and their bit is unreadable after
+one or two cell divisions while a genetic bit is not. That gap is the whole
+reason this project exists.
+**Technically:** reimplements the Hodgkin-Huxley-style potassium model described
+in Yang et al. (2020) STAR Methods (Cell Systems 10(5):417-423, DOI
+10.1016/j.cels.2020.04.002). The optical write is their own assumption that
+irradiation fixes the channel open fraction `n` at a constant. Reproduces
+signature 1 (light hyperpolarises, here by about 8 mV), 2 (a delta-yugO cell
+with zero channel conductance shows no shift at all), 3 (150 mM external
+potassium inverts the shift instead of hyperpolarising) and 4 (separation flat
+from 30 to 200 minutes). Does NOT reproduce signature 5, their anti-phase
+cross-correlation with a peak at half the 100-minute shock period: this model
+gives correlation +0.91 at zero lag and a 95-minute peak, and a 12-point sweep
+across three orders of magnitude of potassium influx coupling, pumping rate and
+channel conductance never reaches anti-phase. The reason is structural: with
+intracellular potassium near 300 mM the potassium reversal potential under a 150
+mM shock sits above the resting potential, so opening channels can only
+depolarise. Their explanation needs unexposed cells to hyperpolarise there, which
+this reduced form cannot produce. Their Table S1 parameters are not in the
+open-access text and their raw data is request-only, so this is a stated gap, not
+a challenge to their experiment, which was microfluidic and not simulation-only.
+The division comparison is the part that does not depend on any uncalibrated
+constant: a protein-level mark halves in fraction every generation as unmodified
+channels are synthesised, so the readable separation falls from about 8 mV to
+under 2 mV in one generation and under 0.3 mV in two, while a latch that
+re-establishes the state each generation does not fall at all. Every rate
+constant in the file except RT/F, the two potassium concentrations, the 100
+minute period and the 50 minute lag is an uncalibrated placeholder and is
+labelled as one.
+
 ---
 
 # Methylation track

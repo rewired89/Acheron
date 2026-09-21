@@ -637,6 +637,22 @@ actually diagnosing.
   used_by: none (terminal analysis)
   side_effects: none
 
+- name: `KChannelCell`
+  type: class
+  file: simulations/bsubtilis_21_optical_write_replication.py
+  purpose: reimplementation of the Hodgkin-Huxley-style potassium/membrane-potential model described in Yang et al. (2020) STAR Methods (Cell Systems 10(5):417-423, DOI 10.1016/j.cels.2020.04.002); `clamped_n` is their optical write (irradiation fixes the channel open fraction) and `channel_gain=0.0` is their delta-yugO knockout control. All rate constants are uncalibrated placeholders, NOT their Table S1 values, which are not in the open-access text
+  dependencies: stdlib only (`math`)
+  used_by: every function in the same file
+  side_effects: none
+
+- name: `nernst_potassium`, `leak_reversal`, `settle`, `trace`, `signature_1_light_hyperpolarises`, `signature_2_yugo_knockout_is_deaf`, `signature_3_excess_potassium_blocks_the_write`, `signature_4_pattern_persists`, `signature_5_antiphase_under_potassium_shock`, `antiphase_trial`, `antiphase_parameter_sweep`, `division_comparison`, `readable_generations`, `main`
+  type: function
+  file: simulations/bsubtilis_21_optical_write_replication.py
+  purpose: checks the reimplementation against the five observables Yang et al. report (signatures 1-4 reproduce, 5 does not and a 12-point sweep shows it is structurally out of reach without their parameters), then runs the test the paper does not: a protein-level optical write diluting 2x per cell generation against a genetic latch that does not dilute
+  dependencies: `KChannelCell`
+  used_by: none (terminal analysis)
+  side_effects: none; `antiphase_trial` temporarily rebinds module-level constants and restores them in a `finally`
+
 - name: `make_gardner_reservoir`, `main`
   type: function
   file: simulations/bsubtilis_19_reservoir_benchmark.py

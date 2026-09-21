@@ -1979,6 +1979,122 @@ it in the same organism, rather than none at all. Also not tested: whether a
 phase-encoded bit survives damage and regrowth the way the genetic state does.
 ---
 
+## Part 26: Rebuilding the San Diego Optical Write in This Project's Own Code, What Reproduced and What Did Not (September 2026)
+
+**Where this came from:** the founder asked whether the Yang et al. 2020 work
+covered in Part 25 can be used as the basis for a simulation of the WRITE step
+in *B. subtilis*, and whether their data could be reused or a test built from
+their results.
+
+### First, what is actually available
+
+Their paper's own Data and Code Availability statement reads, verbatim: "This
+study did not generate new code nor software. All raw data are available upon
+request from the Lead Contact." There is no deposited dataset and no released
+code. Their model's parameter table is supplementary Table S1, which is not in
+the open-access full text (retrieved as PMC7286314 via PubMed Central).
+
+So their data cannot be reused. What can be reused is the structure of the
+model, which their STAR Methods describes in full prose, and the observables
+they report in the main text. That is enough to reimplement the mechanism and
+then check the reimplementation against their published results, which is what
+`simulations/bsubtilis_21_optical_write_replication.py` does.
+
+### What reproduced
+
+Four of the five things they report come out of the reimplementation directly:
+
+| Signature they report | Reproduced | Value here |
+|---|---|---|
+| Light exposure hyperpolarises exposed cells | Yes | about 8 mV separation |
+| delta-yugO strain shows no response | Yes | 0.00 mV shift |
+| Excess extracellular potassium blocks the hyperpolarisation | Yes | shift inverts to +3.8 mV at 150 mM |
+| Pattern holds at steady state for hours | Yes | flat from 30 to 200 minutes |
+| Anti-phase, cross-correlation peak at half the 100-minute period | **No** | +0.91 at zero lag, peak at 95 minutes |
+
+The sodium half of their chemical-clamp control is untestable here by
+construction: this is a potassium-only model, so it cannot produce a sodium
+effect and no claim is made about it.
+
+### The signature that did not reproduce, and why that is worth writing down
+
+Their anti-phase result is the one this project cares most about, because
+`simulations/bsubtilis_18_phase_encoded_readout.py` and Part 25's strategic
+inversion both rest on it. The reimplementation does not produce it, and a
+12-point sweep across three orders of magnitude of potassium influx coupling,
+pumping rate and channel conductance never reaches anti-phase at any setting.
+
+The reason is structural rather than a matter of tuning. With intracellular
+potassium near the textbook 300 mM, the potassium reversal potential under a
+150 mM external shock sits well above the resting potential, so opening
+channels can only depolarise a cell. Their explanation requires the opposite:
+unexposed cells must *hyperpolarise* under excess external potassium by
+actively opening channels and releasing ions. A reduced model with a pumped
+intracellular setpoint cannot produce that, whatever its rate constants.
+
+**This is a gap in the reimplementation, not a challenge to their result.**
+They report the anti-phase behaviour experimentally, with microfluidics
+alternating 150 mM and 8 mM potassium, not only in simulation, and the
+cross-correlation peak at 50 minutes is their measurement. The honest statement
+is that this project cannot currently rebuild the mechanism behind it, and the
+missing piece is a specific, askable thing: the parameter values in their Table
+S1. That is a concrete reason to write to the Lead Contact (Gurol Suel, UC San
+Diego) rather than a vague wish for collaboration.
+
+**Consequence for Part 25 and for bsubtilis_18.** Part 25's phase-encoding
+result is not withdrawn, but its standing is now weaker than it read. It was
+computed with an *imposed* sinusoid and a bit that selects in-phase or
+anti-phase behaviour by assumption. This part tried to derive that anti-phase
+from the potassium mechanism and could not. So phase encoding rests on the
+published experiment plus an assumed coupling, with no working mechanistic
+model in this repository behind it. It stays behind the two-colour reporter in
+the queue, which is where Part 24 already put it, and for a second reason now.
+
+### What the division test found, which is the part that matters
+
+Their memory is a protein-level modification of existing channels, and their
+Discussion says biofilm cells are "predominantly non-replicating," which is
+part of why the pattern lasts. Acheron needs the bit to survive regrowth, which
+means division. Running the optical write forward through generations:
+
+| Generation | Modified channel fraction | Optical write separation | Genetic latch separation |
+|---|---|---|---|
+| 0 | 0.800 | -8.47 mV | -8.47 mV |
+| 1 | 0.450 | -1.73 mV | -8.47 mV |
+| 2 | 0.275 | -0.27 mV | -8.47 mV |
+| 3 | 0.188 | -0.06 mV | -8.47 mV |
+| 8 | 0.103 | -0.01 mV | -8.47 mV |
+
+At a 5 mV or 2 mV readout threshold the optical write is unreadable after one
+generation; at 1 mV it survives one. At a 30-minute doubling time that is hours,
+not days.
+
+**This result does not depend on the uncalibrated constants.** A fixed
+population of modified channel subunits halves as a fraction of the total pool
+every time the cell doubles its channels with newly synthesised, unmodified
+ones. That is arithmetic on the mechanism they themselves describe. The genetic
+column is flat by construction, because it assumes the latch is inherited, and
+that assumption is exactly what `simulations/bsubtilis_07_colony_regrowth.py`
+models and what no wet lab has tested.
+
+So the head-to-head is: their write step works and is published in this
+project's target organism; their retention step is the one this project claims
+to improve on, and the improvement is real in principle and unmeasured in
+practice.
+
+### Honest limits of the new file
+
+- Every rate constant except RT/F at 30 C, the two potassium concentrations,
+  the 100-minute period and the 50-minute lag is an uncalibrated placeholder.
+  No number from that file should be quoted as measured.
+- The 8 mV write separation is a property of the placeholder constants, not a
+  prediction. Only its sign and its persistence are meaningful.
+- The file does not show that a genetic latch can drive channel state at all.
+  That link is unbuilt and unmeasured, the same status it has in
+  `simulations/bsubtilis_01_gardner_toggle_circuit.py`.
+
+---
+
 ## Next Action: One Experiment Changes Everything
 
 **The experiment:**

@@ -82,6 +82,14 @@ do not.
    chassis strains (level encoding wants yugO weakened or deleted, phase
    encoding needs yugO intact), so this is a fork the project has to
    choose before committing to a strain, not a detail.
+   **Weakened again by audit Part 26** (also September 2026): Part 25's
+   phase result used an *imposed* sinusoid with the in-phase/anti-phase
+   behaviour assumed. `simulations/bsubtilis_21_optical_write_replication.py`
+   tried to derive that anti-phase from the potassium mechanism Yang et al.
+   describe and could not, in a 12-point parameter sweep, for a structural
+   reason. Phase encoding therefore rests on their published experiment plus
+   an assumed coupling, with no working mechanistic model in this repo behind
+   it. Reporter-first (Part 24) remains the recommendation.
 6. **The one open question everything currently depends on:** does an
    engineered bistable circuit's state survive damage-and-regrowth
    (not just ordinary cell division)? Nobody has tested this in any
