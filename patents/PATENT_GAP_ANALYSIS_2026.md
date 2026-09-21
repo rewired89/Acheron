@@ -2,6 +2,11 @@
 
 ## What this document is
 
+**Note added 21 September 2026:** the three filed patent files this document
+analyses were removed from the working tree at the founder's instruction. Their
+text remains in this repository's git history. Everything below still applies to
+the applications themselves, which remain pending at the USPTO.
+
 The three patent applications in this folder were drafted before the project's
 own simulations retired several of the claims they rest on. This is the list of
 every place the filed text and the current science disagree, ranked by how much

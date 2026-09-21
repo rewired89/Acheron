@@ -1,15 +1,20 @@
 # patents/
 
-Three folders, three different legal statuses. Do not mix them.
+What is here, and what is not. The drafts in `drafts_2026/` are drafts: nothing
+in this folder has been filed since 2025.
 
-## `as_filed_2025/`
+## The 2025 filings are no longer in this folder
 
-The text of the three provisional applications filed with the USPTO (per the
-founder, confirmed September 2026: filed, pending examination). Kept unchanged as
-the record of what was submitted. **Do not edit these.** See the NOTICE in that
-folder for why. They are superseded in substance: their claims recite a planarian
-substrate and absolute-voltage-level encoding, both retired by this project's own
-later simulations.
+The three provisional applications filed with the USPTO in 2025 (Bio-RAID core
+system, self-healing recovery, environment-adaptive longevity) were removed from
+the working tree on 21 September 2026 at the founder's instruction. They are
+superseded: their claims recite a planarian substrate and absolute-voltage-level
+encoding, both retired by this project's own simulations.
+
+Two things to know about that removal. Deleting the files does not withdraw
+anything from the USPTO, the applications themselves are unaffected and remain
+pending. And the text is still in this repository's git history, so "what did we
+actually file" remains answerable with `git log` if examination or diligence asks.
 
 ## `PATENT_GAP_ANALYSIS_2026.md`
 

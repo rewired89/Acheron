@@ -89,22 +89,36 @@ rather than assuming they're present.
   cross-validated against the original implementations where possible, see
   `docs/THIRD_PARTY_METHODS.md` for exactly what's vendored vs. reimplemented
   and why.
-- **`patents/`** holds the three filed patent documents (Bio-RAID core
-  system, self-healing recovery, environment-adaptive longevity). Per the
-  founder (confirmed September 2026), these have been filed with the USPTO,
-  state IP status as "filed, pending examination," not "in progress."
-  **`patents/PATENT_GAP_ANALYSIS_2026.md` (September 2026) lists every place
-  the filed text and the current science disagree, read it before reusing or
-  quoting anything from the three patent documents.** Headlines: a fabricated
-  prior-art citation sits in Patent 1's Background; Bonnet 2012 and Süel 2020
-  are disclosed nowhere; every independent claim recites planarian tissue and
-  absolute-voltage-level encoding, both of which the project retired; and the
-  current differentiator, state surviving damage and regrowth through cell
-  division, is unclaimed. **Do not edit the three patent files.** A filed
-  application is not amended by editing a markdown file, and those files are
-  the only record of what was submitted. Corrections go through the patent
-  attorney. Each file carries an editorial banner pointing at the gap
-  analysis; leave the text below the banner as filed.
+- **`patents/`**. Three provisional applications were filed with the USPTO in
+  2025 (Bio-RAID core system, self-healing recovery, environment-adaptive
+  longevity). Per the founder (confirmed September 2026) they are filed and
+  pending examination, so state IP status as "filed, pending examination," not
+  "in progress." **Those three documents were removed from the working tree on
+  21 September 2026 at the founder's explicit instruction, repeated after the
+  record-keeping risk was raised.** Their text is still in git history; the
+  applications themselves are unaffected by the deletion and remain pending. Do
+  not restore the files without being asked, and do not describe the filings as
+  withdrawn, because they are not.
+  `patents/PATENT_GAP_ANALYSIS_2026.md` is still the document to bring to the
+  patent attorney: a fabricated prior-art citation sat in filed Patent 1's
+  Background, Bonnet 2012 and Süel 2020 are disclosed nowhere in the filings,
+  and every independent claim recites planarian tissue and absolute-voltage
+  encoding, all of which the project retired.
+  `patents/drafts_2026/` holds the replacement drafts, written 21 September
+  2026 and **not filed, not attorney-reviewed, no application numbers**: draft A
+  (genetic bistable state surviving damage and regrowth through division-based
+  inheritance, the strongest), draft B (damage-responsive reinforcement during
+  regrowth), draft C (phase-referenced encoding, narrow, closest prior art).
+  `patents/drafts_2026/PATENTABILITY_ASSESSMENT_2026.md` says what cannot be
+  filed and why: absolute-voltage encoding in *B. subtilis* is anticipated by
+  Yang et al. 2020, DNA-sequence storage by Yachie & Tomita 2007, DNA-orientation
+  latches by Bonnet et al. 2012, and the environment-adaptive longevity subject
+  has nothing measured behind it and should not be refiled. No claim in any
+  draft recites a number, per the no-numeric-invention rule.
+  **Open question nobody has answered:** whether `docs/BIORXIV_MANUSCRIPT.md`
+  was ever posted to bioRxiv. The GitHub repo is private, so it is not a public
+  disclosure, but a posted preprint is, and it would set a one year US filing
+  deadline and very likely bar European novelty. Ask the founder before filing.
 - **`experiments/BENCH_PROTOCOL_BSUBTILIS.md`** (added September 2026) is the
   bench-level *B. subtilis* protocol derived from the simulations and the
   audit: strain choice, BBB parts, stages B0-B6 in cheapest-first order,
