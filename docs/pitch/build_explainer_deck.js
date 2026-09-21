@@ -1,8 +1,16 @@
 // Generator for Acheron_Plain_Explainer.pptx, a printable plain-language deck
 // explaining the whole project to someone with no science background, written
-// for Jacqueline. Source of the wording is the nine-sentence explainer agreed
-// in September 2026; every number in it traces to a citation or a labeled
+// for Jacqueline. Every number in it traces to a citation or a labeled
 // simulation result, same rule as the rest of docs/pitch/.
+//
+// The deck leads with Acheron stated as the founder states it (confirmed 21
+// September 2026): one hypothesis, in four steps. Write data into an organism;
+// the organism is damaged; it detects that damage itself; it regrows and carries
+// the data into the new cells without losing it. The ORGANISM IS INTERCHANGEABLE,
+// B. subtilis, planaria, or others later. Do not rewrite this deck as a
+// B. subtilis deck, and do not present planaria as abandoned: B. subtilis is
+// first because it is cheap and fast to test, which is a statement about
+// evidence, not about the goal.
 //
 // Run with `node docs/pitch/build_explainer_deck.js`, it writes the .pptx next
 // to itself. Before shipping a rebuild: run the pptx skill's
@@ -34,6 +42,7 @@ const pres = new pptxgen();
 pres.layout = "LAYOUT_WIDE";
 pres.author = "Acheron";
 pres.title = "Acheron, in plain language";
+pres.subject = "Data that heals itself";
 
 // --- helpers -----------------------------------------------------------------
 
@@ -105,17 +114,17 @@ function statCard(s, x, y, w, h, value, label, valueColor, valueSize) {
 // --- 1. title ----------------------------------------------------------------
 {
   const s = darkSlide();
-  s.addText("The germs that remember", {
+  s.addText("Data that heals itself", {
     x: M, y: 2.25, w: 9.6, h: 1.5,
     fontFace: HEAD, fontSize: 50, bold: true, color: PAPER,
     isTextBox: true, margin: 0,
   });
-  s.addText("Acheron, explained in nine sentences", {
+  s.addText("Acheron, the whole idea in four steps", {
     x: M, y: 3.8, w: 9.6, h: 0.5,
     fontFace: BODY, fontSize: 19, color: GREEN,
     isTextBox: true, margin: 0,
   });
-  s.addText("Written for Jacqueline. Nothing here needs a science background. If you stop after the nine sentences, you already know enough to talk about it.", {
+  s.addText("Written for Jacqueline. Nothing here needs a science background. If you only read the next slide, you already know enough to talk about it.", {
     x: M, y: 4.45, w: 8.6, h: 0.9,
     fontFace: BODY, fontSize: 13.5, color: PALE,
     isTextBox: true, margin: 0, lineSpacingMultiple: 1.15,
@@ -130,18 +139,71 @@ function statCard(s, x, y, w, h, value, label, valueColor, valueSize) {
   s.addNotes("Title slide. The deck is a plain-language explainer, not an investor deck.");
 }
 
+// --- 1b. the four steps, the core of the deck --------------------------------
+{
+  const s = lightSlide();
+  sectionHead(s, "Acheron is one idea, in four steps", 0.55, false);
+
+  const steps = [
+    ["Write", "You write data into a living thing.", "A tiny switch inside each cell. Flipped one way it is a 0, the other way a 1."],
+    ["Damage", "Something damages it.", "Cut it, dry it out, blast it with radiation. Most of it dies."],
+    ["Notice", "It notices the damage by itself.", "No machine watching it, nobody pressing a button. The organism senses the injury."],
+    ["Regrow", "It regrows, and hands the data to the new cells.", "The survivors rebuild the whole thing, and the data is still there. Nothing is lost."],
+  ];
+
+  let y = 1.3;
+  steps.forEach(function (st, i) {
+    s.addShape(pres.ShapeType.ellipse, {
+      x: M, y: y + 0.06, w: 0.52, h: 0.52,
+      fill: { color: i === 3 ? CORAL : GREEN }, line: { color: i === 3 ? CORAL : GREEN },
+    });
+    s.addText(String(i + 1), {
+      x: M, y: y + 0.06, w: 0.52, h: 0.52,
+      fontFace: HEAD, fontSize: 20, bold: true, color: PAPER,
+      align: "center", valign: "middle", isTextBox: true, margin: 0,
+    });
+    s.addText(st[0].toUpperCase(), {
+      x: M + 0.8, y: y + 0.02, w: 1.6, h: 0.3,
+      fontFace: BODY, fontSize: 10.5, bold: true, color: MUTED,
+      charSpacing: 1.4, isTextBox: true, margin: 0, valign: "middle",
+    });
+    s.addText(st[1], {
+      x: M + 0.8, y: y + 0.3, w: 6.1, h: 0.42,
+      fontFace: HEAD, fontSize: 19, bold: true, color: INK,
+      isTextBox: true, margin: 0, valign: "middle",
+    });
+    s.addText(st[2], {
+      x: M + 7.1, y: y + 0.08, w: 4.8, h: 0.75,
+      fontFace: BODY, fontSize: 13, color: MUTED,
+      isTextBox: true, margin: 0, valign: "middle", lineSpacingMultiple: 1.1,
+    });
+    y += 1.12;
+  });
+
+  s.addShape(pres.ShapeType.roundRect, {
+    x: M, y: 5.95, w: 11.9, h: 0.95, rectRadius: 0.1,
+    fill: { color: INK }, line: { color: INK },
+  });
+  s.addText("That is Acheron. A file that repairs itself, because the thing holding it is alive.", {
+    x: M + 0.35, y: 6.1, w: 11.2, h: 0.65,
+    fontFace: HEAD, fontSize: 18, bold: true, color: PAPER,
+    isTextBox: true, margin: 0, valign: "middle",
+  });
+  s.addNotes("The core slide. If the reader only sees one page, this is the one.");
+}
+
 // --- 2. sentences 1 to 3 -----------------------------------------------------
 {
   const s = lightSlide();
-  sectionHead(s, "What it is, and what it runs on", 0.55, false);
-  sentence(s, 1, "What it is",
-    "Dayana is trying to store computer files inside living cells, so the file repairs itself instead of slowly rotting like paper or a hard drive.",
+  sectionHead(s, "The same thing in nine sentences", 0.55, false);
+  sentence(s, 1, "The idea",
+    "Acheron is one hypothesis: write data into a living thing, and when it gets hurt, it heals and keeps the data.",
     1.35, 1.5);
-  sentence(s, 2, "The organism now",
-    "She uses a harmless soil germ called Bacillus subtilis, because it is the easiest living thing to rewire and it copies itself every half hour.",
+  sentence(s, 2, "Writing",
+    "The data goes in as a tiny switch built out of genes, sitting inside every cell, one switch for each 0 or 1.",
     3.05, 1.5);
-  sentence(s, 3, "The organism first",
-    "She started with flatworms instead, because you can cut one into pieces and every piece grows back into a whole worm, which sounded perfect for a file that heals.",
+  sentence(s, 3, "Damage",
+    "Then something wrecks it and most of the cells die, which is the situation every other kind of storage simply does not survive.",
     4.75, 1.7);
   s.addNotes("Sentences 1 to 3 of nine.");
 }
@@ -149,15 +211,15 @@ function statCard(s, x, y, w, h, value, label, valueColor, valueSize) {
 // --- 3. sentences 4 to 6 -----------------------------------------------------
 {
   const s = lightSlide();
-  sectionHead(s, "What is proven, and what is not", 0.55, false);
-  sentence(s, 4, "Proved in simulation",
-    "On the computer, the stored bit survives having almost the entire colony wiped out, coming back correctly from as few as 2 germs out of 100.",
+  sectionHead(s, "How it survives, and in what", 0.55, false);
+  sentence(s, 4, "Self-detection",
+    "The organism notices the injury on its own, with no machine watching it and nobody pressing a button.",
     1.35, 1.5);
-  sentence(s, 5, "Still unproven",
-    "Whether that actually happens in real living cells, which nobody on Earth has ever tested, in any organism.",
+  sentence(s, 5, "Regrowth",
+    "It rebuilds itself from the survivors, and every new cell is handed the same switch position, so the data comes through intact.",
     3.05, 1.5);
-  sentence(s, 6, "The first real test",
-    "The first lab test costs roughly $2,000 to $5,000 and takes months, not years, and it only has to answer one question: does the switch really hold two positions inside a real germ.",
+  sentence(s, 6, "Which creature",
+    "The creature is interchangeable, and germs are being tested first only because they are cheap and fast, while flatworms came first because they already regrow a whole body from one piece.",
     4.75, 1.7);
   s.addNotes("Sentences 4 to 6 of nine.");
 }
@@ -165,12 +227,12 @@ function statCard(s, x, y, w, h, value, label, valueColor, valueSize) {
 // --- 4. sentences 7 to 9 -----------------------------------------------------
 {
   const s = lightSlide();
-  sectionHead(s, "Why it matters, and where the money comes from", 0.55, false);
-  sentence(s, 7, "If it works",
-    "She would own the first evidence that a memory can survive being almost destroyed and rebuild itself, which is the one thing nobody else in this field has.",
+  sectionHead(s, "What is proven, and where the money comes from", 0.55, false);
+  sentence(s, 7, "Proved in simulation",
+    "On the computer it works, with the data coming back perfectly from as few as 2 cells out of 100 surviving.",
     1.35, 1.5);
-  sentence(s, 8, "Why it is new",
-    "Other labs have already put data into cells, so the new part is not storing it, it is whether the memory lives through the cells being mostly killed and regrown.",
+  sentence(s, 8, "Still unproven",
+    "In a real laboratory nobody has ever tested it, in any organism, and that first test costs roughly $2,000 to $5,000.",
     3.05, 1.5);
   sentence(s, 9, "The money, honestly",
     "The money comes from research grants first, up to about $305,000 from one US government programme, and not from selling anything, because nothing in this field sells yet.",
@@ -182,7 +244,7 @@ function statCard(s, x, y, w, h, value, label, valueColor, valueSize) {
 {
   const s = lightSlide();
   sectionHead(s, "The whole alphabet is two colours", 0.55, false);
-  s.addText("Inside each germ sits a tiny switch built out of genes: two genes that each tell the other to be quiet. Whichever one is winning keeps winning, so the switch stays where you leave it. One position makes the germ glow green, the other makes it glow red.", {
+  s.addText("Inside each cell sits a tiny switch built out of genes: two genes that each tell the other to be quiet. Whichever one is winning keeps winning, so the switch stays where you leave it. One position makes the cell glow green, the other makes it glow red.", {
     x: M, y: 1.25, w: 6.6, h: 1.9,
     fontFace: BODY, fontSize: 16, color: INK,
     isTextBox: true, margin: 0, lineSpacingMultiple: 1.15,
@@ -220,22 +282,22 @@ function statCard(s, x, y, w, h, value, label, valueColor, valueSize) {
 {
   const s = lightSlide();
   sectionHead(s, "Why splitting in half is the whole trick", 0.55, false);
-  s.addText("When a germ divides, both halves keep the switch in the same position. So the memory copies itself, for free, every half hour. Nobody has to back it up.", {
+  s.addText("When a cell divides, both halves keep the switch in the same position. So the data copies itself, for free, every time the organism grows. Nobody has to back it up.", {
     x: M, y: 1.25, w: 11.9, h: 0.95,
     fontFace: BODY, fontSize: 16, color: INK,
     isTextBox: true, margin: 0, lineSpacingMultiple: 1.15,
   });
 
   const rows = [
-    { count: 1, note: "the dish gets wiped out, one germ lives" },
-    { count: 2, note: "half an hour later, it has split, and both halves agree" },
+    { count: 1, note: "the damage happens, one cell lives" },
+    { count: 2, note: "it splits, and both halves agree" },
     { count: 4, note: "an hour later" },
-    { count: 8, note: "ninety minutes later, and the message is still the message" },
+    { count: 8, note: "and on, until the data is whole again" },
   ];
   let y = 2.55;
   rows.forEach(function (row, ri) {
     const count = row.count;
-    s.addText(ri === 0 ? "1 survivor" : count + " germs", {
+    s.addText(ri === 0 ? "1 survivor" : count + " cells", {
       x: M, y: y - 0.02, w: 1.5, h: 0.4,
       fontFace: BODY, fontSize: 13, bold: ri === 0, color: ri === 0 ? CORAL : MUTED,
       isTextBox: true, margin: 0, valign: "middle",
@@ -293,46 +355,58 @@ function statCard(s, x, y, w, h, value, label, valueColor, valueSize) {
   s.addNotes("Source: simulations/bsubtilis_07_colony_regrowth.py and bsubtilis_13_reporter_colony_regrowth.py, re-run 21 September 2026.");
 }
 
-// --- 8. the worm part --------------------------------------------------------
+// --- 8. why the organism is interchangeable ---------------------------------
 {
   const s = lightSlide();
-  sectionHead(s, "The worms, and the famous scientist", 0.55, false);
-  s.addText("Dayana picked flatworms on her own reasoning, before she had heard of Michael Levin. She found his lab afterwards.\n\nHis lab at Tufts showed something genuinely strange. A flatworm's body plan is partly stored as electricity across its cells. Interfere with that electricity and the worm regrows with two heads, and it keeps regrowing two-headed afterwards with no further interference. The instructions were changed, not the genes.", {
-    x: M, y: 1.3, w: 6.0, h: 3.4,
-    fontFace: BODY, fontSize: 15, color: INK,
+  sectionHead(s, "Why it does not matter which creature", 0.55, false);
+  s.addText("Acheron is the idea, not the animal. Any living thing that regrows from a piece of itself could carry it, and the plan is to test more than one over time.", {
+    x: M, y: 1.25, w: 11.9, h: 0.75,
+    fontFace: BODY, fontSize: 15.5, color: INK,
     isTextBox: true, margin: 0, lineSpacingMultiple: 1.15,
   });
 
-  s.addShape(pres.ShapeType.roundRect, {
-    x: 7.2, y: 1.3, w: 5.4, h: 2.1, rectRadius: 0.1,
-    fill: { color: TINT }, line: { color: TINT },
+  const two = [
+    ["Flatworms came first", "Cut one into pieces and every piece grows back into a whole worm, carrying its body plan with it. That is exactly the behaviour Acheron wants, already working in nature."],
+    ["Germs are being tested first", "Not because they are better. Because they are cheap, fast and easy to rewire. A germ splits every half hour, so a test takes days instead of months."],
+  ];
+  two.forEach(function (t, i) {
+    const x = M + i * 6.05;
+    s.addShape(pres.ShapeType.roundRect, {
+      x, y: 2.15, w: 5.85, h: 1.95, rectRadius: 0.1,
+      fill: { color: TINT }, line: { color: TINT },
+    });
+    s.addShape(pres.ShapeType.ellipse, {
+      x: x + 0.3, y: 2.48, w: 0.16, h: 0.16,
+      fill: { color: GREEN }, line: { color: GREEN },
+    });
+    s.addText(t[0], {
+      x: x + 0.6, y: 2.38, w: 5.0, h: 0.38,
+      fontFace: HEAD, fontSize: 16.5, bold: true, color: INK,
+      isTextBox: true, margin: 0, valign: "middle",
+    });
+    s.addText(t[1], {
+      x: x + 0.6, y: 2.84, w: 5.0, h: 1.05,
+      fontFace: BODY, fontSize: 13, color: MUTED,
+      isTextBox: true, margin: 0, lineSpacingMultiple: 1.1,
+    });
   });
-  s.addText("What it proves", {
-    x: 7.5, y: 1.5, w: 4.8, h: 0.35,
+
+  s.addText("Michael Levin", {
+    x: M, y: 4.35, w: 11.9, h: 0.35,
     fontFace: BODY, fontSize: 11, bold: true, color: GREEN,
     charSpacing: 1.4, isTextBox: true, margin: 0,
   });
-  s.addText("A worm's own natural pattern really is stored electrically, and it really does survive the animal being cut apart.", {
-    x: 7.5, y: 1.9, w: 4.8, h: 1.3,
+  s.addText("Dayana picked flatworms on her own reasoning, before she had heard of him, and found his lab afterwards. His lab at Tufts showed that a flatworm's body plan is partly stored as electricity across its cells: interfere with that electricity and the worm regrows with two heads, and keeps regrowing two-headed with no further interference. The instructions changed, not the genes.", {
+    x: M, y: 4.72, w: 11.9, h: 1.1,
     fontFace: BODY, fontSize: 13.5, color: INK,
     isTextBox: true, margin: 0, lineSpacingMultiple: 1.12,
   });
-
-  s.addShape(pres.ShapeType.roundRect, {
-    x: 7.2, y: 3.7, w: 5.4, h: 2.1, rectRadius: 0.1,
-    fill: { color: TINT }, line: { color: TINT },
-  });
-  s.addText("What it does not prove", {
-    x: 7.5, y: 3.9, w: 4.8, h: 0.35,
-    fontFace: BODY, fontSize: 11, bold: true, color: CORAL,
-    charSpacing: 1.4, isTextBox: true, margin: 0,
-  });
-  s.addText("That a made-up pattern, a file Dayana invents, behaves the same way. Nobody has shown that, and it is why the project moved to germs.", {
-    x: 7.5, y: 4.3, w: 4.8, h: 1.3,
-    fontFace: BODY, fontSize: 13.5, color: INK,
+  s.addText("What that proves is that a worm's own natural pattern really is stored this way and really does survive being cut apart. What it does not prove is that a made-up pattern, a file Dayana invents, behaves the same way. That gap is the whole experiment.", {
+    x: M, y: 5.9, w: 11.9, h: 0.9,
+    fontFace: BODY, fontSize: 13.5, italic: true, color: MUTED,
     isTextBox: true, margin: 0, lineSpacingMultiple: 1.12,
   });
-  s.addNotes("Levin framing per docs/SCIENTIFIC_AUDIT_2026.md Part 3 and Part 4.");
+  s.addNotes("Organism-agnostic framing, per the founder's own statement of the goal, 21 September 2026. Levin detail per docs/SCIENTIFIC_AUDIT_2026.md Parts 3 and 4.");
 }
 
 // --- 9. where it could be used ----------------------------------------------

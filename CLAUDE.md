@@ -38,6 +38,17 @@ rather than assuming they're present.
 
 ## The core throughline (why the project looks the way it does)
 
+**What Acheron is, in the founder's own words (confirmed 21 September 2026).**
+Acheron is one hypothesis, not one organism: write bits into a living thing,
+damage it, the organism detects that damage by itself, transfers the data into
+its own regrowth, and the information is kept. The organism is interchangeable,
+*B. subtilis*, planaria, or others later; *B. subtilis* is being tested first
+because it is cheap and fast, not because planaria were abandoned. Self-detection
+of damage is one of the four steps, not an optional extra. Sessions have drifted
+into describing this as a *B. subtilis* voltage project with planaria dropped,
+do not.
+
+
 1. **Phase 1 claim:** planarian cells could passively hold an arbitrary
    voltage-encoded bit for 24+ hours (`simulations/planarian_01_bioelectric_persistence.py`).
 2. **That claim broke under its own later scrutiny:** `simulations/
