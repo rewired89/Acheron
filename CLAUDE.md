@@ -110,6 +110,17 @@ rather than assuming they're present.
   script is `docs/pitch/build_deck.js` (Node + pptxgenjs), edit that and
   rerun it, don't hand-edit the compiled `.pptx`. See the pptx skill's
   validate/QA workflow before shipping any rebuild.
+  `Acheron_Hardware_Concept.pptx` (added September 2026) is a standalone
+  6-slide deck of the sealed-cartridge-and-reader product concept, built
+  from `docs/pitch/build_hardware_deck.js`. It exists because the founder
+  wanted the hardware design on its own to show a partner and to have an
+  answer ready if an investor asks what the product would be. Treat the
+  cartridge and reader as a legitimate concept sketch to keep and show,
+  not something to downplay, its slide 6 already states plainly that no
+  prototype exists and that every result behind it is simulated. Same
+  no-invented-numbers rule applies: the array size, dimensions and timings
+  on it are labeled illustrative, the 2 percent survival figure is labeled
+  a simulation result, and the spaceflight claim carries its citation.
   `Acheron_Validation_Proposal.docx` is the existing staged wet-lab funding
   ask (Stages 0-3, cost/time ranges, honest risk disclosure) that the
   crowdfunding drafts below are built from, don't re-derive its numbers.
@@ -199,7 +210,8 @@ disproven, and where to start reading.
 
 `CODEMAP.md` (project root) is a structural reference for `analysis/`,
 `encoder/`, `simulations/`, `experiments/`, `tests/`,
-`third_party/electric_morphogenesis/`, `docs/pitch/build_deck.js`, and
+`third_party/electric_morphogenesis/`, `docs/pitch/build_deck.js`,
+`docs/pitch/build_hardware_deck.js`, and
 `NEXT_STEPS.py`, not a replacement for reading the source.
 
 - At the start of a task, read only the `CODEMAP.md` section(s) relevant to

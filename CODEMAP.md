@@ -805,14 +805,24 @@ silently.
 
 ---
 
-## docs/pitch/build_deck.js — pitch deck generator (not Python)
+## docs/pitch/*.js — deck generators (not Python)
 
 - name: (script, no exported symbols, runs top-to-bottom)
   type: script
   file: docs/pitch/build_deck.js
-  purpose: pptxgenjs source that generates `docs/pitch/Acheron_Pitch_Deck.pptx` (19 slides); see the file's own header comment for the run/QA workflow
+  purpose: pptxgenjs source that generates `docs/pitch/Acheron_Pitch_Deck.pptx` (21 slides); see the file's own header comment for the run/QA workflow
   inputs: none (all content is hardcoded in the script)
   outputs: `Acheron_Pitch_Deck.pptx` written to the current working directory
+  dependencies: `pptxgenjs` (npm, not committed, install separately)
+  used_by: run manually, not imported
+  side_effects: writes a `.pptx` file
+
+- name: (script, no exported symbols, runs top-to-bottom)
+  type: script
+  file: docs/pitch/build_hardware_deck.js
+  purpose: pptxgenjs source that generates `docs/pitch/Acheron_Hardware_Concept.pptx`, a standalone 6-slide deck of the sealed-cartridge-and-reader product concept, separate from the main investor deck. Palette, fonts and helpers deliberately mirror `build_deck.js` so the two read as one family. Slide 6 carries the "not built, every result is simulated" framing, keep it intact
+  inputs: none (all content is hardcoded in the script)
+  outputs: `Acheron_Hardware_Concept.pptx` written to the current working directory
   dependencies: `pptxgenjs` (npm, not committed, install separately)
   used_by: run manually, not imported
   side_effects: writes a `.pptx` file
@@ -839,4 +849,4 @@ silently.
 - `simulations/planarian_10_bionet_propagation.py` has no confirmed importer anywhere in the repo, it may be dead code, a possible-future-integration stub, or something only ever run standalone; flagged rather than guessed at.
 - `tools/run_betse_validation.py`'s actual completion status (did the BETSE cross-validation ever run) could not be determined from the script alone.
 - No entry points, API routes, database layer, or auth exist in this repo, correctly omitted rather than invented.
-- Files mapped: 44 (43 `.py` + 1 `.js`). Symbols mapped: ~130 (counting grouped "internal helpers" entries as one each).
+- Files mapped: 45 (43 `.py` + 2 `.js`). Symbols mapped: ~130 (counting grouped "internal helpers" entries as one each).
