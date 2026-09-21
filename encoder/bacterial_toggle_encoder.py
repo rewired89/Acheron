@@ -28,9 +28,9 @@ Architecture:
     reporter readout -> decode back to binary string
 
 This targets the same circuit already designed and simulated in
-simulations/gardner_toggle_circuit.py (Gardner et al. 2000 topology, built
+simulations/bsubtilis_01_gardner_toggle_circuit.py (Gardner et al. 2000 topology, built
 from Bacillus BioBrick Box parts) and the same multi-colony handoff model in
-simulations/biofilm_tile_handoff.py - this is the software layer sitting on
+simulations/bsubtilis_02_biofilm_tile_handoff.py - this is the software layer sitting on
 top of that already-validated design, not a new, disconnected assumption.
 """
 
@@ -146,7 +146,7 @@ class BacterialToggleEncoder:
                 'topology': 'Gardner mutual-repression toggle switch',
                 'chassis': 'Bacillus subtilis',
                 'parts_source': 'Bacillus BioBrick Box (Radeck et al. 2013/2017)',
-                'reference': 'simulations/gardner_toggle_circuit.py',
+                'reference': 'simulations/bsubtilis_01_gardner_toggle_circuit.py',
             },
             'induction_protocol': protocol,
         }
@@ -193,7 +193,7 @@ class BacterialToggleEncoder:
 def demo_encoder():
     """
     Demo pipeline: encode -> run each colony through the ALREADY-VALIDATED
-    circuit model from simulations/gardner_toggle_circuit.py -> decode ->
+    circuit model from simulations/bsubtilis_01_gardner_toggle_circuit.py -> decode ->
     measure error rate.
 
     This deliberately reuses that model rather than inventing new physics
@@ -205,7 +205,7 @@ def demo_encoder():
     import os
     import sys
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'simulations'))
-    from gardner_toggle_circuit import GardnerParams, GardnerToggleCell
+    from bsubtilis_01_gardner_toggle_circuit import GardnerParams, GardnerToggleCell
 
     print("\n" + "=" * 70)
     print("BACTERIAL TOGGLE ENCODER DEMO")

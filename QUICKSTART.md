@@ -29,7 +29,7 @@ the part where it contradicts itself.
 ### 1. The claim that broke
 
 ```bash
-python simulations/noise_floor_characterizer.py
+python simulations/planarian_02_noise_floor.py
 ```
 
 Re-runs the original planarian passive-persistence model with realistic
@@ -45,7 +45,7 @@ measured biological equivalent.
 ### 2. The circuit that replaced it
 
 ```bash
-python simulations/gardner_toggle_circuit.py
+python simulations/bsubtilis_01_gardner_toggle_circuit.py
 ```
 
 A Gardner-style genetic toggle switch using real *B. subtilis* BioBrick parts.
@@ -57,8 +57,8 @@ test.
 ### 3. The differentiator
 
 ```bash
-python simulations/bacterial_colony_regrowth.py
-python simulations/reporter_colony_regrowth.py
+python simulations/bsubtilis_07_colony_regrowth.py
+python simulations/bsubtilis_13_reporter_colony_regrowth.py
 ```
 
 Damage a colony, regrow it by division, and check whether the bit is still
@@ -71,9 +71,9 @@ prior art cannot do, so this pair is the core of the pitch.
 ### 4. The readout problem
 
 ```bash
-python simulations/native_oscillation_interference.py
-python simulations/eis_readout_interference.py
-python simulations/phase_encoded_readout.py
+python simulations/bsubtilis_08_native_oscillation_interference.py
+python simulations/bsubtilis_09_eis_readout_interference.py
+python simulations/bsubtilis_18_phase_encoded_readout.py
 ```
 
 *B. subtilis* biofilms run their own potassium-wave signaling. The first
@@ -93,11 +93,11 @@ one of the three scripts and stop.
 ## Other things to run
 
 ```bash
-python simulations/organism_comparison_summary.py   # ranks mechanisms by hidden wet-lab risk
-python simulations/partition_noise_regrowth.py      # uneven molecule splitting at division
-python simulations/damage_sensing_reinforcement.py  # proposed SOS-style reinforcement circuit
-python experiments/reservoir_benchmark_gardner.py   # external benchmark method against this project's circuit
-python experiments/asymmetry_structural_search.py
+python simulations/crossorganism_01_comparison_summary.py   # ranks mechanisms by hidden wet-lab risk
+python simulations/bsubtilis_15_partition_noise_regrowth.py      # uneven molecule splitting at division
+python simulations/bsubtilis_16_damage_sensing_reinforcement.py  # proposed SOS-style reinforcement circuit
+python simulations/bsubtilis_19_reservoir_benchmark.py   # external benchmark method against this project's circuit
+python simulations/bsubtilis_05_asymmetry_structural_search.py
 python -m pytest tests/                             # unit tests, cover analysis/ only
 ```
 
@@ -129,7 +129,7 @@ misreported.
 - `CODEMAP.md` maps the code structure, though the source file is always
   authoritative if the two disagree.
 - `docs/ACHERON_101.md` is a plain-language primer if the biology is new.
-- `docs/WETLAB_BENCH_PROTOCOL.md` is the draft *B. subtilis* bench protocol.
+- `experiments/BENCH_PROTOCOL_BSUBTILIS.md` is the draft *B. subtilis* bench protocol.
 - `docs/INVESTOR_PITCH.md` has the four-stage roadmap and its costs.
 - Older documents (`docs/INVESTOR_PITCH_PHASE2_UPDATE.md`, the `PHASE2`,
   `PHASE3` and `PHASE4` files, the whitepaper) predate several corrections.

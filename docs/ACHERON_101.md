@@ -274,7 +274,7 @@ the middle.
 
 **The connection that matters for this book:**
 This is the actual engineering constraint the project's own simulation
-(`simulations/gardner_toggle_circuit.py`) found: using real,
+(`simulations/bsubtilis_01_gardner_toggle_circuit.py`) found: using real,
 BioBrick-measured promoter strengths instead of a made-up placeholder
 number reveals that mismatched promoters can collapse the switch into
 the "monostable dead switch" failure above. Getting two promoters

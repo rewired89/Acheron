@@ -27,8 +27,8 @@ gains a part that changes the headline picture.
 ```bash
 python -m pytest tests/                              # unit tests (covers analysis/ only)
 python -m pytest tests/test_hidden_state_model.py -q  # single test file
-python experiments/reservoir_benchmark_gardner.py     # runnable demo/experiment (no test framework; most of experiments/ works this way)
-python experiments/asymmetry_structural_search.py
+python simulations/bsubtilis_19_reservoir_benchmark.py     # runnable demo/experiment (no test framework; most of experiments/ works this way)
+python simulations/bsubtilis_05_asymmetry_structural_search.py
 ```
 
 There is no build/lint step. Dependencies are in `requirements.txt`, but a
@@ -39,18 +39,18 @@ rather than assuming they're present.
 ## The core throughline (why the project looks the way it does)
 
 1. **Phase 1 claim:** planarian cells could passively hold an arbitrary
-   voltage-encoded bit for 24+ hours (`simulations/bioelectric_persistence.py`).
+   voltage-encoded bit for 24+ hours (`simulations/planarian_01_bioelectric_persistence.py`).
 2. **That claim broke under its own later scrutiny:** `simulations/
-   noise_floor_characterizer.py` showed the result only holds with zero
+   planarian_02_noise_floor.py` showed the result only holds with zero
    noise; realistic biological noise collapses integrity to ~50% (a coin
    flip). This is documented, not hidden, in `docs/SCIENTIFIC_AUDIT_2026.md`
    Part 8.
 3. **The pivot:** passive persistence isn't enough; an *actively engineered
-   bistable circuit* is needed. `simulations/gardner_toggle_circuit.py` models
+   bistable circuit* is needed. `simulations/bsubtilis_01_gardner_toggle_circuit.py` models
    a Gardner-style genetic toggle switch (real topology, real *B. subtilis*
    BioBrick parts), and found a real design constraint: mismatched promoter
    strengths collapse the circuit to a monostable dead switch.
-4. **Cross-organism honesty check:** `simulations/organism_comparison_summary.py`
+4. **Cross-organism honesty check:** `simulations/crossorganism_01_comparison_summary.py`
    ranks three candidate mechanisms by how much wet-lab risk each still
    hides. Result: the *B. subtilis* engineered circuit is currently the
    best-grounded option; the original planarian approach is the
@@ -58,12 +58,12 @@ rather than assuming they're present.
    measured). This project has since been *B. subtilis*-first, with planaria
    as a less-grounded fallback, not the other way around.
 5. **Readout is its own open problem:** `simulations/
-   native_oscillation_interference.py` and `eis_readout_interference.py`
+   bsubtilis_08_native_oscillation_interference.py` and `bsubtilis_09_eis_readout_interference.py`
    found that *B. subtilis*'s own native potassium-wave signaling (real,
    published, unrelated to anything this project builds) can corrupt a
    voltage reading even when the underlying circuit data is intact.
    **But that framing is now contested by the project's own work:** audit
-   Part 25 and `simulations/phase_encoded_readout.py` (September 2026)
+   Part 25 and `simulations/bsubtilis_18_phase_encoded_readout.py` (September 2026)
    found that if the bit is encoded as the cell's phase relationship to
    that oscillation rather than as a static voltage level, the oscillation
    becomes the carrier and the readout gets *better* as it gets stronger.
@@ -93,13 +93,13 @@ rather than assuming they're present.
   system, self-healing recovery, environment-adaptive longevity). Per the
   founder (confirmed September 2026), these have been filed with the USPTO,
   state IP status as "filed, pending examination," not "in progress."
-- **`docs/WETLAB_BENCH_PROTOCOL.md`** (added September 2026) is the
+- **`experiments/BENCH_PROTOCOL_BSUBTILIS.md`** (added September 2026) is the
   bench-level *B. subtilis* protocol derived from the simulations and the
   audit: strain choice, BBB parts, stages B0-B6 in cheapest-first order,
   pass/fail thresholds, and an explicit list of simulated results the plan
   cannot test. It sits one level below
   `docs/pitch/Acheron_Validation_Proposal.docx` (which sets stages and costs)
-  and is the *B. subtilis* counterpart to `experiments/EXPERIMENT_A_PROTOCOL.md`
+  and is the *B. subtilis* counterpart to `experiments/BENCH_PROTOCOL_HEK293.md`
   (HEK293). Not yet reviewed by a collaborating lab; treat as a draft. It
   flags a real strain mismatch the simulations do not show: BBB promoter
   parts were characterized in W168, while the biofilm potassium-wave
@@ -169,6 +169,31 @@ rather than assuming they're present.
   what was actually asked, confirming a follow-up question mid-task isn't
   the same as being asked for that follow-up in the first place. If the
   next step seems obvious, say what you'd do and let the founder say go.
+
+## Repository layout (reorganised September 2026)
+
+Read `docs/REASONING_MAP.md` first in any new session. It is the one page that
+explains how the project connects, what is proven versus assumed versus
+disproven, and where to start reading.
+
+- **`simulations/`** holds every simulation of a scientific claim, named
+  `<organism>_<number>_<topic>.py`, in four tracks: `planarian_`, `bsubtilis_`,
+  `methylation_`, `crossorganism_`. The number is reading order within that
+  track, roughly chronological, so the folder reads as a story. **Do not rename
+  or renumber these without updating every reference**, they are cited by name
+  throughout `docs/SCIENTIFIC_AUDIT_2026.md`, `CODEMAP.md` and the bench
+  protocols. Append new work at the end of its track rather than renumbering.
+- **`simulations/SIMULATION_MAP.md`** explains every simulation twice, once in
+  plain English and once technically, with its audit Part number. Add an entry
+  when adding a simulation.
+- **`experiments/`** holds bench protocols ONLY, no Python. Currently
+  `BENCH_PROTOCOL_BSUBTILIS.md` (primary, stages B0-B6) and
+  `BENCH_PROTOCOL_HEK293.md`. Neither has been reviewed by a lab.
+- **`tools/`** holds demos, optimisers, parameter sweeps and validation
+  harnesses, i.e. supporting machinery that is not a claim about biology.
+- **`hardware/`** is empty and is a placeholder. There is no hardware. The
+  cartridge-and-reader concept exists only as a pitch-deck slide, so do not
+  describe it as built.
 
 ## CodeMap Protocol
 

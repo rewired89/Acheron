@@ -21,11 +21,11 @@ What has been ruled out or narrowed so far, by this project:
 
 | Attempted fix | Simulation | Result |
 |---|---|---|
-| Single voltage snapshot | `native_oscillation_interference.py` | Fails. 50 to 59% accuracy at 10 to 20mV ambient oscillation |
-| EIS-style time integration | `eis_readout_interference.py` | Only works at a ~180 minute window, one full oscillation period. A real EIS sweep is seconds to minutes, so a single sweep does not fix it |
-| Timing the read to a quiet moment | `phase_locked_readout.py` | Fails above 10mV. Cumulative drift, not instantaneous waveform value, is the problem |
-| Weakening the coupling (different channel, or yugO knockout) | `decoupled_channel_readout.py` | Works at 30mV with only a 90% coupling reduction. Does not work at the 70mV worst case without a complete knockout |
-| Reading a fluorescent reporter instead of voltage | `gardner_toggle_reporter_readout.py` | Clean, but only because no cited mechanism couples the native oscillation to transcription, so no interference term was modeled |
+| Single voltage snapshot | `bsubtilis_08_native_oscillation_interference.py` | Fails. 50 to 59% accuracy at 10 to 20mV ambient oscillation |
+| EIS-style time integration | `bsubtilis_09_eis_readout_interference.py` | Only works at a ~180 minute window, one full oscillation period. A real EIS sweep is seconds to minutes, so a single sweep does not fix it |
+| Timing the read to a quiet moment | `bsubtilis_11_phase_locked_readout.py` | Fails above 10mV. Cumulative drift, not instantaneous waveform value, is the problem |
+| Weakening the coupling (different channel, or yugO knockout) | `bsubtilis_12_decoupled_channel_readout.py` | Works at 30mV with only a 90% coupling reduction. Does not work at the 70mV worst case without a complete knockout |
+| Reading a fluorescent reporter instead of voltage | `bsubtilis_10_reporter_readout.py` | Clean, but only because no cited mechanism couples the native oscillation to transcription, so no interference term was modeled |
 
 So the honest internal position going into this check was: the only readout
 that survives the full documented interference range is either a 3 hour
@@ -44,7 +44,7 @@ output, not voltage:
 - **Gardner, Cantor & Collins (2000)**, "Construction of a genetic toggle
   switch in *Escherichia coli*," *Nature* 403:339-342, DOI
   [10.1038/35002131](https://doi.org/10.1038/35002131). The circuit this
-  project's `gardner_toggle_circuit.py` is modeled on. Its state was read by
+  project's `bsubtilis_01_gardner_toggle_circuit.py` is modeled on. Its state was read by
   **GFP fluorescence, by flow cytometry**, not by any electrical measurement.
 - **Bonnet, Subsoontorn & Endy (2012)**, "Rewritable digital data storage in
   live cells via engineered control of recombination directionality," *PNAS*
@@ -55,7 +55,7 @@ output, not voltage:
   (30,000 cells per measurement) and microscopy**.
 - **Huang, Yu, Lee et al. (2025)**, *Nature Communications* 16:9414, DOI
   [10.1038/s41467-025-64457-0](https://doi.org/10.1038/s41467-025-64457-0),
-  already cited in `gardner_toggle_circuit.py` and
+  already cited in `bsubtilis_01_gardner_toggle_circuit.py` and
   `docs/THIRD_PARTY_METHODS.md`. Recombinase memory circuit, reporter readout.
 
 **And the bacterial-bioelectricity field's own 2026 review says every
@@ -101,14 +101,14 @@ the cells being measured.
 
 | Method | In this repo? | In the literature for engineered state? | Interference-immune? |
 |---|---|---|---|
-| Single-point membrane voltage | Yes, `native_oscillation_interference.py` | No precedent as a state readout | No |
-| EIS / impedance | Yes, `eis_readout_interference.py` | Yes as a live/dead assay (Akabuogu et al. 2024), not as a bit readout | Only at a ~3h integration window |
-| Phase-locked voltage sampling | Yes, `phase_locked_readout.py` | No precedent found | No |
-| Reduced-coupling voltage read | Yes, `decoupled_channel_readout.py` | No precedent found | Partially, amplitude-dependent |
-| Two-color fluorescent reporter | Yes, `gardner_toggle_reporter_readout.py` | **Yes, this is the standard** | No cited coupling mechanism, so yes by default |
+| Single-point membrane voltage | Yes, `bsubtilis_08_native_oscillation_interference.py` | No precedent as a state readout | No |
+| EIS / impedance | Yes, `bsubtilis_09_eis_readout_interference.py` | Yes as a live/dead assay (Akabuogu et al. 2024), not as a bit readout | Only at a ~3h integration window |
+| Phase-locked voltage sampling | Yes, `bsubtilis_11_phase_locked_readout.py` | No precedent found | No |
+| Reduced-coupling voltage read | Yes, `bsubtilis_12_decoupled_channel_readout.py` | No precedent found | Partially, amplitude-dependent |
+| Two-color fluorescent reporter | Yes, `bsubtilis_10_reporter_readout.py` | **Yes, this is the standard** | No cited coupling mechanism, so yes by default |
 | Bioluminescence (lux / luciferase) | Named in `encoder/bacterial_toggle_encoder.py` and the Stage 0 assay, never simulated | Yes, widely | Same reasoning as fluorescence |
 | DNA-orientation state read by PCR | No | **Yes, Bonnet et al. 2012** | Yes, the state is not electrical at all |
-| Nanopore methylation calling | Referenced in `methylation_bit_encoding.py` as the source paper's method | Yes | Yes, but destructive |
+| Nanopore methylation calling | Referenced in `methylation_01_bit_encoding.py` as the source paper's method | Yes | Yes, but destructive |
 
 The gap is not that this project has not thought about reporters. Part 16
 and the Stage 0 assay in `docs/pitch/Acheron_Validation_Proposal.docx`
@@ -242,7 +242,7 @@ electrical route attractive in the first place.
 
 ### Honorable mention, for the methylation channel only
 
-If the methylation encoding path in `methylation_bit_encoding.py` is ever
+If the methylation encoding path in `methylation_01_bit_encoding.py` is ever
 pursued, its readout is nanopore methylation calling, which is what that
 file's source method (B2A, Nanopore plus Modkit) already uses. Current
 **cited** list prices, checked on

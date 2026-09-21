@@ -9,7 +9,7 @@ You now have a complete, production-ready bioelectric memory development suite.
 ## 📦 What You Got (Everything)
 
 ### 1. Core Simulations
-- ✅ **Pattern Persistence Simulator** (`simulations/bioelectric_persistence.py`)
+- ✅ **Pattern Persistence Simulator** (`simulations/planarian_01_bioelectric_persistence.py`)
   - Proves 24hr+ pattern stability
   - Single & multi-bit demos
   - Investor-ready visualizations
@@ -21,26 +21,26 @@ You now have a complete, production-ready bioelectric memory development suite.
   - **This is your licensable IP!**
 
 ### 2. Interactive Tools
-- ✅ **Live Demo** (`experiments/interactive_demo.py`)
+- ✅ **Live Demo** (`tools/interactive_demo.py`)
   - User-friendly interface for VCs
   - Real-time encoding/decoding
   - Custom binary input
   - Perfect for presentations
 
-- ✅ **Parameter Sweep** (`experiments/parameter_sweep.py`)
+- ✅ **Parameter Sweep** (`tools/parameter_sweep.py`)
   - Find optimal gap junction strength
   - Maximize persistence time
   - Engineering optimization
   - Publishable results
 
-- ✅ **ML Optimizer** (`experiments/ml_pattern_optimizer.py`)
+- ✅ **ML Optimizer** (`tools/ml_pattern_optimizer.py`)
   - Neural network predicts persistence
   - Genetic algorithm evolves patterns
   - AI-designed bioelectric codes
   - Novel research contribution
 
 ### 3. Validation & Analysis
-- ✅ **BETSE Integration** (`experiments/run_betse_validation.py`)
+- ✅ **BETSE Integration** (`tools/run_betse_validation.py`)
   - Scientific validation strategy
   - Parameter verification vs literature
   - Levin Lab compatibility
@@ -66,10 +66,10 @@ You now have a complete, production-ready bioelectric memory development suite.
 
 ```bash
 # 1. Test BETSE
-python experiments/test_betse_installation.py
+python tools/test_betse_installation.py
 
 # 2. Prove pattern persistence
-python simulations/bioelectric_persistence.py
+python simulations/planarian_01_bioelectric_persistence.py
 
 # 3. Test encoding
 python encoder/bioelectric_encoder.py
@@ -88,7 +88,7 @@ python analysis/visualize_competitive_landscape.py
 ### Option B: Interactive Investor Demo (5 mins)
 
 ```bash
-python experiments/interactive_demo.py
+python tools/interactive_demo.py
 ```
 
 **Perfect for:**
@@ -108,10 +108,10 @@ python experiments/interactive_demo.py
 
 ```bash
 # 1. Parameter optimization
-python experiments/parameter_sweep.py
+python tools/parameter_sweep.py
 
 # 2. BETSE validation
-python experiments/run_betse_validation.py
+python tools/run_betse_validation.py
 
 # 3. Generate full results
 ```
@@ -127,7 +127,7 @@ python experiments/run_betse_validation.py
 
 ```bash
 # Train ML model + evolve patterns
-python experiments/ml_pattern_optimizer.py
+python tools/ml_pattern_optimizer.py
 ```
 
 **Perfect for:**
@@ -171,7 +171,7 @@ experiments/persistence_predictor.pth  - Trained ML model
 ### For Investors / VCs
 **Run:**
 ```bash
-python experiments/interactive_demo.py
+python tools/interactive_demo.py
 python analysis/visualize_competitive_landscape.py
 ```
 
@@ -191,9 +191,9 @@ python analysis/visualize_competitive_landscape.py
 ### For Labs / Scientific Partners
 **Run:**
 ```bash
-python simulations/bioelectric_persistence.py
-python experiments/parameter_sweep.py
-python experiments/run_betse_validation.py
+python simulations/planarian_01_bioelectric_persistence.py
+python tools/parameter_sweep.py
+python tools/run_betse_validation.py
 ```
 
 **Show them:**
@@ -212,9 +212,9 @@ python experiments/run_betse_validation.py
 ### For Patent Attorney
 **Run:**
 ```bash
-python simulations/bioelectric_persistence.py
+python simulations/planarian_01_bioelectric_persistence.py
 python encoder/bioelectric_encoder.py
-python experiments/parameter_sweep.py --quick
+python tools/parameter_sweep.py --quick
 ```
 
 **Give them:**
@@ -233,9 +233,9 @@ python experiments/parameter_sweep.py --quick
 ### For Grant Applications
 **Run:**
 ```bash
-python experiments/parameter_sweep.py
-python experiments/ml_pattern_optimizer.py
-python experiments/run_betse_validation.py
+python tools/parameter_sweep.py
+python tools/ml_pattern_optimizer.py
+python tools/run_betse_validation.py
 ```
 
 **Include:**
@@ -277,7 +277,7 @@ python experiments/run_betse_validation.py
 ## 🔧 Customization Guide
 
 ### Adjust Simulation Parameters
-Edit `simulations/bioelectric_persistence.py`:
+Edit `simulations/planarian_01_bioelectric_persistence.py`:
 ```python
 # Grid size (bigger = more storage, slower simulation)
 tissue = PlanarianTissueModel(grid_size=(100, 100))
@@ -303,7 +303,7 @@ encoder = BioelectricEncoder(grid_size=(100, 100))
 ```
 
 ### Faster Parameter Sweeps
-Edit `experiments/parameter_sweep.py`:
+Edit `tools/parameter_sweep.py`:
 ```python
 # Fewer test values
 g_gap_values = np.logspace(-2.5, -1.5, 5)  # 5 instead of 10
@@ -344,7 +344,7 @@ df_full = sweeper.full_parameter_sweep(coarse=True)
 3. Study Cortical Labs and Koniku (competitors)
 
 ### Understand the Code
-1. Start with `simulations/bioelectric_persistence.py` (well-commented)
+1. Start with `simulations/planarian_01_bioelectric_persistence.py` (well-commented)
 2. Then `encoder/bioelectric_encoder.py`
 3. Then experiments (interactive_demo.py is most readable)
 
@@ -354,24 +354,24 @@ df_full = sweeper.full_parameter_sweep(coarse=True)
 
 ```bash
 # QUICK DEMO (30 mins)
-python experiments/test_betse_installation.py
-python simulations/bioelectric_persistence.py
+python tools/test_betse_installation.py
+python simulations/planarian_01_bioelectric_persistence.py
 python encoder/bioelectric_encoder.py
 python analysis/visualize_competitive_landscape.py
 
 # INTERACTIVE DEMO (5 mins)
-python experiments/interactive_demo.py
+python tools/interactive_demo.py
 
 # PARAMETER OPTIMIZATION (30 mins quick, 4 hrs full)
-python experiments/parameter_sweep.py --quick
-python experiments/parameter_sweep.py
+python tools/parameter_sweep.py --quick
+python tools/parameter_sweep.py
 
 # ML RESEARCH (2 hrs quick, 8 hrs full)
-python experiments/ml_pattern_optimizer.py --quick
-python experiments/ml_pattern_optimizer.py
+python tools/ml_pattern_optimizer.py --quick
+python tools/ml_pattern_optimizer.py
 
 # BETSE VALIDATION (5 mins)
-python experiments/run_betse_validation.py
+python tools/run_betse_validation.py
 
 # ROADMAP (2 mins)
 python NEXT_STEPS.py
@@ -403,7 +403,7 @@ pip install -r requirements.txt
 ```bash
 # Set matplotlib backend
 export MPLBACKEND=TkAgg
-python simulations/bioelectric_persistence.py
+python simulations/planarian_01_bioelectric_persistence.py
 ```
 
 ---

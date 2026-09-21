@@ -73,10 +73,10 @@ ready to write a new one.
 This full cycle is genuinely hard to test computationally, which is exactly
 why it's framed here as the goal the roadmap experiment works toward, not a
 claim being made today. The closest thing to a working model of it already
-exists in this project's own simulations: `simulations/biofilm_tile_handoff.py`
+exists in this project's own simulations: `simulations/bsubtilis_02_biofilm_tile_handoff.py`
 implements a write, then `propagate_handoff()` (transfer to a new tile),
 then `reset_and_heal()` (the original tile clears back to baseline and
-becomes reusable) cycle, and `experiments/handoff_pool_imperfect_healing.py`
+becomes reusable) cycle, and `simulations/bsubtilis_03_handoff_pool_imperfect_healing.py`
 stress-tests it across many reuse cycles. What it does not yet test is the
 harder version: whether an *engineered bistable circuit's* state (the fix
 described below) survives that same handoff-and-heal cycle, as opposed to
@@ -113,7 +113,7 @@ others' (full detail in `docs/SCIENTIFIC_AUDIT_2026.md`):**
 - The fix is identifiable and specific: passive bioelectric persistence
   isn't enough; the system needs an **actively engineered bistable
   circuit** (Gardner-style), not just "cells doing what cells naturally
-  do." We modeled this circuit (`simulations/gardner_toggle_circuit.py`)
+  do." We modeled this circuit (`simulations/bsubtilis_01_gardner_toggle_circuit.py`)
   using real, chassis-matched, already-characterized genetic parts (the
   Bacillus BioBrick Box), and it holds state reliably in simulation, with
   one concrete, previously-hidden design constraint surfaced: the two
