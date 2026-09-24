@@ -344,3 +344,23 @@ disproven, and where to start reading.
    Elowitz's own two-color-reporter noise assay on the actual BBB
    promoters, run before the bigger damage-and-regrowth experiment, not
    after.
+   **Extended September 2026 (audit Part 28)** with four more
+   founder-sourced PDFs from the same Elowitz lineage: two added nothing
+   new (already the basis for existing work), two produced real additions.
+   `simulations/bsubtilis_24_comK_suel2007_equations.py` upgrades the comK
+   model to the real Hill-function equations from Suel et al. 2007 (the
+   2006 paper's own follow-up, fully available unlike 2006 itself), and
+   finds a SECOND, independent way to lock the circuit (push comK's basal
+   expression rate high) distinct from "block exit," plus reproduces an
+   oscillatory regime at intermediate values. `simulations/
+   bsubtilis_25_transcription_translation_noise_scaling.py` checks the
+   Gardner toggle's uncited `transcriptional_noise_std=3.0` against Swain
+   et al. 2002's real noise-scaling formula and finds the placeholder may
+   be 3x-17x too low across the whole plausible range, sharpening exactly
+   what the two-color-reporter assay above needs to measure. `simulations/
+   bsubtilis_26_noise_crosscorrelation_diagnostic.py` implements Dunlop et
+   al. 2008's noise-cross-correlation method as an optional additional
+   Stage B0 diagnostic (confirms a repression link is active; does not
+   distinguish a well-separated toggle from a collapsed one, cytometry
+   still does that). None of the four papers required correcting anything
+   already in the audit.

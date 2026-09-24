@@ -489,6 +489,83 @@ illustrative (matched to the existing tx_noise_std range), not measured, the
 real numbers require the same two-colour-reporter assay run on this
 project's actual promoters.
 
+### `bsubtilis_24_comK_suel2007_equations.py`
+**What it tested, plainly:** bsubtilis_22's comK model uses a generic,
+made-up-shape equation because the paper that discovered comK's "block
+exit" trick has no public full text. A different, later paper from the
+same lab does have its equations public. Do those real equations, and a
+different real trick from that paper (turning up one gene's baseline
+activity), also produce a lasting locked state?
+**What it found, plainly:** yes. Turning that one gene's activity up high
+enough locks the circuit permanently, a second, independent real-world way
+to get the same "stays on" property bsubtilis_22 gets from blocking exit.
+At a middling activity level, the circuit instead flickers on and off
+repeatedly, matching what the real paper's own strain actually did.
+**Technically:** implements the real Hill-function comK/comS topology from
+Suel, Kulkarni, Dworkin, Garcia-Ojalvo & Elowitz (2007, *Science*
+315:1716-9, DOI 10.1126/science.1137455) note 15 (shared competitive
+MecA-ClpC-ClpP degradation denominator coupling ComK and ComS), with
+illustrative parameters (fitted constants are in the paper's SOM, not
+supplied) tuned to reproduce its three reported regimes as aK is swept:
+quiescent at baseline (0 spontaneous transitions/96h), oscillatory at an
+intermediate value (~228 transitions/96h, ~51% time high), and locked at
+a high value (1 transition, ~100% time high thereafter). Compared directly
+against bsubtilis_22's exit-blocked model and bsubtilis_01's Gardner
+toggle on the same 24h persistence test; all three hit 100%. Audit Part
+28. This project's own aK multiples do not quantitatively match the real
+strain's induction curve, only the qualitative regime structure.
+
+### `bsubtilis_25_transcription_translation_noise_scaling.py`
+**What it tested, plainly:** the noise number used everywhere in the
+Gardner toggle simulations (3.0) has never been checked against any real
+formula. A companion paper to the two-colour-noise paper gives the actual
+math connecting real, measurable cell properties to how noisy gene
+expression should be. Does the current guess hold up against that math?
+**What it found, plainly:** not really. Across a range of realistic
+settings, the real formula predicts noise 3 to 17 times higher than the
+current guess, at every setting tested, not just the extreme end. It also
+confirms something already argued informally: putting one copy of the
+gene on the chromosome (this project's choice) is a real, quantifiable
+noisier choice than a multi-copy plasmid, not a free one.
+**Technically:** implements the well-known asymptotic simplification of
+Swain, Elowitz & Siggia (2002, *PNAS* 99:12795-800, DOI
+10.1073/pnas.162041399), eta_int^2 ~= (1+b)/\<P\>, b = burst size
+(proteins per transcript, that paper's own reported E. coli range,
+"order tens," used only to bound plausible scenarios, not a B. subtilis
+measurement), and eta^2 ~ 1/n for gene copy number n. Swept against
+GardnerParams' default alpha=50.0 as the mean-level anchor: implied
+absolute noise std ranged 10.0-50.5 across burst sizes 1-50, versus the
+current tx_noise_std=3.0 placeholder (3.3x-16.8x higher). Audit Part 28.
+Caveat stated in the file: this simplified form omits Swain et al.'s own
+cell-cycle correction, which their Eq. 22 shows can move a naive estimate
+by up to 65%, so treat this as a bound, not a precise prediction; the real
+number requires wet_lab_experiments/Experiment_2's actual measurement.
+
+### `bsubtilis_26_noise_crosscorrelation_diagnostic.py`
+**What it tested, plainly:** every read of the toggle switch so far is a
+snapshot at a fixed time. A different paper shows that watching two genes
+over TIME in the same cell, and checking how they correlate with a delay,
+can tell you whether one is actually repressing the other, without
+touching anything. Does that trick work on this project's own simulated
+switch?
+**What it found, plainly:** yes, partly. It clearly tells apart "these two
+genes are linked" from "these two genes are not linked at all." It does
+NOT tell apart a healthy switch from a badly mismatched (broken) one,
+because in this model the link itself never turns off, only how well
+separated the two outcomes are changes, and that is a different question
+this method doesn't answer, but flow cytometry already does.
+**Technically:** implements Dunlop, Cox, Levine, Murray & Elowitz's (2008,
+*Nature Genetics* 40:1493-8, DOI 10.1038/ng.281) own single-lineage
+cross-correlation formula, run on full `GardnerToggleCell` trajectories
+(unmodified) instead of 24h endpoints. M1 (matched, ratio=1.0) and M3
+(severe mismatch, ratio=0.1) both produced a clear anticorrelated dip at
+a nonzero lag (min R approx -0.67 at lag=14 for both); an unregulated
+control (two independent relaxation processes, same noise magnitude, no
+mutual-repression term) showed no dip, only a near-zero-lag positive peak
+(max R approx 0.73). Audit Part 28. Demonstrates the method is applicable
+to this project's construct; does not measure anything about real cells,
+and does not replace Experiment 1's cytometry-based basin-separation read.
+
 ---
 
 # Methylation track

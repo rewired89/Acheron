@@ -609,6 +609,36 @@ they depend on each other.
   used_by: `main` (in the same file)
   side_effects: none
 
+- name: `ComKSuelCell`, `run_trajectory`, `sweep_aK_regime`, `compare_lock_mechanisms`
+  type: class, function
+  file: simulations/bsubtilis_24_comK_suel2007_equations.py
+  purpose: upgrades bsubtilis_22's generic comK model to the real Hill-function comK/comS topology from Suel, Kulkarni, Dworkin, Garcia-Ojalvo & Elowitz (2007, Science 315:1716-9, DOI 10.1126/science.1137455) note 15 (shared competitive MecA-ClpC-ClpP degradation denominator), with illustrative parameters (fitted constants are in the paper's unavailable SOM) tuned to reproduce its three reported regimes as aK (comK basal expression) is swept: quiescent/excitable at baseline, oscillatory at an intermediate value, locked at a high value, a second, independently-documented route to a persistent comK state distinct from bsubtilis_22's "block exit" mechanism. Found (session run): 0/228/1 mean spontaneous transitions per 96h at 1x/4.5x/8x-20x aK respectively (~0%/51%/100% time high); all three lock mechanisms (this file's high-aK, bsubtilis_22's exit-blocked, bsubtilis_01's Gardner toggle) hit 100% on the same 24h persistence test via `compare_lock_mechanisms`. This project's own aK multiples do not quantitatively match the real strain's induction curve, only the qualitative regime structure. Audit Part 28
+  inputs: `aK_multiples: List[float]`, `hours: float`, `noise_std: float`, `n_trials: int`
+  outputs: per-aK-multiple final-state/transitions/time-high dict; a three-way lock-mechanism fidelity comparison dict
+  dependencies: `simulations.bsubtilis_22_comK_excitable_circuit.run_persistence`, `simulations.bsubtilis_01_gardner_toggle_circuit.GardnerParams/run_persistence` (imported for comparison only, not modified)
+  used_by: `main` (in the same file)
+  side_effects: none
+
+- name: `intrinsic_noise_cv`, `cv_to_absolute_std`, `sweep_burst_size_vs_placeholder`, `copy_number_scaling`
+  type: function
+  file: simulations/bsubtilis_25_transcription_translation_noise_scaling.py
+  purpose: checks bsubtilis_01_gardner_toggle_circuit.py's uncited `transcriptional_noise_std=3.0` placeholder against the real noise-scaling formula from Swain, Elowitz & Siggia (2002, PNAS 99:12795-800, DOI 10.1073/pnas.162041399), eta_int^2 ~= (1+b)/<P> (b = burst size, that paper's own cited E. coli literature range, "order tens," used only to bound plausible scenarios), plus eta^2 ~ 1/n for gene copy number n. Found (session run): implied absolute noise std of 10.0-50.5 across burst sizes 1-50 (using GardnerParams' default alpha=50.0 as the mean-level anchor), 3.3x-16.8x higher than the current placeholder at every burst size tested, not just the high end; and confirms chromosomal (n=1) integration is a real, quantifiable noisier choice than a multi-copy plasmid. Explicitly caveated in the file: omits Swain et al.'s own cell-cycle correction (up to 65% overestimate per their Eq. 22), a bound not a precise prediction. Audit Part 28
+  inputs: `burst_sizes: List[float]`, `mean_protein_levels: List[float]`, `copy_numbers: List[int]`
+  outputs: per-(burst size, mean level) noise/ratio-to-placeholder rows; per-copy-number relative noise dict
+  dependencies: `simulations.bsubtilis_01_gardner_toggle_circuit.GardnerParams` (imported for its default alpha1 value only)
+  used_by: `main` (in the same file)
+  side_effects: none
+
+- name: `gardner_trajectory`, `unregulated_control_trajectory`, `cross_correlation`, `summarize`
+  type: function
+  file: simulations/bsubtilis_26_noise_crosscorrelation_diagnostic.py
+  purpose: implements Dunlop, Cox, Levine, Murray & Elowitz's (2008, Nature Genetics 40:1493-8, DOI 10.1038/ng.281) single-lineage noise cross-correlation diagnostic (a delayed anticorrelation dip signals an active repression link; a near-zero-lag positive peak alone signals none) and runs it on full `GardnerToggleCell` trajectories (unmodified) instead of 24h endpoints. Found (session run): M1 (matched, ratio=1.0) and M3 (severe mismatch, ratio=0.1) both produced a clear anticorrelated dip (min R approx -0.67 at lag=14 for both) versus an unregulated control (two independent relaxation processes, no repression term, max R approx 0.73 at zero lag, no dip). The method distinguishes "a link exists" from "no link" but did NOT distinguish M1 from M3, since bsubtilis_01's promoter-ratio parameter rebalances strength rather than deactivating the repression term; M3's real failure is losing basin separation, a different question this diagnostic doesn't answer (Experiment 1's cytometry does). Audit Part 28
+  inputs: `ratio: float`, `tx_noise: float`, `hours: float`, `seed: int`, `max_lag: int`
+  outputs: per-configuration min/max cross-correlation value and lag dict
+  dependencies: `simulations.bsubtilis_01_gardner_toggle_circuit.GardnerParams/GardnerToggleCell` (imported, not modified)
+  used_by: `main` (in the same file)
+  side_effects: none
+
 ---
 
 ## experiments/ — runnable demonstrations and diagnostic scripts

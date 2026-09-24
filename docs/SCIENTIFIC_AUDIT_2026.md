@@ -2201,6 +2201,127 @@ fitted parameters) before any wet-lab time is spent on it.
 
 ---
 
+## Part 28: Four More Founder-Sourced Papers From the Elowitz Lineage, and What Each One Changes (September 2026)
+
+The founder supplied four PDFs directly (not found via literature search),
+all from the same research lineage as Part 27's Elowitz et al. 2002 and
+Suel et al. 2006 citations. Each was read in full and checked against what
+this project already has, rather than assumed relevant on the strength of
+the author list. Two answered "nothing new, already the basis for planned
+work." Two produced real, usable additions, described below with the new
+simulation files they motivated.
+
+**1. Elowitz, Levine, Siggia & Swain (2002), "Stochastic Gene Expression in
+a Single Cell," Science 297:1183-1186, DOI 10.1126/science.1073263.**
+Already this project's basis for wet_lab_experiments/Experiment_2's
+two-color-same-promoter control and Part 27's intrinsic/extrinsic noise
+framing. No new action; confirms the project is already built on the
+correct primary source rather than a secondary description of it.
+
+**2. Swain, Elowitz & Siggia (2002), "Intrinsic and extrinsic contributions
+to stochasticity in gene expression," PNAS 99(20):12795-12800, DOI
+10.1073/pnas.162041399.** New. This is the theoretical companion to #1,
+giving closed-form expressions connecting noise magnitude to real
+biochemical parameters (transcription rate, burst size, gene copy number,
+protein/mRNA lifetime ratio, cell-cycle phase) instead of an assumed
+constant. `simulations/bsubtilis_25_transcription_translation_noise_scaling.py`
+(new) uses the paper's own well-known asymptotic simplification,
+eta_int^2 ~= (1+b)/<P> (b = burst size, also independently derived by
+Thattai & van Oudenaarden 2001, which Swain et al. cite), to check whether
+`bsubtilis_01_gardner_toggle_circuit.py`'s uncited `transcriptional_noise_std=3.0`
+placeholder is a plausible order of magnitude. Run this session: across
+burst sizes from 1 to 50 (the paper's own stated "may be of order tens"
+range for E. coli, not a B. subtilis measurement), the placeholder came
+out 3x to 17x SMALLER than the formula implies, an underestimate across
+the whole range tested, not just at the high end. Taken at face value,
+this means the project's existing fidelity numbers (M1/M2 at 100%, M3 at
+50%) could be optimistic if real burst size is anywhere in the literature-
+typical range, and sharpens exactly what wet_lab_experiments/Experiment_2
+needs to measure (real burst size and mean expression level for the actual
+BBB promoter pair) to replace this whole comparison with one real number.
+The same file also quantifies, via the paper's eta^2 ~ 1/n scaling, that
+chromosomal (single-copy) integration is not noise-neutral relative to a
+multi-copy plasmid, a real, measured cost of the design choice
+`experiments/BENCH_PROTOCOL_BSUBTILIS.md` Section 2.2 already makes on
+qualitative grounds (avoiding copy-number drift during Stage B2 regrowth).
+Caveat stated in the file itself: the (1+b)/<P> form omits the paper's own
+cell-cycle correction, which its Eq. 22 shows can move a naive estimate by
+up to 65%, so treat this as a bound, not a precise prediction.
+
+**3. Dunlop, Cox, Levine, Murray & Elowitz (2008), "Regulatory activity
+revealed by dynamic correlations in gene expression noise," Nature
+Genetics 40(12):1493-1498, DOI 10.1038/ng.281.** New. Describes a
+time-resolved diagnostic (not a snapshot): the time-lagged cross-
+correlation function between two genes in the same cell distinguishes an
+actively repressing link (a delayed anticorrelation dip) from no link at
+all (only a near-zero-lag positive peak from shared noise), without
+perturbation, validated on their own real synthetic circuit.
+`simulations/bsubtilis_26_noise_crosscorrelation_diagnostic.py` (new)
+implements their own cross-correlation formula and runs it on this
+project's own `GardnerToggleCell` trajectories. Run this session: M1
+(matched) and M3 (severe mismatch) both showed the expected anticorrelated
+dip, cleanly distinguished from an unregulated control (no dip, only a
+positive peak), reproducing the paper's core validation result on this
+project's construct. It did NOT distinguish M1 from M3 from each other:
+`bsubtilis_01_gardner_toggle_circuit.py`'s promoter-ratio parameter
+rebalances relative strength, it never switches the repression term off,
+so the mechanical coupling is mechanically present at every ratio; M3's
+real failure (Part 9) is losing steady-state SEPARATION between the two
+basins, a different question than "does a regulatory link exist at all."
+This is a genuine, non-obvious finding: the method is a real complement to
+Experiment 1's flow-cytometry read (which does measure basin separation),
+not a substitute for it, and is worth flagging as an additional, optional
+analysis method if Experiment 1's bench work includes time-lapse imaging.
+Also citable for something `experiments/BENCH_PROTOCOL_BSUBTILIS.md`
+Section 2.2 already argues qualitatively: their own Fig. 3c/4d show
+plasmid-borne genes carry higher extrinsic noise than chromosomally
+integrated ones, a real measured precedent for the chromosomal-
+integration choice.
+
+**4. Suel, Kulkarni, Dworkin, Garcia-Ojalvo & Elowitz (2007), "Tunability
+and Noise Dependence in Differentiation Dynamics," Science 315(5819):
+1716-1719, DOI 10.1126/science.1137455.** New, and the highest-value find
+of the four. This is the direct experimental follow-up to Part 27's Suel
+et al. 2006 citation, which `bsubtilis_22_comK_excitable_circuit.py` could
+only model qualitatively because 2006's paper has no open-access full
+text. This 2007 paper's own note 15 gives the actual functional-form ODEs
+for the comK/comS circuit (Hill-function positive autoregulation of ComK,
+Hill-repressed comS, both degraded through a shared competitive MecA-
+ClpC-ClpP term), real structure this project did not have before, even
+without the paper's fitted numeric constants (in its SOM, not part of
+what was supplied). `simulations/bsubtilis_24_comK_suel2007_equations.py`
+(new) implements these real equations and, with illustrative parameters
+tuned to reproduce the paper's own qualitative regime map, reproduces all
+three of its reported dynamical regimes as a single parameter (aK, comK's
+basal expression rate) is increased: quiescent/excitable at baseline
+(rare spontaneous entry, consistent with the real ~3% per-division
+initiation rate), oscillatory at an intermediate value (frequent
+noise-driven entry/exit, matching the paper's own Hyper-aK strain at
+intermediate induction, their Fig. 2A), and permanently LOCKED at a high
+value, a SECOND, independently-documented route to a persistent comK
+state, distinct from Part 27's "block exit" mechanism from the 2006
+paper. The paper's own explanation for the lock: once aK exceeds ComK's
+own activated production rate, degradation can no longer bring it back
+down regardless of comS. Also logged, not yet modeled: the paper's
+"CompRok" strain (one added Rok-mediated negative-feedback arm onto comK)
+cut competence-duration variability roughly in half (13.9 +/- 3.4h vs.
+20.2 +/- 9.9h wild-type, their own measured numbers) without changing the
+mean, a real precedent for "an added feedback arm makes a stochastic
+circuit's timing more precise," relevant if a future comparison is drawn
+against `bsubtilis_16_damage_sensing_reinforcement.py`'s proposed
+reinforcement circuit. This project's own illustrative aK multiples do
+not quantitatively match the paper's reported induction curve; only the
+qualitative three-regime structure is claimed.
+
+**Net effect of this part:** two real analytical/mechanistic tools
+(Swain 2002's noise-scaling formula, Dunlop 2008's activity diagnostic)
+and one real upgrade to the comK track's grounding (Suel 2007's actual
+equations, plus a second citable lock mechanism). None of the four papers
+required correcting anything already in the audit; they extend Part 27
+rather than revise it.
+
+---
+
 ## Next Action: One Experiment Changes Everything
 
 **The experiment:**

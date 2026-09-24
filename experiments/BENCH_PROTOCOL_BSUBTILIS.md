@@ -115,7 +115,17 @@ regime).
 - **Integration:** arm A at *amyE* (pBS1C or pBS1E), arm B at *lacA* (pBS2E).
   Different resistance markers so both integrate into one strain. Chromosomal
   integration, not a replicative plasmid, so copy number does not drift during
-  the regrowth experiments in Stage B2.
+  the regrowth experiments in Stage B2. This is also the lower-noise choice,
+  not just the copy-number-stable one, though not a noise-free one: Swain,
+  Elowitz & Siggia (2002, *PNAS* 99:12795-800, DOI 10.1073/pnas.162041399)
+  derive noise scaling as ~1/n with gene copy number n, and Dunlop, Cox,
+  Levine, Murray & Elowitz (2008, *Nature Genetics* 40:1493-8, DOI
+  10.1038/ng.281) show plasmid-borne genes carry measurably higher extrinsic
+  noise than chromosomally integrated ones at comparable expression levels
+  (their Fig. 3c/4d). Single-copy chromosomal integration is therefore a real
+  noise cost traded for regrowth stability, not a free choice; see
+  `simulations/bsubtilis_25_transcription_translation_noise_scaling.py` and
+  audit Part 28.
 
 ### 2.3 The promoter-matching variants, which are the point of Stage B0
 
@@ -178,6 +188,20 @@ redirecting it into the next stage.
 do not produce a toggle in this chassis. Stop and rethink the chassis or the
 repressor pair before spending anything further.
 
+**Optional additional diagnostic, if time-lapse imaging is available
+alongside end-point cytometry:** Dunlop, Cox, Levine, Murray & Elowitz
+(2008, *Nature Genetics* 40:1493-8, DOI 10.1038/ng.281) show that the
+time-lagged cross-correlation between two genes in the same cell, tracked
+over time rather than at one timepoint, distinguishes an actively
+repressing regulatory link (a delayed anticorrelation dip) from no link at
+all, without perturbation. `simulations/bsubtilis_26_noise_crosscorrelation_diagnostic.py`
+demonstrates the method on this project's own simulated construct and
+found it confirms a functioning repression loop but does NOT by itself
+distinguish M1/M2 from M3, since M3's failure is a loss of basin
+separation, not a deactivated link; treat this as a complement to the
+cytometry read above, not a substitute for it, and not required to pass
+Stage B0.
+
 ### Stage B1: does it hold, and what is the real noise?
 
 Runs on the same cultures as B0, extended. Low marginal cost, high value,
@@ -191,7 +215,14 @@ currently carries as an unmeasured placeholder.
     real-world version of the simulations' `genetic_correct`.
   - Cell-to-cell variability in reporter level within each state population,
     which is the real-world anchor for `transcriptional_noise_std`, currently
-    a placeholder set to 3.0 in `bsubtilis_01_gardner_toggle_circuit.py` with no citation.
+    a placeholder set to 3.0 in `bsubtilis_01_gardner_toggle_circuit.py`.
+    Swain, Elowitz & Siggia (2002, *PNAS* 99:12795-800, DOI
+    10.1073/pnas.162041399) give the real formula this placeholder stands in
+    for (noise as a function of burst size and mean expression level); their
+    own cited E. coli range for burst size implies this placeholder may be
+    3x to 17x too low (`simulations/bsubtilis_25_transcription_translation_noise_scaling.py`,
+    audit Part 28), which is exactly what this measurement, plus a measured
+    burst size, would resolve.
   - Spontaneous switching rate per generation, which no simulation in the
     repository models at all.
   - Reporter maturation half-life, which
