@@ -1300,6 +1300,114 @@ SubtiWiki-sourced search.
 
 ---
 
+## Part 15: Noise as a Feature, Not Just a Threat, and a Native B. subtilis Circuit That Might Beat the Imported One (September 2026)
+
+**Where this came from:** the founder read a Quanta Magazine piece
+("Cells in Living Things Fight Noise with Noise," Emily Singer, reprinted
+by Scientific American) on Michael Elowitz's noise research and asked
+whether any of it changes this project's approach. Chasing the two
+claims that matter most through PubMed surfaced two real, directly
+relevant primary papers this audit had not cited before, plus a live
+side-by-side simulation of both.
+
+**What it establishes.**
+
+1. Sueel, Garcia-Ojalvo, Liberman & Elowitz (2006), "An excitable gene
+   regulatory circuit induces transient cellular differentiation,"
+   Nature 440(7083):545-550, DOI 10.1038/nature04588, PMID 16554821.
+   This is B. subtilis's OWN native competence circuit (comK), not
+   borrowed from E. coli the way `gardner_toggle_circuit.py`'s toggle
+   switch is. Structurally it is excitable, not bistable: fast positive
+   feedback (ComK self-activation) plus a slower negative feedback (an
+   exit pathway) that returns the cell to vegetative growth, with noise
+   triggering entry. The abstract reports the authors "re-engineered the
+   gene circuit to specifically block exit" as a test of their model,
+   i.e. they demonstrated, in real B. subtilis, that disabling the
+   negative-feedback arm converts a transient noise-driven pulse into a
+   state the cell does not spontaneously leave.
+
+2. Elowitz, Levine, Siggia & Swain (2002), "Stochastic gene expression
+   in a single cell," Science 297(5584):1183-1186, DOI
+   10.1126/science.1070919, PMID 12183631. Confirms the intrinsic vs.
+   extrinsic noise split described in the secondary article, using a
+   real two-color-reporter method in E. coli: intrinsic noise is
+   randomness inherent to one gene's own expression, uncorrelated
+   between two identically-regulated genes in the same cell; extrinsic
+   noise is a shared, whole-cell fluctuation (e.g. total RNA polymerase
+   or ribosome availability) that moves every gene in that cell together.
+
+Two further claims from the secondary (non-peer-reviewed) article could
+NOT be independently verified this session, PubMed searches for both
+came back empty, so they are logged as unverified, not established: (a)
+that a noisier comK circuit variant outperformed an engineered quieter
+one under stress (attributed to a follow-up Sueel/Elowitz study), and
+(b) that noise magnitude is partly an inherent property of a specific
+promoter, independent of its mean strength (attributed to Ido Golding's
+work). Neither is used as fact anywhere in this project; both are open
+items pending a real citation.
+
+**What this changes, and what it doesn't.**
+
+`gardner_toggle_circuit.py`'s `transcriptional_noise_std` applies two
+INDEPENDENT random draws each step, one per repressor. That is
+structurally intrinsic-noise-only in Elowitz et al.'s terms, it has never
+modeled a shared, correlated (extrinsic-style) source. `simulations/
+intrinsic_extrinsic_noise.py` (new) tests this directly by subclassing
+`GardnerToggleCell` (unmodified) and adding one shared random draw
+applied to both repressors together. Result, run this session: at matched
+promoter strength (ratio=1.0), fidelity stayed at 100% even with
+extrinsic noise equal in magnitude to the existing intrinsic term, no
+degradation found in this range. A mismatched-but-still-passing ratio
+(10.0) did drop slightly, from 100% to 93%, when extrinsic noise reached
+its highest tested value. Honest reading: at the magnitudes tested here
+(chosen to match the existing tx_noise_std range, not measured values),
+promoter mismatch remains the dominant, already-documented failure mode;
+extrinsic noise is a real, previously unmodeled second-order effect, not
+(at these untested-for-real magnitudes) a new dominant one. This does not
+resolve the question, it narrows it: the real answer depends on actual
+measured extrinsic noise in the specific BBB promoters used, which nobody
+has measured yet.
+
+The comK precedent does NOT mean the Gardner toggle switch should be
+dropped. comK is real and native, but it is excitable/transient by
+design, built for a temporary competence window, not proven as a durable
+multi-generation memory element, and nobody has built or tested an
+exit-blocked comK variant for data storage, let alone through damage and
+regrowth. `simulations/comK_excitable_circuit.py` (new) models the
+qualitative topology only (a generic fast-activator/slow-inhibitor
+excitable-system form, NOT the paper's own fitted equations, which are
+unavailable, this paper has no open-access full text in PubMed Central).
+Run this session: the normal (exit-active) variant showed the expected
+transient, noise-driven behavior, high shortly after a write pulse, then
+decaying and re-triggering unpredictably (0%, 62%, 12% "still high" at
+1h/6h/24h across trials). The exit-blocked variant stayed at 100% "still
+high" at all three checkpoints, matching the Gardner toggle's own 100%
+on the identical 24h persistence test. That is a plausibility result
+from a generic model, not a validated one, it shows the qualitative
+mechanism the paper describes (excitable to locked, via blocking exit)
+is simulatable and consistent, not that this specific numeric model is
+correct.
+
+**The actionable takeaway:** the fastest, cheapest next validation step
+available is not the full damage-and-regrowth wet-lab test already in
+the roadmap, it is Elowitz's own two-color-reporter assay, run on the
+actual BBB promoters intended for the toggle circuit, single-cell
+imaging, in B. subtilis. That would replace the currently-assumed
+`tx_noise_std` placeholder with a real, measured, per-promoter number,
+split into intrinsic and extrinsic components, and would also settle
+whether the two unverified claims above (noisier-survives-better,
+promoter-specific noise) hold for the parts this project actually plans
+to use. It is cheaper and faster than the $10K-$30K/6-12 month
+experiment below, and its result would directly inform which promoter
+pair to commit to before spending that budget. Separately, whether an
+exit-blocked comK variant is worth pursuing alongside (or instead of)
+the Gardner toggle is now a real, better-grounded-than-a-guess open
+question rather than an untested idea, worth a literature-only deep dive
+(does anyone have open-access full text or a preprint with the actual
+fitted parameters) before any wet-lab time is spent on it.
+
+---
+
 ## Next Action: One Experiment Changes Everything
 
 **The experiment:**

@@ -156,3 +156,17 @@ rather than assuming they're present.
 4. **`CODEMAP.md` now exists** (created September 2026, single-pass, 44
    source files). Keep it updated per the CodeMap Protocol above rather than
    letting it drift, and re-map incrementally if the repo passes 150 files.
+5. **A second circuit candidate is now on the table:** `docs/
+   SCIENTIFIC_AUDIT_2026.md` Part 15 traces a founder-sourced article on
+   Elowitz's noise research to a real, native B. subtilis circuit (comK
+   competence, Sueel et al. 2006) that a documented wet-lab modification
+   ("block exit") turns from transient to locked, a possible alternative
+   or complement to the imported Gardner toggle. `simulations/
+   comK_excitable_circuit.py` models it qualitatively only, the paper's
+   own fitted parameters aren't available (no open-access full text).
+   Also flagged: the Gardner circuit's noise model has never included a
+   shared/extrinsic noise term (`simulations/intrinsic_extrinsic_noise.py`
+   tests this); and the cheapest next real-world validation step may be
+   Elowitz's own two-color-reporter noise assay on the actual BBB
+   promoters, run before the bigger damage-and-regrowth experiment, not
+   after.

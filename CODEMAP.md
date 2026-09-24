@@ -491,6 +491,26 @@ they depend on each other.
   used_by: `main` (in the same file)
   side_effects: none
 
+- name: `ExtrinsicNoiseToggleCell`, `sweep`
+  type: class, function
+  file: simulations/intrinsic_extrinsic_noise.py
+  purpose: tests docs/SCIENTIFIC_AUDIT_2026.md Part 15's flagged gap, gardner_toggle_circuit.py's noise model only applies independent per-repressor (intrinsic-style) noise, never a shared/correlated (extrinsic-style) term as defined by Elowitz et al. 2002's real two-color-reporter experiment. `ExtrinsicNoiseToggleCell` subclasses `GardnerToggleCell` unmodified and adds one shared random draw per step to both repressors together; `sweep` reruns gardner_toggle_circuit.py's own promoter-ratio sweep with that term added. Found: matched promoters (ratio=1.0) stayed at 100% fidelity even with extrinsic noise equal to the existing intrinsic term; a mismatched-but-passing ratio (10.0) dropped from 100% to 93% at the highest tested extrinsic level. Values swept are illustrative (chosen to match the existing tx_noise_std range), not measured B. subtilis numbers
+  inputs: `ratios: List[float]`, `tx_noise: float`, `extrinsic_noise: float`, `n_trials: int = 15`
+  outputs: per-ratio genetic/voltage fidelity dict
+  dependencies: `simulations.gardner_toggle_circuit.GardnerParams/GardnerToggleCell` (imported, not modified)
+  used_by: `main` (in the same file)
+  side_effects: none
+
+- name: `ComKExcitableCell`, `sweep_persistence`, `compare_to_gardner_toggle`
+  type: class, function
+  file: simulations/comK_excitable_circuit.py
+  purpose: models B. subtilis's own native comK competence circuit (Sueel, Garcia-Ojalvo, Liberman & Elowitz 2006, Nature 440:545-50, DOI 10.1038/nature04588) as a generic fast-activator/slow-inhibitor excitable system (NOT the paper's own unavailable fitted equations, no open-access full text exists for this PMID), as a candidate native alternative to the imported Gardner toggle switch. `exit_gain=0` reproduces the paper's own "block exit" re-engineering test, converting the circuit from transient/excitable to locked. Found (session run): normal (exit-active) variant showed transient, re-triggering behavior (0%/62%/12% "still high" at 1h/6h/24h); exit-blocked variant held 100% at all three, matching the Gardner toggle's own 100% on the identical 24h test via `compare_to_gardner_toggle`. A plausibility result, not a validated circuit, see docs/SCIENTIFIC_AUDIT_2026.md Part 15
+  inputs: `hours_list: List[float]`, `noise_std: float`, `n_trials: int`
+  outputs: per-hours final-state and time-high fraction dict; a comK-vs-Gardner fidelity comparison dict
+  dependencies: `simulations.gardner_toggle_circuit.GardnerParams/GardnerToggleCell/run_persistence` (imported for the comparison only, not modified)
+  used_by: `main` (in the same file)
+  side_effects: none
+
 ---
 
 ## experiments/ — runnable demonstrations and diagnostic scripts
