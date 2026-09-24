@@ -1,256 +1,136 @@
-# Acheron Quick Start Guide
+# Quick Start
 
-Get up and running with bioelectric memory simulations in 5 minutes.
+Everything in this repository is a simulation. Running these scripts does not
+validate the science; it reproduces the modeling results that
+`docs/SCIENTIFIC_AUDIT_2026.md` reports and argues about. Read the audit
+alongside the output, not after it.
 
-## Prerequisites
-
-- Python 3.9+
-- pip package manager
-
-## Installation
+## Setup
 
 ```bash
-# Clone repository
-git clone <repository-url>
-cd Acheron
-
-# Install dependencies
 pip install -r requirements.txt
-
-# Create output directories
-mkdir -p analysis hardware/output
 ```
 
-## Run Your First Simulation
-
-### 1. Single Bit Persistence Test
-
-Test if a single bit (voltage pattern) persists for 24 hours:
+A fresh sandbox often has nothing installed, and `numpy`, `scipy`, `matplotlib`
+and `pytest` have all been missing at session start before. If the full install
+is slow or fails, most of the simulations only need four packages:
 
 ```bash
-python simulations/bioelectric_persistence.py
+pip install numpy scipy matplotlib pytest
 ```
 
-**What this does:**
-- Creates a 50x50 grid of simulated planarian cells
-- Writes a '1' bit (high voltage) to a 5x5 cluster
-- Simulates 24 hours of bioelectric dynamics
-- Shows whether the pattern remains distinguishable
+There is no build step and no lint step.
 
-**Expected output:**
-```
-BIOELECTRIC PERSISTENCE TEST
-Duration: 24 hours (1440 minutes)
-Initial state:
-  V range: 60.00 mV
-  Integrity ratio: 1.00
+## The four scripts worth running first
 
-[Progress updates...]
+Run them in this order. Together they are the project's argument, including
+the part where it contradicts itself.
 
-Final state (after 24 hours):
-  V range: 45.50 mV
-  Integrity ratio: 0.76
-  Pattern preserved: True
-```
-
-**Success criteria:** Integrity ratio > 0.7 means the pattern survived!
-
-### 2. Multi-Bit Storage Demo
-
-Test storing a binary string ("10110"):
+### 1. The claim that broke
 
 ```bash
-# Edit bioelectric_persistence.py to run only demo_multi_bit_storage()
-python simulations/bioelectric_persistence.py
+python simulations/planarian_02_noise_floor.py
 ```
 
-**What this does:**
-- Encodes "10110" as 5 separate cell clusters
-- Simulates pattern diffusion via gap junctions
-- Measures how well each bit is preserved
+Re-runs the original planarian passive-persistence model with realistic
+biological noise added. Watch integrity fall from 100% (zero noise) to roughly
+50% (realistic noise), which is a coin flip for a binary read. This is why the
+project no longer leads with passive persistence. It also sweeps the strength
+of an assumed bistable mechanism and finds that reliable storage needs roughly
+15 to 20 times more feedback than the model calibrates as a realistic
+engineered circuit. Treat that ratio as a relative benchmark, not a constant to
+design against; the underlying parameter is a modeling knob with no directly
+measured biological equivalent.
 
-### 3. Bioelectric Encoder Demo
-
-Learn how to translate binary data to voltage patterns:
+### 2. The circuit that replaced it
 
 ```bash
-python encoder/bioelectric_encoder.py
+python simulations/bsubtilis_01_gardner_toggle_circuit.py
 ```
 
-**What this does:**
-- Encodes binary string "10110101" into spatial voltage pattern
-- Generates optogenetic light pulse sequences
-- Exports DMD (Digital Micromirror Device) control file
-- Tests error correction under noise
+A Gardner-style genetic toggle switch using real *B. subtilis* BioBrick parts.
+The useful output is the failure mode, not the success: mismatched promoter
+strengths collapse the circuit into a single stable state, which is a dead
+switch. Promoter matching is the variable Stage 0 of the roadmap exists to
+test.
 
-**Outputs:**
-- `analysis/encoding_demo.png` - Visualization of voltage pattern
-- `hardware/dmd_pattern_test.json` - Instructions for optogenetic hardware
-
-## Understanding the Output
-
-### Voltage Grids
-
-Red = High voltage (-10 mV) = Bit '1'
-Blue = Low voltage (-70 mV) = Bit '0'
-White = Resting potential (-50 mV)
-
-### Integrity Ratio
-
-```
-Integrity Ratio = (Measured Voltage Range) / (Initial Voltage Range)
-
-1.0 = Perfect preservation
-0.7 = Acceptable (70% of original separation)
-0.5 = Degraded but recoverable with error correction
-<0.3 = Pattern lost
-```
-
-### Key Parameters You Can Tweak
-
-**In `bioelectric_persistence.py`:**
-
-```python
-# Grid size (default: 50x50)
-tissue = PlanarianTissueModel(grid_size=(100, 100))
-
-# Time step (default: 0.1 minutes)
-tissue = PlanarianTissueModel(dt=0.05)  # More accurate but slower
-
-# Gap junction strength (default: 0.02 nS)
-tissue.g_gap = 0.01  # Lower = less diffusion = better preservation
-
-# Membrane resistance (default: 100 MΩ)
-tissue.R_mem = 200.0  # Higher = more stable voltage
-```
-
-**In `bioelectric_encoder.py`:**
-
-```python
-# Redundancy (default: 9 cells per bit)
-encoder = BioelectricEncoder(cells_per_bit=16)  # 4x4 cluster (more robust)
-
-# Grid size
-encoder = BioelectricEncoder(grid_size=(100, 100))  # More storage capacity
-```
-
-## Next Steps
-
-### For Researchers
-1. Read `docs/WHITEPAPER_Somatic_Morphogenetic_Memory.md`
-2. Modify simulation parameters to test different tissue properties
-3. Run parameter sweeps to find optimal configurations
-
-### For Investors
-1. Read `docs/INVESTOR_PITCH.md`
-2. Review `docs/COMPETITIVE_ANALYSIS.md`
-3. Run simulations to see the technology in action
-
-### For Engineers
-1. Explore `encoder/bioelectric_encoder.py` - this is the licensable IP
-2. Check `hardware/` directory for DMD control specs
-3. Review optogenetic pulse sequences in encoder output
-
-## Troubleshooting
-
-**Simulation runs slowly:**
-- Decrease grid size: `PlanarianTissueModel(grid_size=(25, 25))`
-- Increase time step: `PlanarianTissueModel(dt=1.0)`
-- Reduce simulation duration: `run_persistence_test(duration_hours=6)`
-
-**Patterns don't persist:**
-- Increase membrane resistance: `tissue.R_mem = 200.0`
-- Decrease gap junction coupling: `tissue.g_gap = 0.01`
-- Increase relaxation time constant: `tissue.tau_relax = 120.0`
-
-**Import errors:**
-- Ensure all dependencies installed: `pip install -r requirements.txt`
-- Check Python version: `python --version` (need 3.9+)
-
-## File Structure
-
-```
-Acheron/
-├── README.md                    # Project overview
-├── QUICKSTART.md               # This file
-├── requirements.txt            # Python dependencies
-├── simulations/
-│   └── bioelectric_persistence.py   # Core simulator
-├── encoder/
-│   └── bioelectric_encoder.py       # Binary ↔ bioelectric translator
-├── hardware/
-│   └── dmd_pattern_test.json       # Example optogenetic control
-├── docs/
-│   ├── COMPETITIVE_ANALYSIS.md     # Market research
-│   ├── WHITEPAPER_Somatic_Morphogenetic_Memory.md
-│   └── INVESTOR_PITCH.md
-└── analysis/                   # Output visualizations
-    ├── bit_initial.png
-    ├── bit_final.png
-    └── bit_integrity.png
-```
-
-## Key Concepts (5-Minute Primer)
-
-### What is Bioelectric Memory?
-
-Cells maintain voltage across their membrane (like a battery). By controlling this voltage in groups of cells, we can store information.
-
-**Traditional computing**: 5V = '1', 0V = '0'
-**Bioelectric computing**: -10mV = '1', -70mV = '0'
-
-### Why Planarians?
-
-Planarian flatworms can regenerate entire bodies from tissue fragments. They store their "body plan" as bioelectric voltage patterns - this same mechanism can store arbitrary data.
-
-### The Innovation
-
-**Current biocomputers** (Cortical Labs, Koniku) use neurons:
-- Neurons = volatile memory (like RAM)
-- Must be powered constantly
-- Die after 6 months
-
-**Acheron** uses planarian somatic cells:
-- Somatic cells = persistent memory (like hard drive)
-- Stable without power
-- Regenerate if damaged
-
-### The Market Gap
-
-**No one sells the software to encode/decode bioelectric patterns.**
-
-Every wetware company needs this. Our encoder works with neurons OR planarian cells. This is the licensing opportunity.
-
-## Demo for Investors/Partners
-
-Run this complete demo in one command:
+### 3. The differentiator
 
 ```bash
-# Run both persistence and encoding demos
-python -c "
-from simulations.bioelectric_persistence import demo_single_bit_storage, demo_multi_bit_storage
-from encoder.bioelectric_encoder import demo_encoder
-
-demo_single_bit_storage()
-demo_multi_bit_storage()
-demo_encoder()
-"
+python simulations/bsubtilis_07_colony_regrowth.py
+python simulations/bsubtilis_13_reporter_colony_regrowth.py
 ```
 
-This will:
-1. Prove 24-hour pattern persistence ✓
-2. Demonstrate multi-bit storage ✓
-3. Show encoding/decoding pipeline ✓
-4. Generate all visualizations ✓
+Damage a colony, regrow it by division, and check whether the bit is still
+there. It recovers to full fidelity from as little as 2% surviving cells,
+because division copies the circuit's proteins into daughters. The second
+script adds a fluorescent reporter and finds it tracks the genetic state
+exactly, with no extra fragility. Surviving division is the thing published
+prior art cannot do, so this pair is the core of the pitch.
 
-**Runtime:** ~5-10 minutes (depending on your CPU)
+### 4. The readout problem
 
-## Questions?
+```bash
+python simulations/bsubtilis_08_native_oscillation_interference.py
+python simulations/bsubtilis_09_eis_readout_interference.py
+python simulations/bsubtilis_18_phase_encoded_readout.py
+```
 
-- Technical: See `docs/WHITEPAPER_Somatic_Morphogenetic_Memory.md`
-- Business: See `docs/INVESTOR_PITCH.md`
-- Competition: See `docs/COMPETITIVE_ANALYSIS.md`
+*B. subtilis* biofilms run their own potassium-wave signaling. The first
+script shows a single voltage snapshot taken during it collapsing to about 50%
+accuracy while the underlying genetic state is perfectly intact. The second
+tests averaging over a long window as a fix, and the honest result is that it
+only works once the window reaches about one full oscillation period, roughly
+three hours, which is far longer than a real impedance sweep takes. The third
+tries the opposite framing, encoding the bit as a phase relationship to the
+oscillation rather than as a voltage level, and finds the readout gets better
+as the oscillation gets stronger.
 
----
+Those last two point in different directions and want different chassis
+strains. That fork is unresolved and is documented as unresolved. Do not read
+one of the three scripts and stop.
 
-**Remember:** The goal isn't to match silicon speed - it's to create self-healing, persistent, extreme-environment bioelectric memory that nothing else can provide.
+## Other things to run
+
+```bash
+python simulations/crossorganism_01_comparison_summary.py   # ranks mechanisms by hidden wet-lab risk
+python simulations/bsubtilis_15_partition_noise_regrowth.py      # uneven molecule splitting at division
+python simulations/bsubtilis_16_damage_sensing_reinforcement.py  # proposed SOS-style reinforcement circuit
+python simulations/bsubtilis_19_reservoir_benchmark.py   # external benchmark method against this project's circuit
+python simulations/bsubtilis_05_asymmetry_structural_search.py
+python -m pytest tests/                             # unit tests, cover analysis/ only
+```
+
+Most of `experiments/` works this way: a runnable script that prints its own
+result, with no test framework around it. Some of the heavier scripts take
+several minutes.
+
+## Reading the output
+
+Two numbers recur across the simulations.
+
+**Fidelity or integrity** is the fraction of reads that return the bit that was
+written. 1.0 is perfect, 0.5 is a coin flip and means the bit is gone. A result
+near 0.5 is not partial success; it is total failure wearing a respectable
+number.
+
+**SNR** is the separation between the two states relative to the noise. The
+project's own pass threshold, defined before the results came in, is fidelity
+at or above 70% with SNR at or above 3:1.
+
+Scripts state their own caveats in their docstrings and in their printed
+output. Those caveats are load-bearing. A result reported without them is
+misreported.
+
+## Where to go next
+
+- `docs/SCIENTIFIC_AUDIT_2026.md` is the source of truth for what is proven
+  versus assumed, appended to continuously and organized in numbered parts.
+- `CODEMAP.md` maps the code structure, though the source file is always
+  authoritative if the two disagree.
+- `docs/ACHERON_101.md` is a plain-language primer if the biology is new.
+- `experiments/BENCH_PROTOCOL_BSUBTILIS.md` is the draft *B. subtilis* bench protocol.
+- `docs/INVESTOR_PITCH.md` has the four-stage roadmap and its costs.
+- Older documents (`docs/INVESTOR_PITCH_PHASE2_UPDATE.md`, the `PHASE2`,
+  `PHASE3` and `PHASE4` files, the whitepaper) predate several corrections.
+  Cross-check anything in them against the audit before reusing it.

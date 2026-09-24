@@ -1,0 +1,856 @@
+<title>Acheron</title>
+<meta name="color-scheme" content="dark">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,500;0,600;1,400;1,500&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ================= Tokens =================
+   Deliberate single dark world: a bioelectric signal read against deep
+   tissue. Neutrals carry a teal bias rather than pure grey. All colors
+   are declared explicitly (no reliance on host theme). */
+:root{
+  --bg-0:#081226;          /* deepest ground, body */
+  --bg-1:#0b1f3a;          /* section surface, brand navy */
+  --bg-2:#152b4e;          /* card surface */
+  --bg-2-hi:#1c355f;       /* card surface, hovered */
+  --line:rgba(127,234,214,0.16);
+  --line-bright:rgba(127,234,214,0.42);
+  --accent:#2ec4b6;
+  --accent-bright:#7feada;
+  --accent-dim:#1c8f84;
+  --caution:#e8a33d;
+  --risk:#e8604c;
+  --ink-1:#eaf3f1;         /* primary text, teal-tinted white */
+  --ink-2:#a9c0c4;         /* secondary text */
+  --ink-3:#6e8890;         /* tertiary / faint */
+  --serif:'Spectral', Georgia, 'Times New Roman', serif;
+  --sans:'IBM Plex Sans', 'Segoe UI', Arial, sans-serif;
+  --mono:'IBM Plex Mono', 'Consolas', 'Courier New', monospace;
+}
+
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto;} }
+
+body{
+  margin:0;
+  background:var(--bg-0);
+  color:var(--ink-1);
+  font-family:var(--sans);
+  font-size:16px;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  padding-inline:clamp(1rem, 4vw, 3rem);
+}
+
+h1,h2,h3{
+  font-family:var(--serif);
+  font-weight:600;
+  line-height:1.12;
+  text-wrap:balance;
+  margin:0;
+  color:var(--ink-1);
+}
+p{margin:0;}
+a{color:inherit;}
+.eyebrow{
+  font-family:var(--mono);
+  font-size:.78rem;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--accent);
+}
+.lede{
+  max-width:62ch;
+  color:var(--ink-2);
+  font-size:1.05rem;
+}
+.tnum{ font-variant-numeric:tabular-nums; }
+
+.wrap{ max-width:1180px; margin-inline:auto; }
+section{ padding-block:clamp(3.5rem, 9vw, 7rem); position:relative; }
+.section-head{
+  display:flex; flex-direction:column; gap:.9rem;
+  max-width:44rem; margin-bottom:clamp(2rem,5vw,3.2rem);
+}
+.section-head h2{ font-size:clamp(1.7rem, 3.2vw, 2.5rem); }
+.hairline{
+  border:0; border-top:1px solid var(--line); margin:0;
+}
+
+/* ---------- Signal rail: literal reading-progress, not decoration ---------- */
+#signal-rail{
+  position:fixed; left:0; top:0; width:3px; height:100%;
+  background:rgba(127,234,214,0.08); z-index:60; pointer-events:none;
+}
+#signal-rail i{
+  display:block; width:100%; height:0%;
+  background:linear-gradient(var(--accent-bright), var(--accent));
+  box-shadow:0 0 12px var(--accent-bright);
+  transition:height .08s linear;
+}
+
+/* ---------- Nav ---------- */
+header{
+  position:sticky; top:0; z-index:50;
+  background:rgba(8,18,38,0.72);
+  backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);
+  margin-inline:calc(-1 * clamp(1rem,4vw,3rem));
+  padding-inline:clamp(1rem,4vw,3rem);
+}
+nav{
+  max-width:1180px; margin-inline:auto;
+  display:flex; align-items:center; justify-content:space-between;
+  padding-block:.9rem; gap:1rem;
+}
+.brand{ display:flex; align-items:center; gap:.6rem; font-family:var(--mono); font-weight:600; letter-spacing:.04em; font-size:1.05rem; }
+.brand svg{ width:22px; height:22px; flex:none; }
+.navlinks{ display:flex; align-items:center; gap:clamp(1rem,2vw,1.8rem); list-style:none; margin:0; padding:0; }
+.navlinks a{
+  text-decoration:none; color:var(--ink-2); font-size:.92rem; font-weight:500;
+  transition:color .15s ease;
+}
+.navlinks a:hover, .navlinks a:focus-visible{ color:var(--ink-1); }
+.navlinks{ flex-wrap:wrap; }
+#nav-toggle{ display:none; }
+
+.btn{
+  display:inline-flex; align-items:center; gap:.5rem;
+  font-family:var(--sans); font-weight:600; font-size:.92rem;
+  padding:.7rem 1.25rem; border-radius:999px;
+  text-decoration:none; cursor:pointer; border:1px solid transparent;
+  transition:transform .15s ease, box-shadow .15s ease, background .15s ease;
+  white-space:nowrap;
+}
+.btn:focus-visible{ outline:2px solid var(--accent-bright); outline-offset:2px; }
+.btn-primary{ background:var(--accent); color:#04231f; }
+.btn-primary:hover{ background:var(--accent-bright); transform:translateY(-1px); box-shadow:0 8px 24px -8px rgba(46,196,182,.55); }
+.btn-ghost{ background:transparent; color:var(--ink-1); border-color:var(--line-bright); }
+.btn-ghost:hover{ border-color:var(--accent); color:var(--accent-bright); }
+
+/* ---------- Ambient glow: fixed atmosphere behind the framed hero ---------- */
+#ambient-glow{ position:fixed; inset:0; z-index:-1; overflow:hidden; pointer-events:none; }
+#ambient-glow i{ position:absolute; border-radius:50%; filter:blur(70px); display:block; }
+#ambient-glow i:nth-child(1){ width:44vw; height:44vw; top:-16vw; right:-12vw; background:radial-gradient(circle, rgba(46,196,182,.5), transparent 70%); }
+#ambient-glow i:nth-child(2){ width:30vw; height:30vw; bottom:-10vw; left:-8vw; background:radial-gradient(circle, rgba(28,143,132,.38), transparent 70%); }
+
+/* ---------- Hero: a framed panel (device-mockup composition), not a bare section ---------- */
+.hero{ padding-block:clamp(1.2rem,3vw,2rem) clamp(2rem,6vw,3.6rem); }
+.hero-frame{
+  position:relative; border-radius:28px; overflow:hidden;
+  background:linear-gradient(160deg, #123258 0%, var(--bg-1) 45%, var(--bg-0) 100%);
+  border:1px solid var(--line);
+  padding:clamp(1.5rem,4vw,2.8rem);
+  box-shadow:0 50px 90px -45px rgba(0,0,0,.65);
+}
+.hero-grid{
+  display:grid; grid-template-columns:1.05fr .95fr; gap:clamp(2rem,5vw,3.4rem);
+  align-items:center;
+}
+.wordmark{
+  font-family:var(--sans); font-weight:700; text-transform:uppercase;
+  letter-spacing:-.01em; line-height:.9; margin:0;
+  font-size:clamp(2.9rem, 8.2vw, 6.2rem);
+  background:linear-gradient(135deg, var(--ink-1) 15%, var(--accent-bright) 105%);
+  -webkit-background-clip:text; background-clip:text; color:var(--accent-bright);
+}
+@supports (-webkit-background-clip:text){ .wordmark{ color:transparent; } }
+.hero-tagline{ font-family:var(--mono); font-size:.8rem; letter-spacing:.05em; color:var(--ink-2); margin-top:1.1rem; display:block; }
+.hero .lede{ margin-block:.9rem 1.7rem; font-size:1.03rem; }
+.hero-ctas{ display:flex; gap:.9rem; flex-wrap:wrap; }
+
+.hero-visual{ position:relative; min-height:26rem; }
+.scope-wrap{
+  position:absolute; inset:0; border-radius:20px; overflow:hidden;
+  background:radial-gradient(125% 145% at 72% 12%, #123a63 0%, var(--bg-1) 55%, #050b1a 100%);
+  border:1px solid var(--line);
+}
+.scope-wrap svg{ position:absolute; inset:0; width:100%; height:100%; }
+
+/* filmstrip card row: flexbox handles spacing, no manual overlap math */
+.hero-card-row{
+  position:absolute; left:1rem; right:1rem; bottom:1rem; z-index:3;
+  display:flex; align-items:flex-end; gap:.7rem;
+}
+.float-card{
+  flex:1 1 0; min-width:0;
+  background:linear-gradient(180deg, rgba(23,46,82,.95), rgba(7,16,34,.95));
+  border:1px solid var(--line-bright); border-radius:14px; padding:.85rem .8rem;
+  backdrop-filter:blur(8px); box-shadow:0 20px 34px -18px rgba(0,0,0,.6);
+  transition:transform .2s ease, border-color .2s ease;
+}
+.float-card:hover{ border-color:var(--accent); transform:translateY(-4px); }
+.float-card.is-featured{
+  transform:translateY(-14px); z-index:2; border-color:var(--line-bright);
+  box-shadow:0 28px 48px -18px rgba(0,0,0,.7), 0 0 0 1px rgba(127,234,214,.15);
+}
+.float-card.is-featured:hover{ transform:translateY(-18px); }
+.float-card .tag{ display:block; margin-bottom:.4rem; font-size:.62rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.float-card .stat-num{ font-size:1.15rem; display:block; }
+.float-card.is-featured .stat-num{ font-size:1.3rem; }
+.float-card .stat-label{ margin-top:.3rem; font-size:.72rem; line-height:1.35; display:block; }
+
+.hero-bottom-row{
+  display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.8rem;
+  margin-top:clamp(1.5rem,4vw,2.2rem); padding-top:1.1rem; border-top:1px solid var(--line);
+  font-family:var(--mono); font-size:.72rem; color:var(--ink-3); letter-spacing:.04em;
+}
+.hero-bottom-row .live{ display:flex; align-items:center; gap:.5rem; }
+.hero-bottom-row .live i{ width:7px; height:7px; border-radius:50%; background:var(--accent); box-shadow:0 0 8px var(--accent); display:inline-block; }
+.hero-bottom-row .icons{ display:flex; gap:.9rem; }
+.hero-bottom-row .icons a{ color:var(--ink-3); display:flex; transition:color .15s ease; }
+.hero-bottom-row .icons a:hover{ color:var(--accent-bright); }
+.hero-bottom-row .icons svg{ width:16px; height:16px; }
+
+.stat-num{ font-family:var(--mono); font-weight:600; font-size:clamp(1.5rem,2.6vw,1.9rem); color:var(--ink-1); }
+.stat-label{ font-size:.82rem; color:var(--ink-2); margin-top:.25rem; }
+
+/* ---------- Reveal-on-scroll: visible at rest, JS only enhances ---------- */
+[data-reveal]{ opacity:1; transform:none; }
+body.js-ready [data-reveal]{ opacity:0; transform:translateY(14px); transition:opacity .6s ease, transform .6s ease; }
+body.js-ready [data-reveal].is-visible{ opacity:1; transform:none; }
+@media (prefers-reduced-motion: reduce){
+  body.js-ready [data-reveal]{ opacity:1 !important; transform:none !important; transition:none !important; }
+}
+
+/* ---------- Cards / grids ---------- */
+.grid-3{ display:grid; grid-template-columns:repeat(3,1fr); gap:1.4rem; }
+.grid-2{ display:grid; grid-template-columns:repeat(2,1fr); gap:1.4rem; }
+.card{
+  background:var(--bg-2); border:1px solid var(--line); border-radius:16px;
+  padding:1.6rem; display:flex; flex-direction:column; gap:.7rem;
+}
+.card h3{ font-size:1.15rem; }
+.card p{ color:var(--ink-2); font-size:.95rem; }
+.tag{ font-family:var(--mono); font-size:.72rem; letter-spacing:.06em; color:var(--ink-3); }
+
+/* ---------- Problem table ---------- */
+.tbl{ width:100%; border-collapse:collapse; font-size:.94rem; }
+.tbl th{ text-align:left; font-family:var(--mono); font-size:.72rem; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); font-weight:500; padding:.6rem .9rem; border-bottom:1px solid var(--line-bright); }
+.tbl td{ padding:.85rem .9rem; border-bottom:1px solid var(--line); color:var(--ink-2); vertical-align:top; }
+.tbl td:first-child, .tbl th:first-child{ color:var(--ink-1); font-weight:600; }
+.tbl-wrap{ overflow-x:auto; border:1px solid var(--line); border-radius:14px; }
+.tbl-wrap .tbl{ min-width:640px; }
+
+.bullets{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:.7rem; }
+.bullets li{ display:flex; gap:.7rem; color:var(--ink-2); font-size:.95rem; }
+.bullets li::before{ content:''; flex:none; width:6px; height:6px; margin-top:.55em; border-radius:50%; background:var(--risk); }
+
+/* ---------- Steps ---------- */
+.steps{ display:grid; grid-template-columns:repeat(3,1fr); gap:1.4rem; counter-reset:step; }
+.step{ background:var(--bg-2); border:1px solid var(--line); border-radius:16px; padding:1.6rem; }
+.step .num{ font-family:var(--mono); color:var(--accent); font-size:.85rem; margin-bottom:.6rem; display:block; }
+.step h3{ font-size:1.1rem; margin-bottom:.5rem; }
+.step p{ color:var(--ink-2); font-size:.93rem; }
+
+/* ---------- Pull quote ---------- */
+.pullquote{
+  border-top:1px solid var(--line-bright); border-bottom:1px solid var(--line-bright);
+  padding-block:clamp(2rem,5vw,3rem); margin-block:clamp(2.5rem,6vw,4rem);
+  text-align:center;
+}
+.pullquote p{
+  font-family:var(--serif); font-style:italic; font-weight:500;
+  font-size:clamp(1.3rem,3vw,1.9rem); color:var(--ink-1); max-width:44rem; margin-inline:auto;
+}
+.pullquote cite{ display:block; margin-top:1rem; font-style:normal; font-family:var(--mono); font-size:.78rem; color:var(--ink-3); }
+
+/* ---------- Findings ---------- */
+.finding{
+  display:grid; grid-template-columns:1fr 1fr; gap:1.4rem;
+  background:var(--bg-2); border:1px solid var(--line); border-radius:16px; padding:1.6rem;
+}
+.finding + .finding{ margin-top:1.1rem; }
+.finding .col-label{ font-family:var(--mono); font-size:.7rem; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); margin-bottom:.4rem; display:block; }
+.finding h4{ font-family:var(--sans); font-weight:600; font-size:1rem; color:var(--ink-1); margin:0 0 .5rem; }
+.finding p{ color:var(--ink-2); font-size:.92rem; }
+.status-chip{
+  display:inline-flex; align-items:center; gap:.4rem; font-family:var(--mono); font-size:.72rem;
+  padding:.28rem .6rem; border-radius:999px; margin-bottom:.7rem; letter-spacing:.02em;
+}
+.chip-ok{ background:rgba(46,196,182,.12); color:var(--accent-bright); border:1px solid rgba(46,196,182,.35); }
+.chip-caution{ background:rgba(232,163,61,.12); color:var(--caution); border:1px solid rgba(232,163,61,.35); }
+.chip-risk{ background:rgba(232,96,76,.12); color:var(--risk); border:1px solid rgba(232,96,76,.35); }
+
+/* ---------- Confidence ranking ---------- */
+.rank-list{ display:flex; flex-direction:column; gap:.9rem; }
+.rank-row{
+  display:grid; grid-template-columns:1.4fr auto 2.2fr; gap:1.2rem; align-items:center;
+  background:var(--bg-2); border:1px solid var(--line); border-radius:14px; padding:1rem 1.3rem;
+}
+.rank-row .who{ font-weight:600; }
+.rank-row .reason{ color:var(--ink-2); font-size:.9rem; }
+.dotline{ display:flex; align-items:center; gap:.5rem; font-family:var(--mono); font-size:.78rem; white-space:nowrap; }
+.dotline i{ width:9px; height:9px; border-radius:50%; display:inline-block; }
+
+/* ---------- Market ---------- */
+.market-grid{ display:grid; grid-template-columns:1fr 1fr; gap:1.4rem; }
+.market-card{ background:var(--bg-2); border:1px solid var(--line); border-radius:16px; padding:1.8rem; }
+.market-num{ font-family:var(--mono); font-weight:600; color:var(--accent-bright); font-size:clamp(1.8rem,3.4vw,2.4rem); }
+.market-card h4{ font-family:var(--sans); font-weight:600; margin-top:.5rem; font-size:1rem; }
+.market-card p{ color:var(--ink-2); font-size:.92rem; margin-top:.6rem; }
+.note{ font-size:.88rem; color:var(--ink-3); font-style:italic; margin-top:1.4rem; max-width:60ch; }
+
+/* ---------- Roadmap ---------- */
+.roadmap-stats{ display:grid; grid-template-columns:repeat(3,1fr); gap:1.2rem; }
+.rm-stat{ background:var(--bg-2); border:1px solid var(--line); border-radius:16px; padding:1.5rem; }
+.rm-stat .stat-num{ color:var(--accent-bright); }
+.ask-list{ list-style:none; margin:1.6rem 0 0; padding:0; display:flex; flex-direction:column; gap:1rem; }
+.ask-list li{ display:flex; gap:1rem; background:var(--bg-2); border:1px solid var(--line); border-radius:14px; padding:1.1rem 1.3rem; }
+.ask-list .n{ font-family:var(--mono); color:var(--accent); font-weight:600; flex:none; }
+.ask-list h4{ font-family:var(--sans); font-weight:600; font-size:.98rem; margin:0 0 .3rem; }
+.ask-list p{ color:var(--ink-2); font-size:.9rem; }
+.ip-note{ margin-top:1.4rem; padding:1.1rem 1.3rem; border:1px solid var(--line-bright); border-radius:14px; background:rgba(46,196,182,.06); font-size:.9rem; color:var(--ink-2); }
+.ip-note b{ color:var(--ink-1); }
+
+/* ---------- Team ---------- */
+.team-grid{ display:grid; grid-template-columns:1fr 1fr; gap:1.6rem; }
+.person{ background:var(--bg-2); border:1px solid var(--line); border-radius:18px; padding:1.8rem; }
+.avatar{
+  width:52px; height:52px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-family:var(--serif); font-weight:600; font-size:1.2rem; margin-bottom:1rem;
+  background:linear-gradient(135deg, var(--accent), var(--accent-dim)); color:#04231f;
+}
+.person h3{ font-size:1.2rem; }
+.person .role{ font-family:var(--mono); font-size:.8rem; color:var(--accent); margin-top:.2rem; display:block; }
+.person p{ color:var(--ink-2); font-size:.92rem; margin-top:.9rem; }
+.person a{ color:var(--accent-bright); text-decoration:none; font-size:.88rem; margin-top:.9rem; display:inline-block; }
+.person a:hover{ text-decoration:underline; }
+
+/* ---------- Contact / footer ---------- */
+.contact-band{
+  background:linear-gradient(180deg, var(--bg-1), var(--bg-0));
+  border-radius:24px; border:1px solid var(--line);
+  padding:clamp(2.2rem,6vw,3.6rem); text-align:center;
+}
+.contact-band h2{ font-size:clamp(1.7rem,3.6vw,2.6rem); max-width:34ch; margin-inline:auto; }
+.contact-links{ display:flex; gap:1rem; justify-content:center; flex-wrap:wrap; margin-top:1.8rem; }
+footer{ padding-block:2.4rem 3rem; display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; color:var(--ink-3); font-size:.85rem; }
+footer a{ color:var(--ink-2); text-decoration:none; }
+footer a:hover{ color:var(--accent-bright); }
+
+/* ---------- Responsive ---------- */
+@media (max-width:900px){
+  .hero-grid, .grid-2, .market-grid, .team-grid{ grid-template-columns:1fr; }
+  .grid-3, .steps, .roadmap-stats{ grid-template-columns:1fr; }
+  .finding{ grid-template-columns:1fr; }
+  nav{ flex-wrap:wrap; row-gap:.6rem; }
+  .navlinks{ order:3; width:100%; gap:1rem 1.4rem; }
+  .hero-visual{ min-height:0; }
+  .scope-wrap{ position:relative; inset:auto; min-height:11rem; }
+  .hero-card-row{ position:relative; left:auto; right:auto; bottom:auto; flex-direction:column; margin-top:.9rem; }
+  .float-card, .float-card.is-featured{ transform:none; width:100%; }
+}
+@media (max-width:560px){
+  .rank-row{ grid-template-columns:1fr; }
+}
+</style>
+
+<div id="ambient-glow"><i></i><i></i></div>
+<div id="signal-rail"><i id="signal-fill"></i></div>
+
+<header>
+  <nav>
+    <a class="brand" href="#top" aria-label="Acheron, home">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M1 12h4l2-7 4 14 3-10 2 6h7" stroke="#2ec4b6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      ACHERON
+    </a>
+    <ul class="navlinks">
+      <li><a href="#science">Science</a></li>
+      <li><a href="#results">Results</a></li>
+      <li><a href="#market">Market</a></li>
+      <li><a href="#roadmap">Roadmap</a></li>
+      <li><a href="#team">Team</a></li>
+    </ul>
+    <a class="btn btn-primary" href="#contact">Get in touch</a>
+  </nav>
+</header>
+
+<main id="top">
+
+  <!-- ================= HERO ================= -->
+  <section class="hero">
+    <div class="wrap">
+      <div class="hero-frame">
+        <div class="hero-grid">
+          <div>
+            <p class="eyebrow">Bioelectric &amp; epigenetic memory research</p>
+            <h1 class="wordmark">Acheron</h1>
+            <span class="hero-tagline">SELF&#8209;HEALING DATA &middot; ENGINEERED &amp; NATURAL SUBSTRATES</span>
+            <p class="lede">Storing arbitrary binary data as a rewritable, self-healing state in living tissue: engineered <em style="color:var(--ink-1); font-style:normal; font-weight:600;">Bacillus subtilis</em> bacteria first, planarian flatworms as a less-grounded fallback. No power to hold state, no technician to send when it's damaged.</p>
+            <div class="hero-ctas">
+              <a class="btn btn-primary" href="#contact">Get in touch</a>
+              <a class="btn btn-ghost" href="#science">See the science &darr;</a>
+            </div>
+          </div>
+
+          <div class="hero-visual">
+            <div class="scope-wrap">
+              <svg id="scope-svg" viewBox="0 0 560 400" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Generative bacterial colony network with a live bioelectric voltage trace">
+                <defs>
+                  <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+                    <feGaussianBlur stdDeviation="4.4" result="blur"/>
+                    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                  </filter>
+                </defs>
+                <g id="colony-group" filter="url(#glow)"></g>
+                <rect x="0" y="0" width="560" height="70" fill="#050b1a" fill-opacity="0"/>
+                <line x1="16" y1="40" x2="544" y2="40" stroke="rgba(127,234,214,0.14)" stroke-width="1"/>
+                <path id="scope-path" d="" fill="none" stroke="#2ec4b6" stroke-width="2.2" filter="url(#glow)" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+
+            <div class="hero-card-row">
+              <div class="float-card">
+                <span class="tag">GARDNER CIRCUIT</span>
+                <span class="stat-num tnum">100%</span>
+                <span class="stat-label">fidelity, full BBB promoter range</span>
+              </div>
+              <div class="float-card is-featured">
+                <span class="tag">ADJACENT MARKET, 2026</span>
+                <span class="stat-num tnum">$1.2B&ndash;$2.0B</span>
+                <span class="stat-label">radiation-hardened space electronics</span>
+              </div>
+              <div class="float-card">
+                <span class="tag">WET-LAB ASK</span>
+                <span class="stat-num tnum">$10K&ndash;$30K</span>
+                <span class="stat-label">the one validation experiment</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-bottom-row">
+          <span class="live"><i></i>STAGE &middot; PRE-WETWARE VALIDATION</span>
+          <span class="icons">
+            <a href="mailto:sanchezleal1989@gmail.com" aria-label="Email Acheron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg></a>
+            <a href="https://github.com/rewired89/Acheron.git" aria-label="Acheron on GitHub"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5A11.5 11.5 0 0 0 .5 12c0 5.1 3.29 9.42 7.86 10.95.57.1.79-.25.79-.55v-1.94c-3.2.7-3.87-1.54-3.87-1.54-.53-1.33-1.29-1.69-1.29-1.69-1.05-.72.08-.7.08-.7 1.17.08 1.78 1.2 1.78 1.2 1.03 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11.1 11.1 0 0 1 5.79 0c2.2-1.49 3.17-1.18 3.17-1.18.64 1.59.24 2.76.12 3.05.74.81 1.18 1.83 1.18 3.09 0 4.42-2.69 5.4-5.25 5.68.41.36.78 1.06.78 2.14v3.17c0 .3.21.66.8.55A11.5 11.5 0 0 0 23.5 12 11.5 11.5 0 0 0 12 .5Z"/></svg></a>
+          </span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="hairline">
+
+  <!-- ================= THE PROBLEM ================= -->
+  <section id="problem">
+    <div class="wrap">
+      <div class="section-head" data-reveal>
+        <p class="eyebrow">01 &middot; The problem</p>
+        <h2>Every biocomputing product today runs on neurons, cells built for speed, not for storage.</h2>
+        <p class="lede">Neurons need continuous power to hold any signal at all, run on a fixed replacement clock, and need life support: temperature, pH, oxygen control. None of that survives radiation, vacuum, or physical damage, exactly the conditions spacecraft, seafloor sensors, and remote infrastructure operate in.</p>
+      </div>
+
+      <div class="tbl-wrap" data-reveal>
+        <table class="tbl">
+          <thead><tr><th>Company</th><th>Substrate</th><th>Lifespan</th><th>Price</th></tr></thead>
+          <tbody>
+            <tr><td>Cortical Labs</td><td>Human neurons on silicon (CL-1)</td><td>6 months</td><td>$35,000 / unit</td></tr>
+            <tr><td>Koniku</td><td>Neuron-silicon sensing chips</td><td>~2 years</td><td>Not public</td></tr>
+            <tr><td>FinalSpark</td><td>Brain organoids</td><td>Not public</td><td>Cloud access only</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= THE HYPOTHESIS ================= -->
+  <section id="hypothesis">
+    <div class="wrap">
+      <div class="section-head" data-reveal>
+        <p class="eyebrow">02 &middot; The hypothesis</p>
+        <h2>Some living tissue already holds a voltage pattern for weeks, and regrows itself after damage.</h2>
+      </div>
+
+      <div class="steps" data-reveal>
+        <div class="step">
+          <span class="num">01</span>
+          <h3>Natural precedent</h3>
+          <p>Planarian flatworms store body-plan identity, "grow a head here", as a bioelectric pattern. Cut one in half, the pattern survives and rebuilds correctly in both halves.</p>
+        </div>
+        <div class="step">
+          <span class="num">02</span>
+          <h3>Our question</h3>
+          <p>Can the same kind of system, voltage state plus strong regenerative inheritance, hold arbitrary binary data, not just the organism's own natural signal?</p>
+        </div>
+        <div class="step">
+          <span class="num">03</span>
+          <h3>Why it would matter</h3>
+          <p>A substrate that needs no power to hold state, and repairs itself after physical damage, is a fundamentally different answer to extreme-environment storage.</p>
+        </div>
+      </div>
+
+      <div class="pullquote" data-reveal>
+        <p>Write. The organism regenerates or divides. The state travels with it, not just genetic material, the written data itself. The original colony heals back to a clean baseline, ready to write again.</p>
+        <cite>The full write &rarr; transfer &rarr; self-heal cycle. Not yet tested in a wet lab, it's the goal the roadmap experiment works toward.</cite>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= SCIENCE & RESULTS ================= -->
+  <section id="science">
+    <div class="wrap">
+      <div class="section-head" data-reveal>
+        <p class="eyebrow">03 &middot; Foundation &amp; method</p>
+        <h2>Built on published results, tested against our own model, not just believed.</h2>
+        <p class="lede">Three independently published results this concept is built on, plus the modeling approach used to test them.</p>
+      </div>
+
+      <div class="grid-3" data-reveal>
+        <div class="card">
+          <span class="tag">LEVIN ET AL., 2006&ndash;2023 (TUFTS)</span>
+          <h3>Bioelectric body-plan control</h3>
+          <p>Voltage gradients control regeneration outcomes in planaria, replicated across multiple labs. The two-headed-worm result is the most cited example.</p>
+        </div>
+        <div class="card">
+          <span class="tag">GARDNER, CANTOR &amp; COLLINS, 2000, NATURE</span>
+          <h3>Engineered genetic bistability</h3>
+          <p>A synthetic two-repressor circuit holds one of two states indefinitely once flipped, a solved, 25-year-old result the authors called an addressable cellular memory unit.</p>
+        </div>
+        <div class="card">
+          <span class="tag">AKABUOGU ET AL., 2024, NANO LETTERS</span>
+          <h3>Non-destructive electrical readout</h3>
+          <p>A simple two-electrode impedance measurement distinguishes live from dead bacterial biofilm, tied to one ion channel's activity. No dye, no sample destruction.</p>
+        </div>
+      </div>
+
+      <p class="note" data-reveal style="margin-top:1.6rem">Modeling approach: physics-based, BETSE-inspired simulation (gap-junction diffusion, ion-channel membrane dynamics), the same framework underlying the Levin Lab's own BETSE tool, cross-validated against tasmorpho (Blattner, 2026, bioRxiv), an independently published BETSE-based method whose reference values we reproduce to six decimal places.</p>
+    </div>
+  </section>
+
+  <!-- ================= RESULTS (honest findings) ================= -->
+  <section id="results">
+    <div class="wrap">
+      <div class="section-head" data-reveal>
+        <p class="eyebrow">04 &middot; What we found</p>
+        <h2>We stress-tested our own claims before anyone outside the project did.</h2>
+        <p class="lede">Acheron's credibility strategy is leading with rigor, not hype. Here is what held up, what broke, and what we changed as a result.</p>
+      </div>
+
+      <div data-reveal>
+        <div class="finding">
+          <div>
+            <span class="status-chip chip-risk">FAILED UNDER NOISE</span>
+            <h4>Passive persistence isn't enough on its own</h4>
+            <p>Our first model showed a planarian cell could passively hold a written bit for 24+ hours. Under realistic biological noise, that same result collapses from 100% to about 50%, a coin flip. We found this by stress-testing our own model, not from an outside reviewer.</p>
+          </div>
+          <div>
+            <span class="col-label">Fidelity at 24h</span>
+            <div class="stat-num tnum" style="font-size:1.6rem">100% &rarr; ~50%</div>
+            <p style="margin-top:.5rem">Zero-noise simulation vs. realistic channel, metabolic, and thermal noise added.</p>
+          </div>
+        </div>
+
+        <div class="finding">
+          <div>
+            <span class="status-chip chip-ok">HOLDS ACROSS THE CATALOG</span>
+            <h4>The engineered fix works across its whole practical design range</h4>
+            <p>The pivot: an actively engineered bistable circuit (Gardner topology, built from real Bacillus BioBrick Box parts). Any promoter pair within the BBB's entire characterized 1.0x&ndash;10.0x strength range holds state at 100% fidelity at 24 hours. Only pushing far outside that catalog, to a severe 0.1x mismatch, collapses the circuit to a monostable dead switch.</p>
+          </div>
+          <div>
+            <span class="col-label">Genetic &amp; voltage-output fidelity</span>
+            <div class="stat-num tnum" style="font-size:1.6rem">100%</div>
+            <p style="margin-top:.5rem">Across the entire characterized promoter-strength range; 50% only at a deliberate, far-out-of-catalog 0.1x mismatch.</p>
+          </div>
+        </div>
+
+        <div class="finding">
+          <div>
+            <span class="status-chip chip-caution">NEW RISK, FOUND EARLY</span>
+            <h4>The colony's own biology can scramble a reading, even when the data is fine</h4>
+            <p><em style="color:var(--ink-1)">B. subtilis</em> biofilms run a continuous potassium-wave electrical signal of their own (Prindle et al., 2015), unrelated to anything Acheron builds. In simulation, that native oscillation can corrupt a single instantaneous voltage reading even when the underlying circuit data is 100% intact.</p>
+          </div>
+          <div>
+            <span class="col-label">The fix, and its limit</span>
+            <div class="stat-num tnum" style="font-size:1.6rem">~3h</div>
+            <p style="margin-top:.5rem">Reading via impedance (EIS) instead of raw voltage helps, but a single fast sweep isn't immune either, it needs to integrate across a full oscillation cycle to recover accuracy.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-head" style="margin-top:clamp(2.5rem,6vw,3.5rem)" data-reveal>
+        <p class="eyebrow">Cross-organism honesty check</p>
+        <h2 style="font-size:clamp(1.4rem,2.6vw,1.9rem)">We ranked our own candidate mechanisms by how much wet-lab risk each still hides.</h2>
+      </div>
+      <div class="rank-list" data-reveal>
+        <div class="rank-row">
+          <span class="who">B. subtilis, engineered circuit</span>
+          <span class="dotline"><i style="background:var(--accent)"></i>HIGHEST CONFIDENCE</span>
+          <span class="reason">Inheritance is mechanistically forced: cell division copies the existing protein state. This is now the project's lead mechanism.</span>
+        </div>
+        <div class="rank-row">
+          <span class="who">B. subtilis, methylation</span>
+          <span class="dotline"><i style="background:var(--caution)"></i>MEDIUM CONFIDENCE</span>
+          <span class="reason">Real fidelity numbers exist in the literature, but measured in a different species. The fallback if the engineered circuit doesn't survive regrowth.</span>
+        </div>
+        <div class="rank-row">
+          <span class="who">Planarian, bioelectric circuit</span>
+          <span class="dotline"><i style="background:var(--risk)"></i>LOWEST CONFIDENCE</span>
+          <span class="reason">Our original organism choice. Cell-coupling strength is a borrowed assumption that has never been measured. We're reporting that now, before spending wet-lab money on it.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= COMPETITION ================= -->
+  <section id="competition">
+    <div class="wrap">
+      <div class="section-head" data-reveal>
+        <p class="eyebrow">05 &middot; Landscape</p>
+        <h2>Nobody else is storing arbitrary data as a dynamic, rewritable bioelectric state.</h2>
+      </div>
+
+      <div class="tbl-wrap" data-reveal>
+        <table class="tbl">
+          <thead><tr><th>Player</th><th>What they store</th><th>Read mechanism</th><th>Gap vs. Acheron</th></tr></thead>
+          <tbody>
+            <tr><td>Mycelium memristor<br><span class="tag">LaRocco et al. 2025</span></td><td>Analog resistance state</td><td>Continuous signal</td><td>90% accuracy; no addressable write layer</td></tr>
+            <tr><td>DNA-sequence storage<br><span class="tag">BioCompute / Biomemory</span></td><td>DNA sequence (archival)</td><td>Destructive sequencing</td><td>Write-once archive, not a rewritable state</td></tr>
+            <tr><td>Neuron-based wetware<br><span class="tag">Cortical Labs, Koniku</span></td><td>Cognition &amp; sensing</td><td>Electrode array</td><td>Different category: compute/sensing, not memory storage</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note" data-reveal>Real, funded, adjacent work, cited on purpose. None of it is solving Acheron's specific problem: a rewritable, self-healing, non-destructively-readable bit.</p>
+    </div>
+  </section>
+
+  <!-- ================= MARKET ================= -->
+  <section id="market">
+    <div class="wrap">
+      <div class="section-head" data-reveal>
+        <p class="eyebrow">06 &middot; If the core mechanism validates</p>
+        <h2>Two real, externally-verifiable numbers, not an invented forecast.</h2>
+        <p class="lede">Every number in earlier versions of this pitch was invented, not sourced. We'd rather show up with two real data points than a spreadsheet that doesn't survive a follow-up question.</p>
+      </div>
+
+      <div class="market-grid" data-reveal>
+        <div class="market-card">
+          <div class="market-num tnum">$350K / 5 yrs</div>
+          <h4>What customers already pay for the closest existing alternative</h4>
+          <p>Cortical Labs' CL-1 (neuron-based) sells for $35,000/unit and needs replacing every 6 months, with zero self-repair. A live, public data point for what this market already tolerates paying to avoid downtime.</p>
+        </div>
+        <div class="market-card">
+          <div class="market-num tnum">$1.2B&ndash;$2.0B</div>
+          <h4>Radiation-hardened space electronics, 2026</h4>
+          <p>Independent analyst range (Grand View Research, Fortune Business Insights, Research and Markets), growing ~4&ndash;5.6% CAGR into the early 2030s, driven by LEO satellite constellations needing more radiation-tolerant memory.</p>
+        </div>
+      </div>
+      <p class="note" data-reveal>The same underlying need, radiation-tolerant, low-maintenance memory with no technician access, recurs across extreme-environment computing broadly: spacecraft, deep-sea systems, remote infrastructure. This upside is entirely conditional on the roadmap experiment below succeeding.</p>
+    </div>
+  </section>
+
+  <!-- ================= ROADMAP / ASK ================= -->
+  <section id="roadmap">
+    <div class="wrap">
+      <div class="section-head" data-reveal>
+        <p class="eyebrow">07 &middot; Roadmap &amp; the ask</p>
+        <h2>The one experiment that changes everything.</h2>
+        <p class="lede">Build the matched-promoter toggle circuit in <em style="color:var(--ink-1)">B. subtilis</em>, write a bit, damage the colony, let it regrow, read the bit back non-destructively via EIS.</p>
+      </div>
+
+      <div class="roadmap-stats" data-reveal>
+        <div class="rm-stat"><div class="stat-num tnum">$10K&ndash;$30K</div><div class="stat-label">Cost: reagents, cloning, lab bench access</div></div>
+        <div class="rm-stat"><div class="stat-num tnum">6&ndash;12 mo</div><div class="stat-label">Timeline to a clear yes/no answer</div></div>
+        <div class="rm-stat"><div class="stat-num tnum">2</div><div class="stat-label">Outcomes only: validate the mechanism, or cleanly redirect to methylation</div></div>
+      </div>
+
+      <ul class="ask-list" data-reveal>
+        <li><span class="n">01</span><div><h4>Funding for the wet-lab validation experiment</h4><p>The $10K&ndash;$30K described above: reagents, plasmid synthesis and cloning, lab bench access.</p></div></li>
+        <li><span class="n">02</span><div><h4>Budget to hire a paid synthetic-biology consultant</h4><p>A real expert's time to review and help execute the toggle-circuit build, not just informal mentoring hours.</p></div></li>
+        <li><span class="n">03</span><div><h4>Lab access &amp; partnership introductions</h4><p>Standard bacterial transformation and plasmid cloning. <em style="color:var(--ink-1)">B. subtilis</em> is a workhorse organism, far more common than planarian-specific culture.</p></div></li>
+      </ul>
+
+      <div class="ip-note" data-reveal><b>IP status:</b> patent applications filed with the USPTO covering the Bio-RAID fault-tolerance architecture, self-healing recovery protocol, and environment-adaptive longevity system.</div>
+    </div>
+  </section>
+
+  <!-- ================= TEAM ================= -->
+  <section id="team">
+    <div class="wrap">
+      <div class="section-head" data-reveal>
+        <p class="eyebrow">08 &middot; Team</p>
+        <h2>A team that treats honestly-reported science as a strength, not a liability to hide.</h2>
+      </div>
+
+      <div class="team-grid" data-reveal>
+        <div class="person">
+          <div class="avatar">DS</div>
+          <h3>Dayana Sanchez</h3>
+          <span class="role">Founder &amp; Lead Researcher</span>
+          <p>Originated the core concept and led all technical work to date: the simulation architecture, the encoder software, and the audit process that found and corrected this project's own central assumption before anyone outside the project did.</p>
+          <a href="mailto:sanchezleal1989@gmail.com">sanchezleal1989@gmail.com</a>
+        </div>
+        <div class="person">
+          <div class="avatar">JS</div>
+          <h3>Jacqueline Solano</h3>
+          <span class="role">Co-Founder, Head of Business</span>
+          <p>Leads business operations.</p>
+          <a href="mailto:jackiea.solano@gmail.com">jackiea.solano@gmail.com</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= CONTACT ================= -->
+  <section id="contact">
+    <div class="wrap">
+      <div class="contact-band" data-reveal>
+        <p class="eyebrow">Get in touch</p>
+        <h2>We're looking for a network that backs rigorous, honestly-reported science.</h2>
+        <div class="contact-links">
+          <a class="btn btn-primary" href="mailto:sanchezleal1989@gmail.com">Email Dayana</a>
+          <a class="btn btn-ghost" href="mailto:jackiea.solano@gmail.com">Email Jacqueline</a>
+          <a class="btn btn-ghost" href="https://github.com/rewired89/Acheron.git">View the repository</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="wrap">
+    <span>&copy; 2026 Acheron. Pre-wetware validation stage.</span>
+    <a href="https://github.com/rewired89/Acheron.git">github.com/rewired89/Acheron</a>
+  </footer>
+</main>
+
+<script>
+(function(){
+  "use strict";
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  document.body.classList.add('js-ready');
+
+  /* ---- scroll reveal ---- */
+  var targets = document.querySelectorAll('[data-reveal]');
+  if('IntersectionObserver' in window && targets.length){
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){ e.target.classList.add('is-visible'); io.unobserve(e.target); }
+      });
+    }, { threshold:.14, rootMargin:'0px 0px -8% 0px' });
+    targets.forEach(function(t){ io.observe(t); });
+  } else {
+    targets.forEach(function(t){ t.classList.add('is-visible'); });
+  }
+
+  /* ---- signal rail: literal scroll progress ---- */
+  var fill = document.getElementById('signal-fill');
+  function updateRail(){
+    var h = document.documentElement;
+    var scrolled = h.scrollTop || document.body.scrollTop;
+    var max = h.scrollHeight - h.clientHeight;
+    var pct = max > 0 ? (scrolled / max) * 100 : 0;
+    if(fill){ fill.style.height = pct + '%'; }
+  }
+  document.addEventListener('scroll', updateRail, { passive:true });
+  updateRail();
+
+  /* ---- count-up on stat numbers ---- */
+  function countUp(el){
+    var raw = el.textContent.trim();
+    var match = raw.match(/-?\d[\d,.]*/);
+    if(!match || reduceMotion) return;
+    var target = parseFloat(match[0].replace(/,/g,''));
+    if(isNaN(target)) return;
+    var prefix = raw.slice(0, match.index);
+    var suffix = raw.slice(match.index + match[0].length);
+    var decimals = (match[0].split('.')[1] || '').length;
+    var start = performance.now();
+    var dur = 900;
+    function frame(now){
+      var t = Math.min(1, (now - start) / dur);
+      var eased = 1 - Math.pow(1 - t, 3);
+      var val = target * eased;
+      el.textContent = prefix + val.toFixed(decimals).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + suffix;
+      if(t < 1) requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+  var statNums = document.querySelectorAll('.stat-num');
+  if('IntersectionObserver' in window && statNums.length){
+    var ioStat = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){ countUp(e.target); ioStat.unobserve(e.target); }
+      });
+    }, { threshold:.6 });
+    statNums.forEach(function(n){ ioStat.observe(n); });
+  }
+
+  /* ---- procedural bioelectric trace, thin readout strip along the top ---- */
+  var svgPath = document.getElementById('scope-path');
+  if(svgPath){
+    var W = 560, base = 40, cycles = 4;
+    function actionPotential(x0, width, amp){
+      var pts = [];
+      var restLen = width * 0.28, upLen = width * 0.10, peakLen = width * 0.06,
+          downLen = width * 0.22, underLen = width * 0.16, tailLen = width * 0.18;
+      var x = x0;
+      pts.push([x, base]);
+      x += restLen; pts.push([x, base]);
+      x += upLen; pts.push([x, base - amp]);
+      x += peakLen; pts.push([x, base - amp * 0.92]);
+      x += downLen; pts.push([x, base + amp * 0.18]);
+      x += underLen; pts.push([x, base + amp * 0.05]);
+      x += tailLen; pts.push([x, base]);
+      return pts;
+    }
+    var allPts = [];
+    var usable = W - 32, segW = usable / cycles;
+    for(var c = 0; c < cycles; c++){
+      allPts = allPts.concat(actionPotential(16 + c * segW, segW, 24));
+    }
+    var d = 'M ' + allPts.map(function(p){ return p[0].toFixed(1) + ' ' + p[1].toFixed(1); }).join(' L ');
+    svgPath.setAttribute('d', d);
+
+    if(!reduceMotion){
+      try{
+        var len = svgPath.getTotalLength();
+        svgPath.style.strokeDasharray = len;
+        svgPath.style.strokeDashoffset = len;
+        svgPath.style.transition = 'stroke-dashoffset 1.8s ease-out';
+        requestAnimationFrame(function(){
+          requestAnimationFrame(function(){ svgPath.style.strokeDashoffset = '0'; });
+        });
+      }catch(e){ /* getTotalLength unsupported: leave path fully drawn */ }
+    }
+  }
+
+  /* ---- procedural colony network: the hero's dominant visual, a phyllotaxis
+     cell cluster (golden-angle spiral) with branching connections, standing
+     in for a bacterial biofilm, generated in code rather than hand-drawn ---- */
+  var colonyGroup = document.getElementById('colony-group');
+  if(colonyGroup){
+    var svgNS = 'http://www.w3.org/2000/svg';
+    var N = 26, k = 19, golden = 137.508 * Math.PI / 180;
+    var cx = 350, cy = 235;
+    var nodes = [];
+    for(var i = 0; i < N; i++){
+      var ang = i * golden;
+      var r = k * Math.sqrt(i);
+      nodes.push({ x: cx + r * Math.cos(ang), y: cy + r * Math.sin(ang), r: Math.max(2.6, 7.4 - r * 0.045) });
+    }
+    var linesHtml = '';
+    nodes.forEach(function(n, idx){
+      [idx - 1, idx - 6].forEach(function(j){
+        if(j >= 0){
+          var o = nodes[j];
+          linesHtml += '<line x1="' + n.x.toFixed(1) + '" y1="' + n.y.toFixed(1) + '" x2="' + o.x.toFixed(1) + '" y2="' + o.y.toFixed(1) + '" stroke="rgba(127,234,214,0.22)" stroke-width="1"></line>';
+        }
+      });
+    });
+    var nodesHtml = nodes.map(function(n, idx){
+      var delay = (idx % 6) * 0.35;
+      var style = reduceMotion ? '' : ' style="animation:cellPulse 3.6s ease-in-out ' + delay.toFixed(2) + 's infinite"';
+      return '<circle cx="' + n.x.toFixed(1) + '" cy="' + n.y.toFixed(1) + '" r="' + n.r.toFixed(1) + '" fill="#2ec4b6"' + style + '></circle>';
+    }).join('');
+    colonyGroup.innerHTML = linesHtml + nodesHtml;
+
+    if(!reduceMotion && !document.getElementById('cell-pulse-style')){
+      var styleTag = document.createElement('style');
+      styleTag.id = 'cell-pulse-style';
+      styleTag.textContent = '@keyframes cellPulse{0%,100%{opacity:.55}50%{opacity:1}}';
+      document.head.appendChild(styleTag);
+    }
+  }
+})();
+</script>

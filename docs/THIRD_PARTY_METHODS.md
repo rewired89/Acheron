@@ -33,8 +33,8 @@ the actual comparison, not just a claim that it matches.
   point estimates and held-out predictions to 6 decimal places (see
   `tests/test_hidden_state_model.py`, which hardcodes the actual printed
   output of that run as the reference values).
-- **Demonstrated in**: `experiments/write_axis_gardner.py`, applied to
-  `simulations/gardner_toggle_circuit.py`'s `GardnerToggleCell` instead of
+- **Demonstrated in**: `simulations/bsubtilis_20_write_axis.py`, applied to
+  `simulations/bsubtilis_01_gardner_toggle_circuit.py`'s `GardnerToggleCell` instead of
   a BETSE tissue model.
 
 ## NeuromorphicMyceliumChip (Ozgur Telhan et al.)
@@ -52,7 +52,7 @@ the actual comparison, not just a claim that it matches.
   library rather than vendored.
 - NARMA-10 itself is a standard reservoir-computing benchmark (Atiya &
   Parlos, 2000), not proprietary to either project.
-- **Demonstrated in**: `experiments/reservoir_benchmark_gardner.py`,
+- **Demonstrated in**: `simulations/bsubtilis_19_reservoir_benchmark.py`,
   applied to `GardnerToggleCell` as the substrate under test.
 
 ## ElectricMorphogenesis (Sarath Manicka & Michael Levin, 2025)
@@ -80,9 +80,9 @@ the actual comparison, not just a claim that it matches.
   pickle that way can execute arbitrary code, and the safe
   (`weights_only=True`) load fails for these files because they bundle
   plain Python config alongside tensors. See NOTICE.md.
-- **Demonstrated in**: `experiments/field_mediated_persistence.py`, which
+- **Demonstrated in**: `simulations/planarian_07_field_mediated_persistence.py`, which
   runs their own (patched) model with hand-specified parameters against a
-  written bit-cluster pattern shaped like `bioelectric_persistence.py`'s
+  written bit-cluster pattern shaped like `planarian_01_bioelectric_persistence.py`'s
   own setup, comparing field-enabled vs. field-disabled (gap-junction-only)
   persistence.
 
@@ -96,7 +96,7 @@ the actual comparison, not just a claim that it matches.
   LICENSE file**, so it's all-rights-reserved by default. Neither this
   code nor a reimplementation of it was used anywhere in this repo.
 - **Why it's still worth citing**: their Figure 7 is a directly relevant
-  precedent for `gardner_toggle_circuit.py`'s stated open problem — a
+  precedent for `bsubtilis_01_gardner_toggle_circuit.py`'s stated open problem — a
   real, wet-lab-validated, quantitatively-designed recombinase memory
   circuit (not a "hypothetical ion-channel-output link"), achieving a
   targeted 70% recombination efficiency via their CSEC (context-specific
@@ -104,7 +104,7 @@ the actual comparison, not just a claim that it matches.
   <1.4-fold across >50 test cases. Their core result — compressed
   circuits (T-Pro) average ~4x fewer parts than canonical inverter-based
   (Cello-style) designs for the same truth table — is also a concrete
-  reference point for anyone taking `gardner_toggle_circuit.py`'s design
+  reference point for anyone taking `bsubtilis_01_gardner_toggle_circuit.py`'s design
   from "grounded proposal" toward an actual build: a canonical genetic
   toggle switch (2 promoters, 2 repressors, inversion-based) is already
   close to T-Pro's compressed end of the design space for a 1-bit switch,
@@ -120,12 +120,12 @@ see each script's own INTERPRETATION section for the actual numeric
 result and how to reproduce it. Headline findings as of the runs recorded
 in this repository's commit history:
 
-- `experiments/reservoir_benchmark_gardner.py`: a single Gardner toggle
+- `simulations/bsubtilis_19_reservoir_benchmark.py`: a single Gardner toggle
   circuit is a weak reservoir (~8% NRMSE improvement over predicting the
   mean on NARMA-10; a fair driving scheme matters — a naive one-sided
   drive is degenerate and must be ruled out first, see the script's own
   docstring for how that was caught).
-- `experiments/write_axis_gardner.py`: the circuit's exactly-symmetric
+- `simulations/bsubtilis_20_write_axis.py`: the circuit's exactly-symmetric
   baseline configuration is an unstable knife-edge — a perturbation as
   small as 1e-6 (of a parameter around magnitude 50) fully determines the
   24-hour outcome. tasmorpho's continuous linear write-map framework
@@ -135,7 +135,7 @@ in this repository's commit history:
   surfaced a real design consideration: an exactly-symmetric design is not
   a controllable `SET_BIT` baseline without either deliberate asymmetry or
   an explicit write pulse.
-- `experiments/field_mediated_persistence.py`: under hand-specified
+- `simulations/planarian_07_field_mediated_persistence.py`: under hand-specified
   (untuned, not Manicka & Levin's fitted/pretrained) field parameters,
   gap-junction diffusion alone retained a written pattern's contrast
   better (86% after 3000 iterations) than with their field-mediation
@@ -150,7 +150,7 @@ in this repository's commit history:
   values — the current result is "field-mediation isn't automatically
   stabilizing for any parameter choice," not "field-mediation doesn't
   help."
-- `experiments/handoff_pool_imperfect_healing.py`: built to test whether
+- `simulations/bsubtilis_03_handoff_pool_imperfect_healing.py`: built to test whether
   tasmorpho's ~15% residual-confusion probability (imported live from the
   fitted model, not hardcoded) hurts fidelity when a healed tile is reused
   in a pool rather than replaced with an infinite supply of fresh ones. It
@@ -161,13 +161,13 @@ in this repository's commit history:
   correct bit within a third of the allotted handoff window). A one-time
   voltage nudge is the wrong shape of perturbation to test against this
   design — not evidence imperfect healing can't matter. While building
-  this, found something bigger and unplanned: `biofilm_tile_handoff.py`'s
+  this, found something bigger and unplanned: `bsubtilis_02_biofilm_tile_handoff.py`'s
   own `main()` only tests 5 cycles (100% fidelity there); run for 60
   cycles with nothing else changed, fidelity for bit=1 drops to ~95% and
   bit=0 to ~68%, from a spontaneous mid-hold-period bistable flip in the
   existing, unmodified simulation — not from anything to do with tasmorpho,
   pool reuse, or imperfect healing.
-- `experiments/bit_asymmetry_root_cause.py`: root-causes the bit=0/bit=1
+- `simulations/bsubtilis_04_bit_asymmetry_root_cause.py`: root-causes the bit=0/bit=1
   asymmetry above by ablating each term in the tile's update equation.
   Not the bistable wells (symmetric around `V_MID`) and not the
   deterministic leak term alone (removing it changes nothing — its
@@ -186,8 +186,8 @@ in this repository's commit history:
   but doesn't fully close it — a smaller residual (likely the clip bounds
   also being off-center) remains, not fully traced.
 
-- `experiments/asymmetry_structural_search.py`: follows up on
-  `bit_asymmetry_root_cause.py`'s untested speculation ("a smaller residual
+- `simulations/bsubtilis_05_asymmetry_structural_search.py`: follows up on
+  `bsubtilis_04_bit_asymmetry_root_cause.py`'s untested speculation ("a smaller residual
   [gap], likely the clip bounds also being off-center, remains, not fully
   traced") with an automated search instead of another single guess-and-check
   — methodologically modeled on Lobo, Morokuma & Levin (2016)'s approach to
@@ -224,9 +224,9 @@ in this repository's commit history:
 - **Paper**: "The Role of Early Bioelectric Signals in the Regeneration of
   Planarian Anterior/Posterior Polarity," *Biophysical Journal* (2019),
   PMID [30799071](https://pubmed.ncbi.nlm.nih.gov/30799071/)
-- **Used in**: `experiments/damage_detection_trigger.py` — the only
+- **Used in**: `simulations/bsubtilis_06_damage_detection_trigger.py` — the only
   piece of this repo's "detect damage → handoff → heal → return" cycle
-  that had never been simulated at all. `regeneration_data_loss_window.py`
+  that had never been simulated at all. `planarian_06_regeneration_data_loss_window.py`
   assumes detection latency is a fixed polling delay (Normal(30min,
   10min)); this experiment instead grounds a signal's rise time in this
   paper's real, cited milestones (depolarization detectable within ~1h,
@@ -238,5 +238,5 @@ in this repository's commit history:
   as a parameter rather than asserted. Finding: at full bit-range signal
   strength the current assumption is safe, even conservative; at ~10%
   strength, real detection latency runs 3.5-7x slower than assumed. The
-  magnitude is exactly the kind of thing `EXPERIMENT_A_PROTOCOL.md`'s
+  magnitude is exactly the kind of thing `BENCH_PROTOCOL_HEK293.md`'s
   planned voltage-sensitive-dye imaging would need to pin down.

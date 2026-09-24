@@ -33,7 +33,7 @@
 
 ### 1. Gap Junctions = Biological Network Cables
 
-**You already simulate this!** From your `bioelectric_persistence.py`:
+**You already simulate this!** From your `planarian_01_bioelectric_persistence.py`:
 
 ```python
 # Gap junction conductance (mS/cm²)
@@ -639,7 +639,7 @@ Specs:
 
 ### What I Can Build Today
 
-1. **BioNet Simulator** (`/simulations/bionet_propagation.py`)
+1. **BioNet Simulator** (`/simulations/planarian_10_bionet_propagation.py`)
    - Voltage wave propagation through gap junction chains
    - Multi-hop routing simulation
    - Self-healing cable regeneration model

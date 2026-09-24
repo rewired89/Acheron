@@ -58,3 +58,8 @@ experiments/results/
 # Temporary files
 *.tmp
 *.log
+
+# npm deps for the docs/pitch deck generators, installed on demand
+node_modules/
+package-lock.json
+package.json

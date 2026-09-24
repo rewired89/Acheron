@@ -230,7 +230,7 @@ Found only:
 3. **Figures/Diagrams:**
    - System architecture (from your README)
    - Encoding process flowchart
-   - Simulation results (from bioelectric_persistence.py)
+   - Simulation results (from planarian_01_bioelectric_persistence.py)
    - Competitive positioning (novel features)
 
 ### Phase 2: Prior Art Search (Month 1-2)

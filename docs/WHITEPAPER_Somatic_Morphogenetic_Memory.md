@@ -286,7 +286,7 @@ Multiple steady states = multiple stable patterns = multi-bit storage.
 - ✅ Distinguishable '1' and '0' states
 - ✅ Spatial separation prevents bit crosstalk
 
-**Status**: Simulation code complete (see `/simulations/bioelectric_persistence.py`)
+**Status**: Simulation code complete (see `/simulations/planarian_01_bioelectric_persistence.py`)
 
 ### 6.2 Phase 2: Wetware Validation (Months 3-12)
 

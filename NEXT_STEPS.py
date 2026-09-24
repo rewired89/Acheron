@@ -19,7 +19,7 @@ PHASE 1: RUN EXISTING SIMULATIONS (Next 30 minutes)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Step 1: Test BETSE Installation
-  → python experiments/test_betse_installation.py
+  → python tools/test_betse_installation.py
 
   What this does:
   ✓ Verifies BETSE is working with Python 3.11
@@ -27,7 +27,7 @@ Step 1: Test BETSE Installation
   ✓ Explains validation strategy
 
 Step 2: Run Acheron Pattern Persistence Simulator
-  → python simulations/bioelectric_persistence.py
+  → python simulations/planarian_01_bioelectric_persistence.py
 
   What you'll see:
   ✓ Single-bit storage test (24 hours)
@@ -67,7 +67,7 @@ Step 4: Generate Competitive Analysis Charts
   Use these in investor presentations!
 
 Step 5: Create Interactive Demo (WE'LL BUILD THIS)
-  → python experiments/interactive_demo.py
+  → python tools/interactive_demo.py
 
   What it will do:
   ✓ Let users type binary strings
@@ -91,7 +91,7 @@ Step 6: Create BETSE Configuration (WE'LL BUILD THIS)
   ✓ Gap junction settings
 
 Step 7: Run BETSE Validation Simulation (WE'LL BUILD THIS)
-  → python experiments/run_betse_validation.py
+  → python tools/run_betse_validation.py
 
   What it validates:
   ✓ Our simulator matches BETSE results
@@ -108,7 +108,7 @@ PHASE 4: PARAMETER OPTIMIZATION (Next 4-8 hours)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Step 8: Parameter Sweep Experiments (WE'LL BUILD THIS)
-  → python experiments/parameter_sweep.py
+  → python tools/parameter_sweep.py
 
   What it optimizes:
   ✓ Gap junction strength (g_gap)
@@ -119,7 +119,7 @@ Step 8: Parameter Sweep Experiments (WE'LL BUILD THIS)
   Goal: Find settings that maximize persistence
 
 Step 9: Machine Learning Optimization (ADVANCED - WE'LL BUILD THIS)
-  → python experiments/ml_pattern_optimizer.py
+  → python tools/ml_pattern_optimizer.py
 
   What it does:
   ✓ Use neural networks to find optimal patterns
@@ -148,8 +148,8 @@ WHAT TO DO RIGHT NOW (Recommended Order)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 OPTION A: Quick Demo (30 mins) - Show investors it works
-  1. python experiments/test_betse_installation.py
-  2. python simulations/bioelectric_persistence.py
+  1. python tools/test_betse_installation.py
+  2. python simulations/planarian_01_bioelectric_persistence.py
   3. python encoder/bioelectric_encoder.py
   4. python analysis/visualize_competitive_landscape.py
 
@@ -177,19 +177,19 @@ WHAT I'LL BUILD FOR YOU NEXT
 
 Tell me which you want:
 
-1. Interactive demo (experiments/interactive_demo.py)
+1. Interactive demo (tools/interactive_demo.py)
    → Live web interface for encoding/decoding
    → Perfect for showing VCs
 
-2. BETSE validation (experiments/run_betse_validation.py)
+2. BETSE validation (tools/run_betse_validation.py)
    → Scientific validation of our simulator
    → Publishable results
 
-3. Parameter sweep (experiments/parameter_sweep.py)
+3. Parameter sweep (tools/parameter_sweep.py)
    → Find optimal settings
    → Maximize persistence time
 
-4. ML optimizer (experiments/ml_pattern_optimizer.py)
+4. ML optimizer (tools/ml_pattern_optimizer.py)
    → Use AI to design better patterns
    → Research contribution
 
@@ -202,8 +202,8 @@ Tell me which you want:
 RECOMMENDATION: Start with Option A (Quick Demo)
 
 Run these 4 commands now:
-  python experiments/test_betse_installation.py
-  python simulations/bioelectric_persistence.py
+  python tools/test_betse_installation.py
+  python simulations/planarian_01_bioelectric_persistence.py
   python encoder/bioelectric_encoder.py
   python analysis/visualize_competitive_landscape.py
 
