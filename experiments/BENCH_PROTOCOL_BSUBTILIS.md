@@ -335,10 +335,17 @@ measurable voltage bit.
   paper reports a millivolt figure. Measure the native oscillation's actual
   amplitude and period in your strain and your setup, in ThT units, in a strain
   carrying no engineered circuit at all. This one measurement determines
-  whether the rest of the interference work matters. Parts 17 and 18 both found
-  the answer flips between the low end (10 to 30 mV, where timing and partial
-  decoupling both help) and the high end (70 mV, where only long averaging
-  works).
+  whether the rest of the interference work matters, but the two easier fixes
+  do not share one "low-end" band: **Part 17 found timing only rescues a fast
+  read at the lowest tested amplitude (10 mV)**, where a perfectly-timed read
+  hits 100% and tolerates real timing error well; by 20 mV a perfectly-timed
+  read is already back to a coin flip (~50%), no better than a blind read.
+  **Part 18 found partial decoupling works at a different point**: at a
+  moderate amplitude (30 mV), cutting the native signal's coupling to just
+  10% of today's assumed strength is enough to make even a fast, 1-minute
+  read work well (94%). Neither fix, timing or partial decoupling, rescues a
+  fast read at the documented worst case (70 mV); there, only the 180-minute
+  average works, regardless of coupling level.
 - **Then compare three readout strategies** on the same biofilm, per Part 13
   and Part 17: a single fast read, a read timed to the oscillation's predicted
   quiet phase, and a read averaged over about 180 minutes.

@@ -19,8 +19,10 @@ while the colony is healing, then backs off once healing is done.
   response (RecA/LexA) but does **not** name a specific *B. subtilis*
   promoter — selecting that promoter is a design task this plan does not
   resolve, and must be done with the collaborating lab before building.
-- Wire the boost so it fires on the same damage signal used in Experiment
-  3's regrowth arms, and decays once the colony returns to steady growth.
+- Wire the boost to the cell's own stress response triggered by the same
+  insults Experiment 3's arm 2b applies (heat or H2O2), not to an artificial
+  signal, since that is what a real stress-responsive promoter actually
+  senses. It should decay once the colony returns to steady growth.
 
 ## Test sequence
 

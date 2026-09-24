@@ -18,10 +18,16 @@ quick reading at the wrong moment.
    because no source paper reports a millivolt figure. Measure the native
    oscillation's actual amplitude and period, in ThT units, in a strain
    carrying no engineered circuit at all (circuit-free control). This one
-   measurement decides whether the rest of this stage matters: Parts 17-18
-   found the answer flips between the low end (10-30 mV, where timing and
-   partial decoupling help) and the high end (70 mV, where only long
-   averaging works).
+   measurement decides whether the rest of this stage matters, but the two
+   easier fixes below do not share one "low-end" band: **timing (Part 17)
+   only rescues a fast read at the lowest tested amplitude, 10 mV** (a
+   perfectly-timed read hits 100% there; by 20 mV a perfectly-timed read is
+   already back to a coin flip). **Partial decoupling (Part 18) works at a
+   different point**, a moderate 30 mV, where cutting the native signal's
+   coupling to just 10% of today's assumed strength makes even a fast,
+   1-minute read work well (94%). Neither fix rescues a fast read at the
+   documented worst case, 70 mV — there only the 180-minute average works,
+   regardless of coupling level.
 2. **Then compare three readout strategies on the same biofilm:**
    - A single fast read.
    - A read timed to the oscillation's predicted quiet phase.
@@ -38,9 +44,14 @@ in the circuit-free control strain, as the independent phase reference.
 
 ## What "pass" looks like
 
-Confirms which reading method actually works despite the rhythm. Predicted:
-the fast snapshot collapses toward 50% above ~10 mV amplitude, timing it
-doesn't fully rescue it, and the 180-minute average recovers to near 100%.
+Confirms which reading method actually works despite the rhythm, and at
+which amplitude each fix stops working. Predicted: a fast, untimed read is
+fine at very low amplitude but degrades as amplitude rises; a perfectly
+timed read only rescues it at the lowest amplitude tested (10 mV) and is
+back to a coin flip by 20 mV; a Δ*yugO*/decoupled read rescues a fast read
+at a moderate amplitude (30 mV) that timing alone cannot; and at the
+documented worst case (70 mV), only the 180-minute average recovers to near
+100%, regardless of timing or decoupling.
 
 ## Why it matters
 
