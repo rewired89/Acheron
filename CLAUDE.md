@@ -256,6 +256,14 @@ disproven, and where to start reading.
 - **`experiments/`** holds bench protocols ONLY, no Python. Currently
   `BENCH_PROTOCOL_BSUBTILIS.md` (primary, stages B0-B6) and
   `BENCH_PROTOCOL_HEK293.md`. Neither has been reviewed by a lab.
+- **`wet_lab_experiments/`** (added September 2026) is a plain-English index
+  over `experiments/BENCH_PROTOCOL_BSUBTILIS.md`'s Stages B0-B6, one file per
+  experiment (`Experiment_1_...` through `Experiment_7_...`), each stating
+  just the goal, what pass/fail looks like, and a pointer back to its Stage
+  for the actual strain/parts/replicate/citation detail. It does not
+  duplicate numbers from the bench protocol, that document stays the single
+  source of truth; if a Stage's detail changes, update the pointer target,
+  not this folder's summaries, unless the goal itself changed.
 - **`tools/`** holds demos, optimisers, parameter sweeps and validation
   harnesses, i.e. supporting machinery that is not a claim about biology.
 - **`hardware/`** is empty and is a placeholder. There is no hardware. The
