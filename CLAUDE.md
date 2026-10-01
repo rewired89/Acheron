@@ -201,12 +201,16 @@ do not.
 - **Never invent or carry forward unverified personal/biographical facts about
   the founders** (name, school, background) into any document without an
   explicit confirmation in the current conversation. This has happened once
-  already: an older file, `partnerships/ORLANDO_LAB_PARTNERSHIPS.md`, frames
+  already: an older file, `partnerships/ORLANDO_LAB_PARTNERSHIPS.md` (deleted
+  from the working tree 21 September 2026, text still in git history), framed
   the founder as "a UCF cybersecurity student" in its section headers and
-  draft outreach emails, a claim never confirmed and since removed from the
-  pitch deck and `docs/INVESTOR_PITCH.md`. That file itself has NOT been
-  fixed yet, ask the founder whether to correct it before sending any of its
-  draft emails or reusing its framing.
+  draft outreach emails, a claim never confirmed at the time and since removed
+  from the pitch deck and `docs/INVESTOR_PITCH.md`. **Resolved 1 October 2026,
+  confirmed by the founder directly:** she was never a UCF student and never
+  applied there, though she did speak with a scientist about Acheron. She is
+  a current student at Miami Dade College, pursuing an AS in Cybersecurity.
+  Use that framing if the Orlando-partnerships material is ever restored or
+  rewritten; do not reuse the old UCF-student framing from git history.
 - **Writing style for anything produced for the founder** (docs, decks,
   emails): no em dashes, ever, use a comma or period instead. This has been
   requested repeatedly and firmly. Also avoid meta-commentary in
@@ -296,10 +300,15 @@ disproven, and where to start reading.
 
 ## Next steps (as of September 2026, so a new session doesn't have to re-derive this)
 
-1. **Decide on `partnerships/ORLANDO_LAB_PARTNERSHIPS.md`**: still contains
-   the unconfirmed "UCF cybersecurity student" framing throughout, including
-   in ready-to-send draft outreach emails to UCF faculty. Ask the founder
-   whether to strip/rewrite it before it's used.
+1. **`partnerships/ORLANDO_LAB_PARTNERSHIPS.md` was already deleted from the
+   working tree on 21 September 2026**, before the bio question below was
+   ever resolved; its text survives only in git history. The bio question
+   itself is now resolved (1 October 2026, confirmed by the founder): no UCF
+   affiliation, she did speak with a scientist about Acheron, she's a current
+   Miami Dade College student pursuing an AS in Cybersecurity. Open decision
+   for the founder: restore the file with corrected framing, or leave it
+   deleted. Do not restore it or reuse its draft outreach emails on your own
+   initiative, not even with the correction applied, without being asked.
 2. **The wet-lab experiment is the actual next milestone** for the science
    (see throughline item 6 above), everything else is downstream of it.
 3. **Pitch deck is current and was heavily iterated** across several
