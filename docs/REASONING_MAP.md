@@ -168,6 +168,8 @@ bench protocol is designed to test first.
 
 ## Where to start reading, depending on who you are
 
+- **Preparing for an interview or investor call:** `docs/ACHERON_INTERVIEW_GUIDE.md`,
+  then `docs/ACHERON_101.md` for the concept chapters.
 - **Coming back to this after a break:** this file, then the last two Parts of
   `docs/SCIENTIFIC_AUDIT_2026.md`.
 - **A scientist assessing whether it is real:** `docs/SCIENTIFIC_AUDIT_2026.md`
