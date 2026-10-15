@@ -337,6 +337,25 @@ Do not say "all of them are based on real measured data." Some parameters are pu
 
 ---
 
+## 9c. What is yugO, and why has no one wired it up?
+
+**What it is.**
+- A potassium channel in *B. subtilis*, a protein gate that lets K+ leave the cell. That shifts the cell's voltage.
+- Identified by Lundberg, Becker and Choe (2013). It sits right after the mstX gene, and the biofilm master switch SinR turns it off.
+- When yugO is on, K+ leaving the cell sets off a loop that switches SinR off. So yugO both drives and responds to the cell's biofilm decision.
+- Why it matters here: it is our candidate gate for turning the toggle's state into a measurable voltage (Experiment 5).
+
+**Why we found no one who wired it to a genetic switch.** Say "we found no published example." That is not the same as "none exists."
+1. **Tangled in the cell's own loop.** Driving it from a synthetic toggle also pushes the biofilm network, so effects are hard to separate.
+2. **Strain problem.** The biofilm-forming strain (3610) is hard to transform. The strain with measured parts (W168) does not form the biofilm.
+3. **The colony's own potassium rhythm** corrupts voltage readings.
+4. **No calibrated voltage in bacteria.** The common dye is not calibrated to millivolts and affects the cells it measures.
+5. **Low incentive.** Most memory work in synthetic biology reads colour or DNA, not voltage.
+
+**Short answer for the room:** "It is the riskiest link in the project, which is why it comes after the cheaper experiments."
+
+---
+
 ## 10. Never say
 
 - "Nobody has stored data as a bioelectric state." False since Yang 2020.
