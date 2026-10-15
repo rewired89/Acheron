@@ -101,6 +101,38 @@ in *B. subtilis*.
 
 ---
 
+## 3b. Acheron start to finish, using only the words above
+
+Read this aloud until it flows. Every bold word is one from section 3.
+
+**1. The question.** A **cell** is a sealed bag of chemistry. We ask: can a living cell hold one bit, a 0 or a 1, survive being badly damaged, and still have that bit after it grows back? Nobody has tested that in any organism.
+
+**2. The organism.** We start with a **bacterium**, a one-room cell that is simple, fast and easy to rewire. Specifically ***B. subtilis***, a harmless soil bacterium. It is one of the best-studied bacteria, so the tools and parts already exist. The idea itself is not tied to one organism. Planaria are the longer-term target, but bacteria are cheaper and faster to test first.
+
+**3. How a cell can hold a bit.** **DNA** is the recipe book and a **gene** is one recipe. A gene builds one **protein**, the worker. A **promoter** is a volume knob in front of the gene that sets how often it is read. A **repressor** is a protein that mutes another gene's promoter. Now wire two genes so each one's repressor mutes the other. That is a **toggle switch**, and it is **bistable**: it rests in one of two states, like a light switch, not a dimmer. Repressor A winning is a 0. Repressor B winning is a 1. That is our bit.
+
+**4. Why it can survive damage.** When a cell divides, the repressor proteins that hold the state go into both daughter cells. So if most of a colony dies, the survivors copy the state into every new cell as they regrow. This comes from how division works, not from an assumption. That is the property that separates us from earlier work.
+
+**5. How we read it.** First with a **reporter**, a gene that makes a colour, like a mood ring. You see the switch state without a voltmeter. Later we want to read it as a voltage. A **membrane potential** is the voltage across the cell wall, created by different **ion** counts inside and outside. An **ion channel** is a protein door that lets one kind of ion through, and a pump pushes ions uphill using energy. Our candidate door is **yugO**, a potassium channel. The idea is that the toggle opens or closes yugO, K+ leaks out, and the voltage changes. Nobody has built that link in any organism. It is the riskiest part.
+
+**6. How we tested it, in simulation.** Everything so far is a simulation, not a lab result.
+- Our first idea was a voltage held passively in flatworm tissue. It looked perfect with no noise. With realistic noise it fell to a coin flip, about 50%. We published that and changed direction.
+- We moved to the toggle switch. The simulation found a hard rule: the two promoters must be matched in strength, or the switch collapses into one setting and stops being a switch.
+- We cut a simulated colony down to 2% survivors, the lowest level tested, and the bit still came back. Uneven splitting at division did not break it until about one molecule per cell.
+- The colour reporter followed the genes exactly, even through damage and regrowth.
+- The voltage reading was the hard part. The colony has its own potassium rhythm, which scrambles a quick reading. Averaging over about three hours fixes it but uses most of the time budget.
+- A proposed "heal harder" circuit fixed the weak point in simulation. It has not been built.
+
+**7. What is proven, assumed, unknown.** Proven by others: toggle switches work in bacteria, biofilms carry electrical signals, and a voltage state has been written into this bacterium with light. Assumed by us: the noise levels and the molecule counts. Unknown: whether the state survives real damage and regrowth, and whether a gene can drive a real voltage.
+
+**8. How it could work in practice.** Write a bit into the toggle. Damage the colony. The cells notice the damage and reinforce the state. The survivors regrow and carry it. Read it back by colour, later by voltage. The long-term picture is memory for places no one can repair, such as spacecraft. That is a concept, not a prototype.
+
+**9. What we need.** Seven wet-lab experiments, run in order. Each is a go or no-go gate. Experiment 1 asks whether the switch really has two stable states in real cells. It costs about $2K to $5K and takes 6 to 10 weeks. A "no" there stops spending, and that cheap fast "no" is the design.
+
+**10. How to close.** "We don't ask you to trust our simulations. We ask you to fund the cheapest test that replaces them."
+
+---
+
 ## 4. What is the bit, and what must we prove
 
 **The bit.** In the toggle, repressor A winning = state 0, repressor B winning =

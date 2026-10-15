@@ -247,7 +247,7 @@ Read `docs/REASONING_MAP.md` first in any new session. It is the one page that
 explains how the project connects, what is proven versus assumed versus
 disproven, and where to start reading.
 
-- **`docs/ACHERON_INTERVIEW_GUIDE.md`** (added 8 October 2026) is the founder's study document for interviews and investor calls: pitches, concepts, simulation scoreboard, experiments, hard Q&A, 7-day plan, video search list. Keep it in sync with the audit when headline results change. Video entries are channel plus search phrase on purpose, no URLs were verifiable.
+- **`docs/ACHERON_INTERVIEW_GUIDE.md`** (added 8 October 2026) is the founder's study document for interviews and investor calls: pitches, concepts, simulation scoreboard, experiments, hard Q&A, 7-day plan, video search list. Keep it in sync with the audit when headline results change. Video entries are channel plus search phrase on purpose, no URLs were verifiable. `docs/ACHERON_CHEAT_SHEET.docx` is its one-page companion (generated with python-docx, not from the markdown), update both together.
 - **`simulations/`** holds every simulation of a scientific claim, named
   `<organism>_<number>_<topic>.py`, in four tracks: `planarian_`, `bsubtilis_`,
   `methylation_`, `crossorganism_`. The number is reading order within that
