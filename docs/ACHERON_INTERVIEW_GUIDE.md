@@ -310,6 +310,33 @@ reporter-first plan sidesteps the choice for Experiment 1.
 
 ---
 
+## 9b. The simulations, and five "I don't know" moments
+
+**"How did you code the simulations, and what are they based on?"**
+- "They are Python with NumPy and SciPy. Each one takes an equation from a published paper, steps it forward in small time steps, and adds random noise."
+- "The toggle switch is Gardner et al. 2000. Uneven splitting at division is Huh and Paulsson 2011. The noise scaling check is Swain et al. 2002."
+- "I built them with AI coding help. I set the question, check the result against the paper, and log the limits in the audit." The repo history shows the commits authored by Claude, so never claim you hand-wrote everything.
+
+Follow-ups:
+- **Are the numbers measured?** "Promoter strengths come from the Bacillus BioBrick Box. The noise levels are assumed and labelled that way. Experiments 2 and 4 replace them with measurements."
+- **Did you validate them?** "The 17 unit tests cover the analysis methods, checked against the original published code. The biology simulations have not been checked against lab data. That is what the wet lab is for."
+- **Why trust them?** "Don't. Fund the test that replaces them. One simulation already overturned our own first result, and it is documented."
+- **How many are there?** "About 40 simulation files in four tracks. Three carry the argument: the toggle switch, the colony regrowth, and the noise test that retired our first idea."
+- **Can experts check them?** "Yes. Every one is in the repo, and the audit says which parameters are published and which are assumed." (Confirm repo access before offering it, the repo is private.)
+
+Do not say "all of them are based on real measured data." Some parameters are published measurements, but the noise magnitudes and the link from circuit to voltage are assumptions, and the audit says so.
+
+**Five "I don't know" moments**
+1. **A specific number** (molecules per cell, voltage levels, memory capacity): "That isn't measured yet. In the simulation it is an assumption, and Experiment 4 measures it."
+2. **Lab technique** (cloning steps, flow cytometry settings): "That is for the partner lab and the consultant we want to hire. I can tell you what the experiment must show, not how to run it."
+3. **Why the yugO channel?** "It is the candidate channel from the literature (Lundberg et al. 2013). We found no published example of anyone wiring it to a genetic switch, and Experiment 5 tests that."
+4. **Biosafety and regulation:** "*B. subtilis* is a common non-pathogenic lab organism. I would confirm the biosafety level with the partner lab and the institution before saying more."
+5. **Market size or revenue:** "I don't have a validated number and I won't invent one. The reference points I trust are the CL-1 price and the analyst estimates for radiation-hardened space electronics."
+
+**General rule when you don't know:** "I don't know that yet, here is what I do know." Or: "I'd rather check than guess, I'll send you the answer with the source." Then send it. AI agreement is not verification: say you treat AI output as unverified until you have checked the paper. Your best proof is that you found a fabricated citation in a filed patent.
+
+---
+
 ## 10. Never say
 
 - "Nobody has stored data as a bioelectric state." False since Yang 2020.
