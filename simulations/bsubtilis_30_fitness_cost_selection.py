@@ -1,0 +1,163 @@
+"""
+Acheron Simulation 30: What If Cells That Lose the Circuit Grow Faster?
+=====================================================================
+
+PURPOSE:
+Every simulation in this project assumes the circuit is free: expressing two
+repressors and two reporters costs the cell nothing, and no cell ever loses
+or silences it. Real constructs cost energy and resources. Over a long
+culture, any cell that mutates a promoter, silences the reporters or loses
+the integrant can outgrow the cells that carry the bit. That is selection,
+not noise, and in a cytometry histogram it looks exactly like state loss, so
+it can make a 72 hour pass/fail result ambiguous. An outside review raised
+this (audit Part 30) and a search of the audit, bench protocol, experiments
+and simulation map found no mention of fitness, burden or competition.
+
+WHAT THIS DOES:
+A population-level model with three kinds of cell:
+  - circuit cells holding the WRITTEN state,
+  - circuit cells that have FLIPPED to the other state (rate swept),
+  - LOST cells that no longer express the circuit (reporter negative).
+Each generation, lost cells grow (1 + s) times as fast as circuit cells, and
+circuit cells turn into lost cells at rate mu per division. Serial dilution
+back to a fixed size is implicit (the model tracks fractions). It reports
+two readouts side by side:
+  - UNGATED fraction holding the written state (every cell counted, which is
+    what a naive cytometry read gives), and
+  - GATED fraction (reporter-positive cells only, which separates "flipped"
+    from "lost").
+Sections: A) expected loss after 72 / 144 generations over a grid of s and
+mu, B) generations until the ungated read drops below the 70 percent bar,
+C) a stochastic version with a finite dilution bottleneck, to show the
+spread, D) the same grid at only 7 generations, which is what a damage and
+regrowth experiment (Experiment 3) involves.
+
+WHAT THIS DOES NOT DO:
+No value of s, mu or the flip rate is measured. All three are SWEEP AXES, so
+the output is a map of how fast a bit disappears under each assumption, not
+a prediction for B. subtilis. Mutation is treated as one lumped rate to the
+lost state; real loss routes (point mutation, deletion, epigenetic-like
+silencing, recombination between repeated parts) differ. Lost cells are
+assumed to never revert. The competition assay and growth-rate comparison in
+Experiment 1 exist to measure s directly.
+"""
+
+import os
+import sys
+from typing import Dict, List, Tuple
+
+import numpy as np
+
+sys.path.insert(0, os.path.dirname(__file__))
+
+PASS_BAR = 0.70
+S_VALUES = [0.0, 0.01, 0.03, 0.10, 0.30]            # relative growth advantage of lost cells
+MU_VALUES = [1e-6, 1e-5, 1e-4, 1e-3, 1e-2]          # loss events per circuit-cell division
+GENERATIONS_72H = [36, 72, 144]                     # 72 h at 120, 60, 30 min doubling
+
+
+def trajectory(s: float, mu: float, generations: int, flip: float = 0.0) -> Tuple[np.ndarray, np.ndarray]:
+    """Expected fractions per generation. Returns (ungated, gated) arrays of
+    length generations + 1. f = lost fraction, c = written-state share of the
+    circuit cells."""
+    f, c = 0.0, 1.0
+    ungated = [1.0]
+    gated = [1.0]
+    for _ in range(generations):
+        lost = (1.0 + s) * f + (1.0 - f) * mu
+        circuit = (1.0 - f) * (1.0 - mu)
+        f = lost / (lost + circuit)
+        c = c * (1.0 - flip) + (1.0 - c) * flip
+        ungated.append((1.0 - f) * c)
+        gated.append(c)
+    return np.array(ungated), np.array(gated)
+
+
+def generations_to_bar(s: float, mu: float, flip: float = 0.0, cap: int = 2000) -> int:
+    ungated, _ = trajectory(s, mu, cap, flip)
+    below = np.where(ungated < PASS_BAR)[0]
+    return int(below[0]) if below.size else -1
+
+
+def stochastic_gens_to_bar(s: float, mu: float, bottleneck: int, reps: int = 30,
+                           cap: int = 400, seed: int = 0) -> List[int]:
+    """Wright-Fisher style: each generation the next population is a binomial
+    sample of size `bottleneck` from the expected composition, so rare early
+    losses can be lost or can jackpot."""
+    rng = np.random.default_rng(seed)
+    out = []
+    for _ in range(reps):
+        n_lost, n_circ = 0, bottleneck
+        hit = -1
+        for g in range(1, cap + 1):
+            lost_w = (1.0 + s) * n_lost + n_circ * mu
+            circ_w = n_circ * (1.0 - mu)
+            p_lost = lost_w / (lost_w + circ_w)
+            n_lost = int(rng.binomial(bottleneck, p_lost))
+            n_circ = bottleneck - n_lost
+            if n_circ / bottleneck < PASS_BAR:
+                hit = g
+                break
+        out.append(hit)
+    return out
+
+
+def fmt_gen(g: int) -> str:
+    return ">2000" if g < 0 else str(g)
+
+
+def main():
+    print("=" * 92)
+    print("A) EXPECTED UNGATED FRACTION HOLDING THE WRITTEN STATE (no state flipping)")
+    print("   rows: growth advantage s of circuit-lost cells | columns: loss rate mu per division")
+    print("=" * 92)
+    for gens in GENERATIONS_72H:
+        print(f"\n--- after {gens} generations ---")
+        print(f"{'s':<8}" + "".join(f"mu={m:.0e}".rjust(11) for m in MU_VALUES))
+        for s in S_VALUES:
+            row = [trajectory(s, m, gens)[0][-1] for m in MU_VALUES]
+            print(f"{s:<8.2f}" + "".join(f"{x:>10.0%} " for x in row))
+
+    print("\n" + "=" * 92)
+    print("B) GENERATIONS UNTIL THE UNGATED READ FALLS BELOW THE 70% BAR")
+    print("=" * 92)
+    print(f"{'s':<8}" + "".join(f"mu={m:.0e}".rjust(11) for m in MU_VALUES))
+    for s in S_VALUES:
+        print(f"{s:<8.2f}" + "".join(f"{fmt_gen(generations_to_bar(s, m)):>10} " for m in MU_VALUES))
+
+    print("\n" + "=" * 92)
+    print("C) STOCHASTIC: generations to the bar with a finite dilution bottleneck")
+    print("   median [5th-95th percentile] over 30 replicates; '-' = never within 400 generations")
+    print("=" * 92)
+    for bottleneck in (10_000, 1_000_000):
+        print(f"\nbottleneck = {bottleneck:,} cells")
+        for s, m in ((0.03, 1e-4), (0.10, 1e-5), (0.10, 1e-3), (0.30, 1e-6)):
+            g = np.array([x for x in stochastic_gens_to_bar(s, m, bottleneck) if x > 0])
+            hit = f"{len(g)}/30 reached"
+            if len(g):
+                print(f"  s={s:<5} mu={m:.0e}: median {np.median(g):.0f} "
+                      f"[{np.percentile(g, 5):.0f}-{np.percentile(g, 95):.0f}]  ({hit})")
+            else:
+                print(f"  s={s:<5} mu={m:.0e}: -  ({hit})")
+
+    print("\n" + "=" * 92)
+    print("D) SAME GRID AFTER ONLY 7 GENERATIONS (what damage + regrowth involves)")
+    print("=" * 92)
+    print(f"{'s':<8}" + "".join(f"mu={m:.0e}".rjust(11) for m in MU_VALUES))
+    for s in S_VALUES:
+        print(f"{s:<8.2f}" + "".join(f"{trajectory(s, m, 7)[0][-1]:>10.0%} " for m in MU_VALUES))
+
+    print("\n" + "=" * 92)
+    print("E) WHY GATING MATTERS: 72 generations, s=0.10, mu=1e-3, flip rate swept")
+    print("=" * 92)
+    print(f"{'flip/gen':<10}{'ungated':>10}{'gated':>10}")
+    for flip in (0.0, 1e-4, 1e-3, 1e-2):
+        u, g = trajectory(0.10, 1e-3, 72, flip)
+        print(f"{flip:<10.0e}{u[-1]:>10.0%}{g[-1]:>10.0%}")
+    print("\nRead-me: ungated falls from BOTH loss and flipping, gated only from flipping.")
+    print("A low ungated read with a high gated read means the circuit was lost, not the bit.")
+    print("=" * 92)
+
+
+if __name__ == '__main__':
+    main()

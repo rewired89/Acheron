@@ -169,34 +169,57 @@ redirecting it into the next stage.
   cannot tell a bistable population (two separated peaks) from a monostable
   graded one (one broad peak at the same mean). Population-average lux or
   lacZ is acceptable only as a first cheap screen before cytometry.
-- **Timepoints:** 0, 2, 4, 6, 12, 24, 48, 72 hours after washout, with
-  periodic dilution into fresh inducer-free medium so cells keep growing.
+- **Hysteresis arm (primary bistability test, M1 and M2):** pilot dose-response
+  to find the switching region, then pre-grow ON-history and OFF-history
+  populations and expose each to log-spaced inducer levels on both sides of it.
+  Hold each level for enough generations that reporter maturation and dilution
+  have equilibrated (maturation half-life from B1), confirm with two successive
+  reads, then read fraction ON by cytometry. A toggle's two history curves do
+  not overlap; a monostable circuit gives one curve. A slow monostable circuit
+  can fake a bimodal snapshot but cannot fake this.
+- **Culture method for long timepoints:** manual serial dilution into fresh
+  inducer-free medium at fixed intervals, chosen to keep cells exponential,
+  recording OD and generations elapsed. B. subtilis in batch culture reaches
+  stationary phase and can sporulate. A microfluidic chemostat is cleaner and
+  not needed for a first pass; manual dilution adds handling variability and
+  can select faster-growing variants, hence the fitness controls below. Check
+  for spores by phase-contrast at the end.
+- **Timepoints:** 0, 2, 4, 6, 12, 24, 48, 72 hours after washout under that
+  regime.
 - **Washout-and-reread arm:** re-wash a portion of each culture after 24
   hours and re-read at 48 and 72 hours. A true toggle gives the same
   distribution. A slow monostable circuit keeps narrowing.
-- **Hysteresis arm (M1):** titrate the inducer up and down and read at each
-  step. A toggle's up and down curves do not overlap; a monostable circuit
-  gives one curve.
+- **Fitness controls:** growth curves of each strain against parental W168
+  (ON and OFF cultures separately); a competition assay mixing the circuit
+  strain with an isogenic reference carrying a distinguishable marker through
+  the same dilution regime, tracking the ratio over time; and a cytometry gate
+  that counts cells negative for BOTH reporters separately from cells flipped
+  to the opposite state. Cells that lose or silence the circuit can outgrow
+  the rest and mimic state loss (`bsubtilis_30_fitness_cost_selection.py`).
 - **Optional single-cell tracking:** agarose-pad time-lapse of microcolonies
   to confirm individual lineages hold their written state.
 - **Replicates:** three independent biological replicates, both write
   directions, all three variants. Minimum 10,000 events per cytometry sample.
 
 **Pass criteria, fixed in advance:**
+- Hysteresis (M1 and M2): ON-history and OFF-history curves do not overlap
+  across a range of inducer levels by more than the replicate spread.
 - M1 and M2 show a clearly bimodal GFP/mCherry distribution after washout, with
   the population sitting in the state it was written to.
 - At least 70 percent of cells hold the written state at 24 hours, with at
   least 3:1 separation between the two state populations, and the bimodal
   distribution is stable across at least three consecutive timepoints
   spanning at least 48 hours. A 24 hour snapshot alone could be passed by a
-  slow monostable circuit relaxing over ~48 hours.
-- The washout-and-reread arm reproduces the distribution at 48 and 72
-  hours, and the hysteresis arm shows non-overlapping curves for M1. These are the
-  project's own thresholds used throughout the computational work, so the
-  numbers are directly comparable.
+  slow monostable circuit relaxing over ~48 hours. These are the project's own
+  thresholds used throughout the computational work, so the numbers are
+  directly comparable.
+- The 70 percent figure is met on reporter-positive cells AND on all cells. If
+  it is met only after excluding cells that lost both reporters, the timepoint
+  is reported as uninterpretable (selection or circuit loss), not as a pass.
+- The washout-and-reread arm reproduces the distribution at 48 and 72 hours.
 - Both write directions work, in both directions, on the same culture.
 - M3 fails to show bimodality, or collapses to one state regardless of what was
-  written.
+  written, by 72 hours at the latest, and shows a single hysteresis curve.
 
 **What a fail means:** M1 failing means the BBB parts plus the Gardner topology
 do not produce a toggle in this chassis. Stop and rethink the chassis or the
@@ -281,7 +304,9 @@ lineage, confirm by colony PCR (and sequencing of a subset) that both circuit
 arms are intact at their intended loci (*amyE*, *lacA*). A duplicated, lost or
 rearranged construct would look like a memory failure in the cytometry read
 and no simulation models it. Interpret no arm 2a or 2b failure as a failure of
-the mechanism until this passes.
+the mechanism until this passes. Use the B0 growth and competition results to
+tell circuit loss or outgrowth by non-expressers from state loss, and gate
+cytometry for cells negative in both reporters.
 
 - **Arm 2a, dilution only.** Write a bit, then dilute the culture to a defined
   low CFU count and let it regrow. This isolates exactly what the simulations

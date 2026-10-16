@@ -669,6 +669,16 @@ they depend on each other.
   used_by: none (terminal analysis)
   side_effects: none
 
+- name: `trajectory`, `generations_to_bar`, `stochastic_gens_to_bar`
+  type: function
+  file: simulations/bsubtilis_30_fitness_cost_selection.py
+  purpose: population-level model of circuit-lost cells outgrowing circuit-carrying cells. Lost cells grow (1+s) times faster, circuit cells become lost at rate mu per division, written-state circuit cells can flip at a swept rate. Reports ungated (all cells) versus gated (reporter-positive) written-state fractions, expected time to the 70% bar, a finite-bottleneck stochastic version, and the same grid at 7 generations (damage and regrowth). Found (session run): selection does not threaten a 7-generation regrowth test but does threaten a 72 h culture (36-144 generations); s=0.03, mu=1e-4 holds 98% at 72 generations and 81% at 144; s=0.10, mu=1e-5 holds 91% then 1%; a 10,000-cell bottleneck makes time-to-bar noisy while 1,000,000 does not; gating separates lost from flipped. Audit Part 30. s, mu and the flip rate are sweep axes, not measurements
+  inputs: `s: float`, `mu: float`, `generations: int`, `flip: float`, `bottleneck: int`
+  outputs: ungated/gated fraction arrays per generation; generations to the bar
+  dependencies: numpy only (no import of the Gardner classes, by design: it models populations, not single cells)
+  used_by: `main` (in the same file)
+  side_effects: none
+
 ---
 
 ## experiments/ — runnable demonstrations and diagnostic scripts

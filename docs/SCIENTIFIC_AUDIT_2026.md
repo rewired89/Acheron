@@ -2427,6 +2427,93 @@ beating existing DNA memory on stability.
 
 ---
 
+## Part 30: Fitness Cost and Selection, the Gap Neither the Audit Nor the Protocol Covered (October 2026)
+
+**What triggered it.** A second round of outside review, this time of the Part
+29 fixes. It conceded two earlier points and raised one genuinely new one,
+which a search confirmed: no file in the audit, bench protocol, experiments or
+simulation map mentioned fitness cost, burden, selection or a competition
+assay. Every simulation assumes the circuit is free and that no cell ever
+loses it. In a real culture, a cell that mutates a promoter, silences the
+reporters or loses the integrant can outgrow cells that carry the bit, and in a
+cytometry histogram that looks exactly like state loss. A 72 hour pass or fail
+could therefore be uninterpretable in both directions. The review's other
+points were either already done (relabelling `bsubtilis_18`, sweep-axis
+labelling of `bsubtilis_29`) or repeated the earlier SOS misreading (SOS is the
+damage sensor in `bsubtilis_16`, not a duplicate of a natural response).
+Its claim that the two-colour assay belongs in a "same cost class as the
+toggle" is a guess, nothing has been quoted.
+
+**What was built.** `bsubtilis_30_fitness_cost_selection.py`, a population
+model with written-state circuit cells, flipped circuit cells and circuit-lost
+cells. Lost cells grow (1 + s) times as fast; circuit cells become lost at
+rate mu per division. Reports the ungated read (all cells, what a naive
+cytometry read gives) against the gated read (reporter-positive only). **Both
+s and mu are sweep axes. Neither is measured.** The result is a map, not a
+prediction.
+
+**Results (deterministic expectation unless stated).**
+- Selection only bites over long cultures. After 7 generations, which is what
+  a damage and regrowth run involves, 98 to 100 percent still hold the bit
+  across the whole grid except at mu of 1e-2 (84 to 93 percent), so
+  **Experiment 3's regrowth test is not threatened by selection**. The 72 hour
+  run in Experiment 1 is, because it is 36 to 144 generations depending on
+  doubling time.
+- With no growth advantage for lost cells (s of 0), the bit survives 72
+  generations at 99 percent or better for mu up to 1e-4, and 93 percent at
+  mu of 1e-3.
+- A 3 percent advantage with mu of 1e-4 holds 98 percent at 72 generations and
+  81 percent at 144. A 10 percent advantage with mu of 1e-5 holds 91 percent
+  at 72 generations and 1 percent at 144. A 10 percent advantage with mu of
+  1e-3 leaves 9 percent at 72 generations.
+- Generations until the ungated read drops below the 70 percent bar range from
+  about 10 (s of 0.30, mu of 1e-2) to more than 2,000 (s of 0, mu of 1e-4 or
+  lower). With s of 0.03 and mu of 1e-4 it is 165 generations; with s of 0.10
+  and mu of 1e-5 it is 88.
+- With a finite dilution bottleneck of 10,000 cells the time to the bar is
+  noisy (for example median 110 generations with a 5th to 95th percentile of
+  76 to 324 at s of 0.10, mu of 1e-5), and at s of 0.30, mu of 1e-6 nine of 30
+  replicates never reached it. At a bottleneck of 1,000,000 the spread nearly
+  vanishes (89, range 85 to 93). **The manual serial dilution regime in
+  Experiment 1 sets how noisy this is, and that noise is a handling artifact.**
+- Gating decides the interpretation: at s of 0.10, mu of 1e-3, 72 generations,
+  the ungated read is 9 percent while the gated read is 100 percent with no
+  flipping and 62 percent at a flip rate of 1e-2 per generation. A low
+  ungated read with a high gated read means the circuit was lost, not the bit.
+
+**Reading it honestly.** Whether a 72 hour result means anything depends on two
+numbers nobody has measured, the fitness cost and the loss rate. The new
+competition assay and growth-rate comparison in Experiment 1 measure the first
+directly; the second needs the gated cytometry counts and, if loss is seen,
+sequencing of reporter-negative isolates. It also matters for any later claim
+about long-term storage, not just this experiment: a stored bit in a growing
+culture has a half-life set by selection, independent of how stable the toggle
+itself is.
+
+**Protocol changes made in response.** Experiment 1 and Stage B0 now make the
+inducer hysteresis arm the primary pass criterion for M1 and M2, with a
+specified method (pilot dose-response, ON-history and OFF-history populations,
+equilibration confirmed by two successive reads); state the 72 hour culture
+method (manual serial dilution at fixed intervals, OD and generations
+recorded, spore check; microfluidic chemostat noted as cleaner but not needed
+first); add growth-rate comparison against parental W168, a competition assay
+against an isogenic differently marked reference, and a cytometry gate that
+counts cells negative for both reporters separately from flipped cells; and
+make the 70 percent bar apply to both reporter-positive and all cells, with
+results met only after excluding lost cells reported as uninterpretable.
+Experiment 3 and Stage B2 gain the same gate. The Experiment 1 cost estimate is
+now marked a floor that predates these additions.
+
+**Still open.** The review also noted that the locus PCR in Part 29 does not
+catch point mutations or silencing. The loss-of-circuit gate and
+sequencing of reporter-negative isolates cover that, but only if loss
+actually occurs at a detectable rate. And the question raised in Part 29 still
+stands: whether the final product needs voltage at all, or a
+reporter-read genetic state is enough, which decides how much of the
+Bonnet et al. (2012) overlap matters.
+
+---
+
 ## Next Action: One Experiment Changes Everything
 
 **The experiment:**

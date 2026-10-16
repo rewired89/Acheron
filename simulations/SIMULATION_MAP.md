@@ -618,6 +618,29 @@ min: 85-87% genetic, 50% voltage. 20 mV shifts: no effect. Audit Part 29. Every
 magnitude is a sweep axis, not measured. Narrows, but does not close, Known
 Gap 4; Stage B2 arm 2b still has to measure the real stress.
 
+### `bsubtilis_30_fitness_cost_selection.py`
+**What it tested, plainly:** every earlier simulation assumes the engineered
+circuit is free and that no cell ever loses it. Real circuits cost the cell
+something, and a cell that drops the circuit can outgrow its neighbours. Over
+a long culture those drop-outs take over, and on a chart that looks the same
+as the stored bit fading.
+**What it found, plainly:** this does not matter for a short damage-and-regrowth
+test (about 7 divisions) but matters a lot for a 72 hour culture. Whether it
+matters depends on how much faster lost cells grow and how often cells lose the
+circuit, and neither number has been measured. Counting cells that lost the
+circuit separately from cells that flipped state is what tells the two causes
+apart.
+**Technically:** three cell classes (written-state circuit cells, flipped
+circuit cells, lost cells) with a relative growth advantage s for lost cells and
+a loss rate mu per division, swept over s of 0 to 0.30 and mu of 1e-6 to 1e-2.
+Deterministic expectation plus a Wright-Fisher style stochastic version with a
+finite dilution bottleneck. s of 0.03 with mu of 1e-4 holds 98% at 72
+generations and 81% at 144; s of 0.10 with mu of 1e-5 holds 91% then 1%. At 7
+generations, 98-100% holds everywhere except mu of 1e-2 (84-93%). Ungated versus gated
+reads diverge sharply (9% versus 100% at s of 0.10, mu of 1e-3, 72 generations).
+Audit Part 30. All axes are sweep axes, not measurements; the competition assay
+in Experiment 1 measures s directly.
+
 ---
 
 # Methylation track
@@ -699,5 +722,7 @@ Stated here so nobody has to rediscover them file by file.
    growth, higher noise, voltage shift) but every magnitude there is a sweep
    axis, not a measurement. Arm 2b of Stage B2 in the bench protocol is
    designed to measure the real size of that blind spot.
-5. **The planarian coupling constant is borrowed, not measured.** It is the
+5. **No fitness cost is measured.** `bsubtilis_30` sweeps it, but every
+   earlier file treats the circuit as free and uses no loss-of-circuit class.
+6. **The planarian coupling constant is borrowed, not measured.** It is the
    single weakest assumption in the project.

@@ -37,6 +37,15 @@ loses the bit for a reason no simulation here models, and it would look like
 a memory failure in the cytometry read. Run this before interpreting any
 arm 2a / 2b failure as a failure of the mechanism.
 
+**Fitness and loss controls.** Use the growth-rate and competition results
+from Experiment 1 to interpret any shortfall. A damage-and-regrowth run is
+only about 7 divisions, so selection should matter little here (see
+`simulations/bsubtilis_30_fitness_cost_selection.py`, section D), but a
+circuit that was already being lost, or a mutant enriched by the insult
+itself, would look like a memory failure. In the cytometry analysis, gate
+cells negative for BOTH reporters separately from cells that flipped, and
+report holding, flipped and lost fractions for each arm.
+
 **Read:** flow cytometry at the end of regrowth plus settling, same 70%
 correct / 3:1 separation thresholds as Experiment 1.
 

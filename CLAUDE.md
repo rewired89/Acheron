@@ -393,3 +393,15 @@ disproven, and where to start reading.
    review:** Bonnet et al. 2012's DNA latch also survives damage and
    regrowth, so "survives division" does not separate Acheron from it; no
    functional advantage over a DNA latch is established.
+   **Added later in October 2026 (audit Part 30)** after a second outside
+   review: `bsubtilis_30_fitness_cost_selection.py` models circuit-lost cells
+   outgrowing circuit-carrying cells (a gap nobody had covered: selection does
+   not threaten a short damage-and-regrowth test but does threaten a 72 hour
+   culture, and depends on a fitness cost and a loss rate nobody has measured).
+   Experiment 1 and Stage B0 now make the inducer hysteresis arm the primary
+   pass criterion for M1 and M2 (with a specified method), specify the 72 hour
+   serial-dilution culture method, and add a growth-rate comparison, a
+   competition assay and a both-reporters-negative cytometry gate; Experiment 3
+   and Stage B2 get the same gate. The Experiment 1 cost estimate is now a floor,
+   not a quote. `docs/ACHERON_INTERVIEW_GUIDE.md` has not been synced to Parts
+   29 and 30 yet.
