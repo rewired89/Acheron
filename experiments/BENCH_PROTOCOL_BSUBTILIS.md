@@ -169,33 +169,71 @@ redirecting it into the next stage.
   cannot tell a bistable population (two separated peaks) from a monostable
   graded one (one broad peak at the same mean). Population-average lux or
   lacZ is acceptable only as a first cheap screen before cytometry.
+- **Response-time calibration (first, it sets the hysteresis timing):**
+  hysteresis is only meaningful if each inducer level is held much longer than
+  the circuit takes to settle. Too short and a slow monostable circuit shows
+  apparent hysteresis (false positive); long enough and it relaxes to one
+  state (correct negative) while a real toggle keeps two. A washout cannot give
+  the settling time of a toggle, because a toggle never forgets, so use a step
+  response: step M1 from OFF history to a strong ON level and read fraction ON
+  by cytometry at short intervals until it plateaus, repeat in reverse and with
+  a step into the middle of the switching region (where settling is slowest).
+  Hold every hysteresis level for at least 3 times the slowest plateau time,
+  in culture kept growing by dilution, and confirm with two successive reads.
 - **Hysteresis arm (primary bistability test, M1 and M2):** pilot dose-response
   to find the switching region, then pre-grow ON-history and OFF-history
-  populations and expose each to log-spaced inducer levels on both sides of it.
-  Hold each level for enough generations that reporter maturation and dilution
-  have equilibrated (maturation half-life from B1), confirm with two successive
-  reads, then read fraction ON by cytometry. A toggle's two history curves do
-  not overlap; a monostable circuit gives one curve. A slow monostable circuit
-  can fake a bimodal snapshot but cannot fake this.
-- **Culture method for long timepoints:** manual serial dilution into fresh
-  inducer-free medium at fixed intervals, chosen to keep cells exponential,
-  recording OD and generations elapsed. B. subtilis in batch culture reaches
-  stationary phase and can sporulate. A microfluidic chemostat is cleaner and
-  not needed for a first pass; manual dilution adds handling variability and
-  can select faster-growing variants, hence the fitness controls below. Check
-  for spores by phase-contrast at the end.
+  populations and expose each to log-spaced inducer levels on both sides of it,
+  each held for the calibrated time. Read fraction ON by single-cell flow
+  cytometry at every level (a plate-reader mean blurs the loop into something
+  indistinguishable from a slow transient). A toggle's two history curves do
+  not overlap; a monostable circuit gives one curve.
+- **Culture method for long timepoints, with sporulation managed:** manual
+  serial dilution into fresh inducer-free medium at fixed intervals, chosen to
+  keep cells exponential and well away from nutrient exhaustion, recording OD
+  and generations elapsed. B. subtilis sporulates when nutrients run short;
+  spores do not divide or fluoresce, deplete the population, and can be carried
+  forward by manual passaging and germinate later with a different history.
+  Measure the spore fraction at every passage by heat-shock plating (a typical
+  step is 80 C for 10 minutes, confirm with the lab) against untreated plating,
+  plus phase-contrast at start and end. The maximum acceptable spore fraction
+  is set by the lab and founders BEFORE the run and written into the protocol;
+  it is left blank here because any number without data would be invented, and
+  the parental W168 spore fraction in the same regime is a sensible basis. If
+  exceeded, treat the timepoint as compromised and change the design: shorter
+  run with justified timepoints, a sporulation-suppressing medium, tighter
+  dilution, or continuous culture. A microfluidic chemostat is cleaner and not
+  needed for a first pass.
 - **Timepoints:** 0, 2, 4, 6, 12, 24, 48, 72 hours after washout under that
   regime.
 - **Washout-and-reread arm:** re-wash a portion of each culture after 24
   hours and re-read at 48 and 72 hours. A true toggle gives the same
   distribution. A slow monostable circuit keeps narrowing.
-- **Fitness controls:** growth curves of each strain against parental W168
-  (ON and OFF cultures separately); a competition assay mixing the circuit
-  strain with an isogenic reference carrying a distinguishable marker through
-  the same dilution regime, tracking the ratio over time; and a cytometry gate
-  that counts cells negative for BOTH reporters separately from cells flipped
-  to the opposite state. Cells that lose or silence the circuit can outgrow
-  the rest and mimic state loss (`bsubtilis_30_fitness_cost_selection.py`).
+- **Fitness controls:**
+  - growth curves of each strain against parental W168 (ON and OFF cultures
+    separately);
+  - a competition assay, specified before it is run: a reference derived from
+    the same W168 stock with a constitutive fluorophore of a color distinct
+    from both reporters at a neutral locus (not amyE or lacA) and a different
+    resistance marker; a reference-versus-reference label-swap control (its
+    drift is the assay noise floor) and circuit-versus-reference run in both
+    labelings; sequencing of both strains to confirm they differ only by the
+    circuit, label and marker; no DNA exchange (168 lineages are naturally
+    competent under competence-inducing conditions, so avoid them, add DNase I,
+    plate clones on double selection to catch recombinants); and the same
+    medium, dilution schedule and temperature as the toggle run, tracked over
+    the full 72 hours;
+  - a four-bin cytometry gate at every timepoint: (A high, B low), (A low,
+    B high), (both low), (both high or intermediate), with thresholds set in
+    advance from parental W168, fully induced single-state controls and
+    single-color compensation controls, and dead cells, debris and spores
+    excluded with a viability or nucleic-acid stain plus scatter and reported
+    separately (otherwise they inflate the both-low bin and are misread as lost
+    circuit). The both-high bin is the most informative number: persistent
+    both-high cells mean mutual repression is failing and the circuit is a
+    co-expresser, not a switch; persistent intermediate cells mean a graded or
+    slow circuit.
+  Cells that lose or silence the circuit can outgrow the rest and mimic state
+  loss (`bsubtilis_30_fitness_cost_selection.py`).
 - **Optional single-cell tracking:** agarose-pad time-lapse of microcolonies
   to confirm individual lineages hold their written state.
 - **Replicates:** three independent biological replicates, both write
@@ -213,9 +251,16 @@ redirecting it into the next stage.
   slow monostable circuit relaxing over ~48 hours. These are the project's own
   thresholds used throughout the computational work, so the numbers are
   directly comparable.
-- The 70 percent figure is met on reporter-positive cells AND on all cells. If
-  it is met only after excluding cells that lost both reporters, the timepoint
-  is reported as uninterpretable (selection or circuit loss), not as a pass.
+- Report two numbers at every timepoint and read them together. The product
+  number (fraction of all live cells in the written state) gates pass or fail
+  at 70 percent. The mechanism number (fraction of circuit-positive cells in the
+  written state) says whether the toggle works. All cells below 70 percent with
+  circuit-positive at or above 70 percent and a large both-low bin means the
+  toggle works but expression is lost or silenced (fix stability, not the
+  topology). Circuit-positive below 70 percent with a small both-low bin means
+  the toggle itself is broken; the both-high, intermediate and flipped bins say
+  how. A result met only after excluding both-low cells is uninterpretable at
+  that timepoint, not a pass.
 - The washout-and-reread arm reproduces the distribution at 48 and 72 hours.
 - Both write directions work, in both directions, on the same culture.
 - M3 fails to show bimodality, or collapses to one state regardless of what was
@@ -305,8 +350,23 @@ arms are intact at their intended loci (*amyE*, *lacA*). A duplicated, lost or
 rearranged construct would look like a memory failure in the cytometry read
 and no simulation models it. Interpret no arm 2a or 2b failure as a failure of
 the mechanism until this passes. Use the B0 growth and competition results to
-tell circuit loss or outgrowth by non-expressers from state loss, and gate
-cytometry for cells negative in both reporters.
+tell circuit loss or outgrowth by non-expressers from state loss, and use the
+four-bin gate from B0.
+
+**Survivor-bias control, run with both arms.** The cells that survive damage may
+not be a random sample: stress responses and growth state can correlate with
+circuit expression, so survivors could already be enriched for cells that were
+downregulating the circuit before the insult, which would make a good recovery
+look better than it is (or the reverse). Run damage on freshly written cultures
+with as few generations as possible between write and insult, measure the
+both-low and four-bin composition of the culture immediately before damage,
+and measure the same composition among plated survivors (colony fluorescence).
+The ratio of the lost share among survivors to the lost share before damage is a
+direct estimate of the bias that `bsubtilis_30_fitness_cost_selection.py`
+section F sweeps. At plausible fitness costs and loss rates, selection during the
+roughly 7 division regrowth window does not dominate the result, but the
+direction and size of survivor bias is not modelled and could make recovery look
+better or worse.
 
 - **Arm 2a, dilution only.** Write a bit, then dilute the culture to a defined
   low CFU count and let it regrow. This isolates exactly what the simulations

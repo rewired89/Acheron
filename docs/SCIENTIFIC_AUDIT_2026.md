@@ -2455,10 +2455,28 @@ prediction.
 **Results (deterministic expectation unless stated).**
 - Selection only bites over long cultures. After 7 generations, which is what
   a damage and regrowth run involves, 98 to 100 percent still hold the bit
-  across the whole grid except at mu of 1e-2 (84 to 93 percent), so
-  **Experiment 3's regrowth test is not threatened by selection**. The 72 hour
-  run in Experiment 1 is, because it is 36 to 144 generations depending on
-  doubling time.
+  across the whole grid except at mu of 1e-2 (84 to 93 percent), so at
+  plausible fitness costs and loss rates **selection during the regrowth window
+  itself does not dominate the result**. That is a narrower claim than "the
+  regrowth test is not threatened" (the first wording of this part, corrected
+  after review), because it says nothing about who survives the damage. The 72
+  hour run in Experiment 1 is threatened directly, because it is 36 to 144
+  generations depending on doubling time.
+- **Survivor bias (section F) is the larger risk for Experiment 3, and it is
+  not modelled in direction.** If the survivors of damage are not a random
+  sample, selection that happened BEFORE the damage carries through. Starting
+  from a culture that has already run 72 generations, random survivors
+  (bias 1) at s of 0.10 and mu of 1e-4 leave 49 percent lost among survivors and
+  35 percent holding the bit after 7 generations of regrowth; at s of 0.10 and
+  mu of 1e-5 it is 9 percent lost and 84 percent holding; at s of 0.03 and mu of
+  1e-4 it is 2 percent lost and 97 percent holding. Over-representation of lost
+  cells among survivors makes it worse (bias 10 at s of 0.10, mu of 1e-5: 49
+  percent lost, 35 percent holding) and under-representation makes it better
+  (bias 0.5: 5 percent lost, 91 percent holding). The practical consequence is
+  procedural: run damage on freshly written cultures with few generations
+  between write and insult, and measure the lost share before damage and among
+  survivors. The size and direction of real bias is unknown; both directions are
+  swept.
 - With no growth advantage for lost cells (s of 0), the bit survives 72
   generations at 99 percent or better for mu up to 1e-4, and 93 percent at
   mu of 1e-3.
@@ -2490,7 +2508,7 @@ about long-term storage, not just this experiment: a stored bit in a growing
 culture has a half-life set by selection, independent of how stable the toggle
 itself is.
 
-**Protocol changes made in response.** Experiment 1 and Stage B0 now make the
+**Protocol changes made in response (first round).** Experiment 1 and Stage B0 now make the
 inducer hysteresis arm the primary pass criterion for M1 and M2, with a
 specified method (pilot dose-response, ON-history and OFF-history populations,
 equilibration confirmed by two successive reads); state the 72 hour culture
@@ -2503,6 +2521,33 @@ make the 70 percent bar apply to both reporter-positive and all cells, with
 results met only after excluding lost cells reported as uninterpretable.
 Experiment 3 and Stage B2 gain the same gate. The Experiment 1 cost estimate is
 now marked a floor that predates these additions.
+
+**Protocol changes made in a third review round.** A further review found six
+problems with those changes, all accepted: (1) the pass bar now reports two
+numbers at every timepoint, the product number (all live cells in the written
+state, gates pass or fail) and the mechanism number (circuit-positive cells in
+the written state), with an interpretation guide, because the same fail can
+mean a working toggle with unstable expression or a broken toggle; (2) the
+cytometry gate is now four bins (A high B low, A low B high, both low, both
+high or intermediate), because the both-high bin is the clearest sign that
+mutual repression is failing and the circuit is a co-expresser, and a
+viability or nucleic-acid stain plus scatter now excludes dead cells, debris
+and spores that would otherwise inflate the both-low bin; (3) hysteresis now
+requires a step-response calibration of the circuit's settling time first, with
+every level held at least three times the slowest plateau time, and single-cell
+cytometry at every level (a washout cannot calibrate a toggle, because a toggle
+never forgets); (4) the "selection does not threaten regrowth" wording above is
+corrected and a survivor-bias control added to Experiment 3 and Stage B2; (5)
+the competition assay is now specified (reference strain, label swap and
+reference-versus-reference noise floor, sequencing for isogenicity, DNase I and
+no competence conditions, same regime as Experiment 1); (6) sporulation is now
+managed, not just checked: measured at every passage by heat-shock plating
+against untreated plating, with a maximum acceptable fraction set by the lab
+and founders before the run (deliberately left blank, since any number would be
+invented) and a rule for changing the design if it is exceeded. The Experiment 1
+cost floor now also covers the calibration, spore monitoring and strain
+sequencing. The review also pressed the voltage question; see
+`docs/VOLTAGE_DECISION_MEMO.md`, which lays out the choice and does not make it.
 
 **Still open.** The review also noted that the locus PCR in Part 29 does not
 catch point mutations or silencing. The loss-of-circuit gate and

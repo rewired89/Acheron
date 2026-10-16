@@ -405,3 +405,17 @@ disproven, and where to start reading.
    and Stage B2 get the same gate. The Experiment 1 cost estimate is now a floor,
    not a quote. `docs/ACHERON_INTERVIEW_GUIDE.md` has not been synced to Parts
    29 and 30 yet.
+   **A third review round (still Part 30)** produced: the pass bar now reports
+   a product number (all live cells) and a mechanism number (circuit-positive
+   cells) with an interpretation guide; a four-bin cytometry gate (the
+   both-high bin is the key toggle-versus-co-expresser number); a step-response
+   calibration that sets the hysteresis equilibration time (at least 3x the
+   slowest plateau time); a fully specified competition assay; sporulation
+   managed with a threshold the lab and founders must set before the run
+   (deliberately blank, do not fill in a number); a survivor-bias control and
+   `survivor_bias_outcome` in `bsubtilis_30`; and the earlier overconfident
+   "regrowth is not threatened by selection" wording corrected. New file
+   `docs/VOLTAGE_DECISION_MEMO.md` lays out the open choice of whether voltage
+   is the point of Acheron (Paths A, B, C). It does NOT make the decision; the
+   founders must, and before strains are ordered because the paths want
+   different chassis.

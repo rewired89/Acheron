@@ -30,7 +30,11 @@ Sections: A) expected loss after 72 / 144 generations over a grid of s and
 mu, B) generations until the ungated read drops below the 70 percent bar,
 C) a stochastic version with a finite dilution bottleneck, to show the
 spread, D) the same grid at only 7 generations, which is what a damage and
-regrowth experiment (Experiment 3) involves.
+regrowth experiment (Experiment 3) involves, E) why gating matters, F)
+SURVIVOR BIAS: if the cells that survive damage are not a random sample
+(lost or downregulating cells survive more or less often than circuit cells),
+the regrowth result is measuring the wrong subpopulation, and selection that
+happened BEFORE the damage matters even though regrowth itself is short.
 
 WHAT THIS DOES NOT DO:
 No value of s, mu or the flip rate is measured. All three are SWEEP AXES, so
@@ -102,6 +106,25 @@ def stochastic_gens_to_bar(s: float, mu: float, bottleneck: int, reps: int = 30,
     return out
 
 
+def survivor_bias_outcome(s: float, mu: float, pre_gens: int, bias: float,
+                          regrowth_gens: int = 7) -> Tuple[float, float]:
+    """Culture grows `pre_gens` generations before damage, then damage keeps a
+    small survivor set in which lost cells are `bias` times as likely to
+    survive as circuit cells (bias 1 = random survivors, >1 = lost cells
+    over-represented, <1 = under-represented). Survivors then regrow for
+    `regrowth_gens` generations. Returns (lost fraction among survivors,
+    ungated written-state fraction after regrowth). The size of the survivor
+    set is not modelled here; this tracks composition only."""
+    f_pre = 1.0 - trajectory(s, mu, pre_gens)[0][-1]       # lost fraction before damage
+    f = f_pre * bias / (f_pre * bias + (1.0 - f_pre))      # survivor composition
+    start = f
+    for _ in range(regrowth_gens):
+        lost = (1.0 + s) * f + (1.0 - f) * mu
+        circuit = (1.0 - f) * (1.0 - mu)
+        f = lost / (lost + circuit)
+    return start, 1.0 - f
+
+
 def fmt_gen(g: int) -> str:
     return ">2000" if g < 0 else str(g)
 
@@ -154,6 +177,20 @@ def main():
     for flip in (0.0, 1e-4, 1e-3, 1e-2):
         u, g = trajectory(0.10, 1e-3, 72, flip)
         print(f"{flip:<10.0e}{u[-1]:>10.0%}{g[-1]:>10.0%}")
+    print("\n" + "=" * 92)
+    print("F) SURVIVOR BIAS: culture grows 72 generations, damage keeps survivors in which")
+    print("   lost cells are `bias` times as likely to survive as circuit cells, then 7")
+    print("   generations of regrowth. Cells show lost share among survivors / ungated held.")
+    print("=" * 92)
+    biases = [0.5, 1.0, 2.0, 5.0, 10.0]
+    print(f"{'s':<6}{'mu':<9}" + "".join(f"bias={b:g}".rjust(16) for b in biases))
+    for s_, m_ in ((0.0, 1e-4), (0.03, 1e-4), (0.10, 1e-5), (0.10, 1e-4), (0.10, 1e-3)):
+        cells = [survivor_bias_outcome(s_, m_, 72, b) for b in biases]
+        print(f"{s_:<6.2f}{m_:<9.0e}" + "".join(f"{lo:>8.0%} /{hd:>5.0%}  " for lo, hd in cells))
+    print("\nbias=1 is random survivors (what bsubtilis_07 assumes). The direction of real")
+    print("bias is unknown and is NOT modelled; both directions are swept. Where the")
+    print("pre-damage lost share is already large, any bias above 1 makes recovery look worse,")
+    print("and any bias below 1 makes it look better than a random-survivor model says.")
     print("\nRead-me: ungated falls from BOTH loss and flipping, gated only from flipping.")
     print("A low ungated read with a high gated read means the circuit was lost, not the bit.")
     print("=" * 92)

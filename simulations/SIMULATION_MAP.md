@@ -639,7 +639,11 @@ generations and 81% at 144; s of 0.10 with mu of 1e-5 holds 91% then 1%. At 7
 generations, 98-100% holds everywhere except mu of 1e-2 (84-93%). Ungated versus gated
 reads diverge sharply (9% versus 100% at s of 0.10, mu of 1e-3, 72 generations).
 Audit Part 30. All axes are sweep axes, not measurements; the competition assay
-in Experiment 1 measures s directly.
+in Experiment 1 measures s directly. Section F sweeps SURVIVOR BIAS: if the
+cells that survive damage are not a random sample, selection that happened
+before the damage carries into the regrowth result (from a 72-generation-old
+culture at s of 0.10 and mu of 1e-4, only 35% hold the bit after regrowth even
+with random survivors). The direction of real bias is unknown.
 
 ---
 

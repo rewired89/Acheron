@@ -37,14 +37,26 @@ loses the bit for a reason no simulation here models, and it would look like
 a memory failure in the cytometry read. Run this before interpreting any
 arm 2a / 2b failure as a failure of the mechanism.
 
-**Fitness and loss controls.** Use the growth-rate and competition results
-from Experiment 1 to interpret any shortfall. A damage-and-regrowth run is
-only about 7 divisions, so selection should matter little here (see
-`simulations/bsubtilis_30_fitness_cost_selection.py`, section D), but a
-circuit that was already being lost, or a mutant enriched by the insult
-itself, would look like a memory failure. In the cytometry analysis, gate
-cells negative for BOTH reporters separately from cells that flipped, and
-report holding, flipped and lost fractions for each arm.
+**Fitness, loss and survivor-bias controls.** Use the growth-rate and
+competition results from Experiment 1 to interpret any shortfall. A
+damage-and-regrowth run is only about 7 divisions, so at plausible fitness
+costs and loss rates selection during regrowth does not dominate the result
+(see `simulations/bsubtilis_30_fitness_cost_selection.py`, section D). That is
+NOT the same as saying selection cannot matter: the survivors of damage may not
+be a random sample, and survivors already enriched for cells that were
+downregulating the circuit would make recovery look better than it is. Section
+F of that file sweeps the effect, and shows that how many generations the
+culture ran between write and insult matters a great deal. So:
+- run damage on freshly written cultures with as few generations as possible
+  between write and insult;
+- measure the four-bin composition (A high B low, A low B high, both low, both
+  high or intermediate; thresholds and exclusions as in Experiment 1) of the
+  culture immediately before damage;
+- plate survivors and measure the same composition among them by colony
+  fluorescence. The lost share among survivors divided by the lost share before
+  damage is a direct estimate of the bias;
+- report holding, flipped, lost and ambiguous fractions for each arm, and the
+  product and mechanism numbers as defined in Experiment 1.
 
 **Read:** flow cytometry at the end of regrowth plus settling, same 70%
 correct / 3:1 separation thresholds as Experiment 1.
