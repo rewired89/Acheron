@@ -12,6 +12,23 @@ there after the cells are damaged and regrow. Everything so far is simulation; n
 bench result exists. The first experiment checks that the engineered switch
 behaves like a real two-state switch at all.
 
+## What this packet contains, and where each piece lives
+
+All of the following are inside `wet_lab_experiments/Experiment_1_Toggle_Confirmation.md`
+(and, with the same wording, in Stage B0 of `experiments/BENCH_PROTOCOL_BSUBTILIS.md`).
+A review of the protocol without these would not be a review of the same
+experiment, so please read them as one document:
+
+| Piece | Section of Experiment 1 |
+|---|---|
+| Gating hierarchy, with compensation as a correction and not a gate | Shared methods, item 4 |
+| Four-bin classification and the two reported numbers | Shared methods, items 5 and 6 |
+| Pre-registered table mapping each bin pattern to a conclusion | Shared methods, item 7 |
+| Pilot design and its go/no-go gate | Pilot P0 and Gate P0 |
+| Pass and fail criteria for each stage | Pass criteria for 1a and 1b, and the "What a fail means" sections |
+| Sporulation rule and competition checklist | Stage 1b |
+| Values only a lab can set | The table in this note, below |
+
 ## What to read, in this order
 
 1. `wet_lab_experiments/Experiment_1_Toggle_Confirmation.md`, the standalone
@@ -23,9 +40,9 @@ behaves like a real two-state switch at all.
 
 ## What the protocol is
 
-A pilot gate (P0), then Stage 1a, then Stage 1b. P0 measures the circuit's settling
-time and the baseline spore fraction and decides whether hysteresis can be run in
-batch culture at all. Stage 1a runs hysteresis on the matched-promoter toggle (M1)
+A pilot gate (P0), then Stage 1a, then Stage 1b. P0 builds only the matched
+toggle (M1), measures its settling time, a never-pulsed control and the baseline
+spore fraction, and decides whether hysteresis can be run in batch culture at all. Stage 1a runs hysteresis on the matched-promoter toggle (M1)
 against a severely mismatched negative control (M3) and a 24 hour read of all
 three variants including a moderately mismatched one (M2). Stage 1b, only if 1a
 passes, adds the 72 hour run, a competition assay and sporulation monitoring.
@@ -50,7 +67,8 @@ invented.
 | Maximum acceptable spore fraction | Stage 1b sporulation rule | Is "upper end of the parental W168 spore fraction in a pilot" a sound basis? What would you use? |
 | Neutral integration site and reference fluorophore | Competition assay | A site other than amyE and lacA that is neutral in 168 lineages, and a fluorophore that does not overlap sfGFP and mCherry |
 | Cytometer trigger channel and threshold for bacteria | Gating step 1 | What works on your instrument for small cells |
-| How spores are best excluded by scatter | Gating step 4 | Is a purified spore control run enough, or is a spore stain needed? |
+| Spore exclusion method | Gating step 4 | We pair a scatter gate with a third-channel spore or viability stain (or a reporter in a third color, not GFP) and validate it by heat-shock plating. Is that the right design, and which stain or reporter would you use? |
+| Build M1 only for P0, or all three strains at once | Staging | We default to M1 only so a failed pilot wastes nothing. If a batch build of all three is cheaper in your hands, say so and by how much |
 | Inducer range, number of levels, read times in the calibration | P0 and 1a | How many, and how coarse a first pass |
 | Dilution interval and medium for a 72 hour run | Stage 1b | What keeps 168 vegetative for three days |
 | Repressor pair | Construct | We propose LacI and TetR and have not confirmed *B. subtilis*-validated versions |
@@ -76,6 +94,14 @@ invented.
   membrane voltage). That is a separate decision, recorded in
   `docs/VOLTAGE_DECISION_MEMO.md`, and does not change Experiment 1.
 - Not a request to endorse any claim in the project's pitch material.
+
+## Related simulation results a reviewer may want
+
+The survivor-composition simulation is done, not pending: recovery after damage
+just tracks what the surviving cells hold, so the project's headline number (a
+small fraction of survivors recovering fully) is only as good as the assumption
+that those survivors are correct. See `docs/SCIENTIFIC_AUDIT_2026.md` Part 30 and
+`simulations/bsubtilis_30_fitness_cost_selection.py`, section G.
 
 ## Honest status
 

@@ -2649,6 +2649,33 @@ The reviewer also agreed that further AI review rounds have stopped paying and t
 the protocol has grown past the original experiment. The next review should be by a
 person who has run a toggle in *B. subtilis* and used cytometry on bacteria.
 
+**Final small corrections before the human review (sixth outside pass).** The
+reviewer called itself done, and a search of what it said against the repo and the
+literature kept four changes and refused two things:
+- **Kept: P0 builds M1 only.** The earlier "build all three together" contradicted
+  P0 being a spend gate, and the P0 calibration formula had quietly required M3.
+  M2 and M3 are built after P0 passes. A lab saying a batch build is cheaper
+  overrides this default, and the handoff asks them.
+- **Kept: spore exclusion is scatter plus a third fluorescence channel, validated
+  by heat-shock plating.** Scatter alone cannot separate spores from
+  stationary-phase cells, and plating is destructive so it can only validate the
+  gate. A spore reporter built on GFP would collide with the toggle's own sfGFP
+  reporter, so any reporter must be a third color.
+- **Kept: a never-pulsed control** for every strain (and in P0), to set the floor
+  for apparent bimodality and show the default state. The no-circuit false-positive
+  rate for the both-high bin comes from parental W168 and single-color controls.
+- **Kept: the handoff names exactly where the gating, bin table, pass criteria and
+  open values live,** so the reviewer sees the same experiment.
+- **Refused: the proposed Bonnet differentiator.** The reviewer said a recombinase
+  latch is irreversible per site and needs new registers for new bits, while a
+  toggle can be flipped repeatedly. That is wrong. Bonnet et al. 2012 is a
+  rewritable memory built with a recombination directionality factor, with
+  separate set and reset steps (PMC3384180), and a toggle also needs one circuit
+  per bit. Putting it in the README would have been a false claim. The README
+  keeps saying that no advantage over a DNA latch is established.
+- **Not pending:** the reviewer listed the survivor sweep as open. It is done
+  (section G of `bsubtilis_30`).
+
 **Still open.** The review also noted that the locus PCR in Part 29 does not
 catch point mutations or silencing. The loss-of-circuit gate and
 sequencing of reporter-negative isolates cover that, but only if loss

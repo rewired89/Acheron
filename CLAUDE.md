@@ -446,3 +446,12 @@ disproven, and where to start reading.
    reviewer and lists the values only a lab can set. Do not add more protocol
    detail on the strength of another AI review; the next input should come from
    that person.
+   **A sixth, last small pass (still Part 30):** P0 now builds M1 only (M2 and M3
+   after P0 passes, lab can override if batch building is cheaper); spore
+   exclusion is scatter plus a third fluorescence channel validated by heat-shock
+   plating; a never-pulsed control for every strain; the handoff lists exactly where
+   the gating, bin table, pass criteria and open values live. One reviewer claim was
+   refused because it was wrong: Bonnet et al. 2012 is rewritable (set and reset),
+   so "a toggle can be flipped repeatedly and a recombinase latch cannot" must not
+   appear anywhere. The README keeps stating that no advantage over a DNA latch is
+   established.

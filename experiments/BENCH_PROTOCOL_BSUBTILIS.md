@@ -157,7 +157,7 @@ redirecting it into the next stage.
 **Tests audit Part 9 (`bsubtilis_01_gardner_toggle_circuit.py`) and Part 16
 (`bsubtilis_10_reporter_readout.py`).**
 
-- **Strain:** W168, variants M1, M2 and M3, all built together.
+- **Strain:** W168. Variant M1 is built for the pilot; M2 and M3 are built after the pilot passes.
 
 This stage is specified in full, to the same wording, in
 `wet_lab_experiments/Experiment_1_Toggle_Confirmation.md`, which is the standalone
@@ -180,8 +180,12 @@ expensive parts after the cheap questions have a yes.
   passes. Adds M2's hysteresis, the 72 hour run, the fitness and competition
   controls and the sporulation monitoring.
 
-Build all three variants (M1, M2, M3) together at the start. They share a backbone
-and an extra strain costs little next to the cytometry runs.
+**Which strains are built when.** Build M1 first, for P0. Build M2 and M3 after P0
+passes, because P0 can fail and constructs built before the gate would be wasted.
+This default puts the gate ahead of batch savings. If the collaborating lab says a
+batch build of all three is cheaper than building them separately, the lab's
+answer overrides the default and should be recorded; the trade is paying for
+constructs that a failed P0 would leave unused.
 
 #### Shared methods (apply to P0, B0a and B0b)
 
@@ -210,8 +214,18 @@ and an extra strain costs little next to the cytometry runs.
      live gate is not reliable, so a dye is required.
    - **Gate 4, spore and debris exclusion:** a scatter gate drawn using a purified
      spore preparation run as a control (heat-shocked and washed) and a
-     medium-only sample for debris. Spores are reported as their own share and
-     never counted as cells, otherwise they inflate the both-low bin.
+     medium-only sample for debris, **paired with a third fluorescence channel**
+     that does not overlap sfGFP or mCherry: a spore- or viability-specific stain,
+     or a spore reporter in a third color (the lab chooses). Scatter alone is
+     weak, because spores and stationary-phase vegetative cells overlap in
+     scatter and a gate that removes spores will also remove some vegetative
+     cells. A spore reporter built on GFP would collide with the toggle's own
+     sfGFP reporter, so it must be a different color. Heat-shock plating
+     (Stage B0b) is destructive and off the cytometer, so it cannot be the gate; it
+     is the **validation** of the gate. At each passage the spore fraction the
+     cytometry gate reports must agree with the plated spore fraction. If it does
+     not, the gate is wrong. Spores are reported as their own share and never
+     counted as cells, otherwise they inflate the both-low bin.
    - **Gate 5, fluorescence bins,** applied to the compensated data. Thresholds
      come from controls: parental W168 sets the low gate (autofluorescence) and
      fully induced single-state controls set the high gate.
@@ -238,15 +252,22 @@ and an extra strain costs little next to the cytometry runs.
 | Large [dark] population, remaining cells in the correct bins (mechanism number passes, product number fails) | **Expression lost or silenced**: a stability and fitness problem, not a topology problem. The competition assay and sequencing of dark isolates decide the cause |
 | Large [dark] at time zero, before any long culture | **Construct or induction failure**, not state loss |
 | Large [dark] together with a high spore or dead-cell share | **Culture problem**: handled in Stage B0b's sporulation rule, not a circuit result |
+| The never-pulsed control is already bimodal, or already sits in one state | **Leak or default state**: the written-state results must be read against it, and it is the floor for any apparent bimodality |
 
 A result met only after excluding [dark] cells is reported as **uninterpretable
 at that timepoint**, not as a pass.
 
-#### Pilot B0-P0: can this experiment be run at all? (M1 and parental W168)
+#### Pilot B0-P0: can this experiment be run at all? (M1 and parental W168 only)
 
 1. **Dose-response pilot:** M1 across a wide log-spaced inducer range, one
    replicate, to locate the switching region. Hysteresis needs this anyway.
-2. **Response-time calibration (its own cultures, run and finished first).**
+2. **No-pulse control:** a never-pulsed M1 culture grown alongside everything
+   else and read at the same times. It shows how the circuit leaks and which
+   state it defaults to when nothing has been written, which is the floor for
+   any apparent bimodality. The false-positive rate for the [both] bin when there
+   is no circuit at all comes from parental W168 and the single-color controls
+   already required for the gates.
+3. **Response-time calibration (its own cultures, run and finished first).**
    Hysteresis is only interpretable if each inducer level is held much longer than
    the circuit takes to settle. Too short and a slow monostable circuit shows
    apparent hysteresis (a false positive); long enough and a monostable circuit
@@ -267,12 +288,12 @@ at that timepoint**, not as a pass.
      successive reads. If the two reads at a level still differ, lengthen that
      level and repeat it.
    - **Sample count (a count, not a price, because no lab has quoted):**
-     calibration cytometry samples = 3 step types x strains calibrated (M1, plus
-     M3 for comparison) x read times until plateau (set by a coarse first pass) x
-     3 replicates. Hysteresis samples in B0a = 2 histories x inducer levels x
+     calibration cytometry samples = 3 step types x read times until plateau (set
+     by a coarse first pass) x 3 replicates, on M1 only (M3 is not yet built; the
+     comparison against M3 happens in the hysteresis test in B0a). Hysteresis samples in B0a = 2 histories x inducer levels x
      strains (M1 and M3) x 2 successive reads x 3 replicates. These two are of the
      same order, so the calibration is a large part of the cost, not a footnote.
-3. **Parental W168 spore baseline:** grow parental W168 under the planned dilution
+4. **Parental W168 spore baseline:** grow parental W168 under the planned dilution
    regime for at least 3 times the slowest response time, and later for the full
    72 hours, measuring the spore fraction at every passage (method in Stage B0b).
    This fixes the sporulation threshold.
@@ -289,8 +310,9 @@ at that timepoint**, not as a pass.
 
 #### Stage B0a: does the switch switch? (M1, M2 and M3)
 
-1. **Build and sequence-verify M1, M2 and M3,** with single-color and parental
-   W168 controls for the gates.
+1. **Build and sequence-verify M2 and M3** (M1 was built for P0), with
+   single-color and parental W168 controls for the gates. Run a never-pulsed
+   control for every strain alongside, read at the same timepoints.
 2. **Hysteresis (primary bistability test) on M1 and M3.** This is the decisive
    test, because a slow monostable circuit can fake a bimodal snapshot but cannot
    fake a history-dependent response (Gardner, Cantor & Collins 2000). M3 is not
