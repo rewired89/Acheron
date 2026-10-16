@@ -130,6 +130,27 @@ do.**
 
 ---
 
+## A second prior art, and what it does to the claim above
+
+Bonnet, Subsoontorn & Endy (2012), "Rewritable digital data storage in live cells
+via engineered control of recombination directionality," *PNAS* 109(23):8884-8889,
+built an addressable, rewritable, digital memory in live bacterial cells, held by
+the orientation of a stretch of DNA, heritable over more than a hundred cell
+divisions, and read non-destructively by fluorescence.
+
+That narrows the claim in the previous section. A DNA-orientation latch is
+inherited at division for the same reason a protein toggle is, so "the state
+survives division and regrowth" does not by itself separate this project from that
+work. What has not been shown is a functional advantage over a DNA latch. What
+might separate them is the damage-detecting, self-reinforcing part of the
+hypothesis (a circuit that senses damage and strengthens the stored state during
+regrowth), which is simulated and unbuilt. Whether the stored state should be
+voltage at all is an open decision, laid out in `docs/VOLTAGE_DECISION_MEMO.md`.
+Until that decision is recorded, the novelty claim is provisional and no material
+should claim voltage novelty or an advantage over a DNA latch.
+
+---
+
 ## The roadmap
 
 Four independent, cheap gates rather than one combined bet. Full costs and

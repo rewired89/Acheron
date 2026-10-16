@@ -434,3 +434,15 @@ disproven, and where to start reading.
    unfixed values (spore threshold, neutral integration site, sample counts) can
    only be set by a lab; a flow-cytometry-literate microbiologist should review
    the protocol before more outside AI rounds.
+   **A fifth round (still Part 30), and the last outside AI pass:** Experiment 1
+   is now **Pilot P0** (dose-response, response-time calibration on its own
+   cultures, parental W168 spore baseline; a feasibility gate), then **1a** (M1,
+   M2, M3 built together; hysteresis on M1 against the M3 negative control; 24
+   hour read of all three; M2 reported, not required), then **1b**. Compensation
+   is a correction applied to the data, not a gate, in the gating order. The
+   voltage memo states Path C is a sequencing choice that leaves the novelty claim
+   provisional, and the README now carries a Bonnet et al. 2012 section. New file
+   `docs/PROTOCOL_REVIEW_HANDOFF.md` is the packet for a human microbiologist
+   reviewer and lists the values only a lab can set. Do not add more protocol
+   detail on the strength of another AI review; the next input should come from
+   that person.

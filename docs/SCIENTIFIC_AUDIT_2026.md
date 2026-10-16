@@ -2608,6 +2608,47 @@ the neutral integration site, the sample counts) are values only the lab can set
 and a flow-cytometry-literate microbiologist reviewing the protocol is worth more
 than another pass by an outside AI.
 
+**A fifth review round, and the last outside AI pass this protocol should get.**
+The reviewer found two real errors and one real README gap, and pushed on a third
+point where only part of its argument holds. Accepted:
+- **Compensation is not a gate.** It is a matrix computed from single-color
+  controls and applied to the fluorescence data before any fluorescence gate. The
+  gating order is now: compensation applied to the data, then events, singlets,
+  live cells, spore and debris exclusion, then the fluorescence bins. The spore
+  exclusion method is named (a scatter gate drawn with a purified spore control),
+  and the trigger channel for bacteria is left to the lab.
+- **The calibration is a gate, not a component.** Experiment 1 is now Pilot P0
+  (dose-response, response-time calibration on its own cultures, parental W168
+  spore baseline), then 1a, then 1b. If the settling time is longer than a
+  vegetative culture can be sustained, hysteresis cannot be run in batch and the
+  design changes before anything else is spent. The calibration is of the same
+  order of size as the hysteresis test it sets up, so staging protects the budget
+  for 1b and not for 1a. No cost figure is attached, because none has been quoted.
+- **M2 earns a place in 1a, M3 stays.** M2 is the realistic case and answers how
+  much promoter mismatch the circuit tolerates (the noise sweeps in Part 29 make
+  that matter more, since mismatch fails earlier as noise rises). All three
+  variants are built together and read at 24 hours in 1a. M3 is kept in 1a because
+  it is the negative control for the hysteresis assay: a loop on M1 alone cannot
+  show the assay returns one curve for a circuit known to be monostable. M2's
+  hysteresis is deferred to 1b, and M2 is now reported rather than required
+  to proceed, since the gate question is M1 against M3. That downgrade of M2 from a
+  required pass to a reported result is a design choice a practitioner should check.
+- **Path C is a funding and sequencing choice, not a resolution of the novelty
+  question.** The voltage memo now says so: the novelty claim is provisional until
+  a decision is recorded, no investor-facing material may claim voltage novelty or
+  an advantage over a DNA latch, and the "founder's description never mentions
+  voltage" argument is withdrawn as evidence (it is silent on mechanism by design
+  and supports neither path).
+- **The README never mentioned Bonnet et al. 2012.** It argued the differentiator
+  only against Yang et al. 2020, so its headline claim was stated without
+  addressing the closest overlap. A short section now does.
+- **A reviewer handoff note** (`docs/PROTOCOL_REVIEW_HANDOFF.md`) lists the values
+  only a lab can set and the specific questions to ask a practitioner.
+
+The reviewer also agreed that further AI review rounds have stopped paying and that
+the protocol has grown past the original experiment. The next review should be by a
+person who has run a toggle in *B. subtilis* and used cytometry on bacteria.
+
 **Still open.** The review also noted that the locus PCR in Part 29 does not
 catch point mutations or silencing. The loss-of-circuit gate and
 sequencing of reporter-negative isolates cover that, but only if loss

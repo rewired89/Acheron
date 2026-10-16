@@ -121,9 +121,12 @@ chassis for the voltage work only if Experiment 1 to 3 pass.
 
 This is Claude's recommendation. It is not a decision.
 
-1. **It matches how the founder defines Acheron.** Write, damage, detect, transfer,
-   keep. Voltage is not in that sentence, so dropping it from the first line of
-   work does not change what the project is.
+1. **It is consistent with how the founder defines Acheron, which does not settle
+   it.** Write, damage, detect, transfer, keep. That is a functional description
+   and is silent on mechanism by design. It does not require voltage, and it does
+   not require a reporter either. It is therefore no evidence for Path B over
+   Path A. It only means that running reporter experiments first does not
+   contradict the project's own definition.
 2. **It is the cheapest ordering.** Experiment 1a gates every path. If the toggle
    does not work, no path survives, and nothing has been spent on the unbuilt
    voltage link.
@@ -140,6 +143,29 @@ This is Claude's recommendation. It is not a decision.
    should describe the stored state as held in the cell's own circuit and read
    with a reporter, with voltage as a planned later readout, not as the present
    claim.
+
+### What Path C does not settle (read this before using it)
+
+Path C is a **funding and sequencing** choice, not a resolution of the novelty
+question. The novelty question is binary:
+
+- If the product is a reporter-read genetic state, the project overlaps
+  functionally with Bonnet, Subsoontorn & Endy (2012) (a heritable, rewritable DNA
+  recombinase latch with non-destructive fluorescent readout), and any novelty
+  claim must be written against that paper, not only against Yang et al. 2020.
+- If the product is voltage, the novelty claim is real and the repressor-to-channel
+  link is the whole bet.
+
+Under Path C neither claim is made. So, until the founders record a decision:
+- **The novelty claim is provisional.** "Survives division and regrowth" does not
+  by itself separate Acheron from Bonnet et al. (2012), which also survives
+  division. The README states this.
+- **No investor-facing material may claim voltage novelty.** That includes the
+  deck, the pitch document, the campaign drafts and the interview guide.
+- **No material may claim a functional advantage over a DNA latch** unless one has
+  been shown. None has.
+- Deferral is allowed to last only as long as the reporter work lasts. If the
+  decision is still open when Experiment 1a returns, the memo is overdue.
 
 **Conditions that would move the project to Path A:** Experiments 1a to 3 pass and
 the founders judge voltage essential; a mechanistic model reproduces the anti-phase

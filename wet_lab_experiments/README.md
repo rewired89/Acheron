@@ -16,7 +16,7 @@ experiment.
 
 | # | Experiment | One-line goal |
 |---|---|---|
-| 1 | Toggle Confirmation (1a gate, 1b long-run and controls) | Does the switch actually switch, cleanly, in real cells, and does it hold? |
+| 1 | Toggle Confirmation (pilot P0, 1a gate, 1b long-run and controls) | Does the switch actually switch, cleanly, in real cells, and does it hold? |
 | 2 | Persistence and Noise | Does it hold over time, and what's the real static level? |
 | 3 | Damage and Regrowth | Does the stored bit survive the colony being hurt and growing back? |
 | 4 | Repressor Copy Number | How many molecules per cell are actually doing the job? |
@@ -26,7 +26,7 @@ experiment.
 
 **Cost note:** only Experiment 1 has a planning estimate attached, $2,000 to
 $5,000 and 6 to 10 weeks (`docs/pitch/Acheron_Validation_Proposal.docx`). That
-figure predates the staged design (1a gate, 1b long-run and controls), should be
+figure predates the staged design (pilot P0, 1a gate, 1b long-run and controls), should be
 read as a floor for both stages together, and has not been quoted by a lab. Experiments 2 through 7 have no
 price attached anywhere in this project, don't invent one if asked, get a
 quote from the collaborating lab instead.
