@@ -2549,6 +2549,65 @@ cost floor now also covers the calibration, spore monitoring and strain
 sequencing. The review also pressed the voltage question; see
 `docs/VOLTAGE_DECISION_MEMO.md`, which lays out the choice and does not make it.
 
+**A fourth review round.** The reviewer said each earlier round produced a sketch
+that needed a second pass to become a specification. Roughly half of the new
+points were right, two were already in the files, and one (that the
+survivor-bias sweep was only optional) was out of date, because it had already
+been built. Accepted, and written into Experiment 1 and Stage B0:
+- a **pre-registered interpretation table** that maps each bin pattern to a
+  conclusion (working toggle, asymmetric, monostable, co-expresser, graded,
+  slow relaxation, expression loss, construct failure, culture problem), fixed
+  before data. One correction to the reviewer: [dark] means lost or silent
+  circuit, not "graded"; graded is the intermediate pattern;
+- the **gating hierarchy** (all events, singlets, live cells, scatter exclusion of
+  debris and spores, compensation, four bins), with thresholds from parental,
+  fully induced and single-color controls;
+- the **calibration is independent of the hysteresis run**, uses its own cultures,
+  fixes the equilibration time in advance, and has a sample-count formula (a
+  count, not a price, since nothing has been quoted);
+- the **sporulation threshold is now a rule, not a blank**: the upper end of the
+  parental W168 spore fraction measured in a pilot in the same regime, with ranked
+  fallbacks (tighten dilution, shorten the run and limit the claim, change medium
+  and redo the baseline, move to continuous culture) and a statement of what each
+  costs;
+- the **competition assay is a checklist** where every row must be "yes" before it
+  runs, now including the reference fluorophore's own cost against unlabelled
+  parental W168;
+- a **recommendation in the voltage memo** (Path C, reporter first), not adopted
+  until the founders record a decision;
+- **Experiment 1 is split**: 1a (M1 and M3, calibration, hysteresis, 24 hour read)
+  is the cheap go/no-go gate; 1b (M2, the 72 hour run, fitness, competition and
+  sporulation) runs only if 1a passes.
+
+**Survivor composition in the cell-level engine (`bsubtilis_30`, section G).**
+The earlier sweep (section F) tracked population fractions only. Section G puts
+the question into the regrowth engine: each survivor is independently
+wrong-state, or already lost, with probability q. Mean fidelity and the share of
+colonies clearing the 70 percent bar:
+
+| survivors | q=0 | q=0.05 | q=0.10 | q=0.25 | q=0.50 |
+|---|---|---|---|---|---|
+| 1 (2%) | 100 / 100 | 93 / 93 | 90 / 90 | 83 / 83 | 38 / 38 |
+| 3 (5%) | 100 / 100 | 96 / 88 | 92 / 77 | 78 / 50 | 48 / 13 |
+| 13 (20%) | 100 / 100 | 96 / 100 | 91 / 100 | 75 / 65 | 46 / 5 |
+
+Recovery tracks survivor composition, because division copies whatever the
+survivors hold. The project's central number, "2 percent survivors recover to 100
+percent", is therefore exactly as good as the assumption that those survivors are
+all correct. With one survivor the outcome is all or nothing; with more survivors
+the mean is the same and the spread narrows, which helps when survivors are mostly
+right and hurts when they are not. Wrong-state and lost survivors give identical
+numbers on this ungated read (both fail to hold the bit) and differ only in the
+gated mechanism number. The survivor probabilities are sweep axes, not
+measurements; the plated-survivor comparison in Experiment 3 and Stage B2 is what
+measures them.
+
+**Not accepted as stated.** The suggestion that stopping to write more protocol
+detail is the next step. The remaining unfixed items (the spore threshold number,
+the neutral integration site, the sample counts) are values only the lab can set,
+and a flow-cytometry-literate microbiologist reviewing the protocol is worth more
+than another pass by an outside AI.
+
 **Still open.** The review also noted that the locus PCR in Part 29 does not
 catch point mutations or silencing. The loss-of-circuit gate and
 sequencing of reporter-negative isolates cover that, but only if loss

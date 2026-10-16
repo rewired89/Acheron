@@ -1,9 +1,10 @@
 # Decision Memo: Is Voltage the Point of Acheron?
 
-**Status:** a decision for the founders. This memo lays out the choice and what
-each path costs. It does not make the choice. Written October 2026 from the
-audit (`docs/SCIENTIFIC_AUDIT_2026.md`, Parts 24 to 30) and the patentability
-assessment.
+**Status:** a decision for the founders. This memo lays out the choice, what each
+path costs, and a recommendation (Path C, below). The recommendation is not
+adopted until the founders record a decision in the last section. Written
+October 2026 from the audit (`docs/SCIENTIFIC_AUDIT_2026.md`, Parts 24 to 30) and
+the patentability assessment.
 
 ## The question
 
@@ -115,3 +116,42 @@ chassis for the voltage work only if Experiment 1 to 3 pass.
   dynamics (audit Part 26) would strengthen Path A.
 - A real functional advantage over a DNA latch, such as faster rewriting,
   damage-triggered repair or a use a latch cannot serve, would strengthen B.
+
+## Recommendation: Path C, reporter first, voltage held open
+
+This is Claude's recommendation. It is not a decision.
+
+1. **It matches how the founder defines Acheron.** Write, damage, detect, transfer,
+   keep. Voltage is not in that sentence, so dropping it from the first line of
+   work does not change what the project is.
+2. **It is the cheapest ordering.** Experiment 1a gates every path. If the toggle
+   does not work, no path survives, and nothing has been spent on the unbuilt
+   voltage link.
+3. **It does not wait on Experiment 1 for information it cannot give.** A passing
+   Experiment 1 does not choose between A and B, so the choice is made on the
+   definition of the project, now, not on that result. A failing Experiment 1a ends
+   all three paths together.
+4. **The cost is accepted in advance.** If a voltage path is later chosen and needs
+   NCIB 3610 with the yugO channel intact, the promoter parts must be
+   re-characterized in that background and the first strains will not carry over.
+   That cost is the price of not guessing now, and it is smaller than building the
+   voltage link before knowing the toggle works.
+5. **Wording follows the path.** Until the decision changes, written material
+   should describe the stored state as held in the cell's own circuit and read
+   with a reporter, with voltage as a planned later readout, not as the present
+   claim.
+
+**Conditions that would move the project to Path A:** Experiments 1a to 3 pass and
+the founders judge voltage essential; a mechanistic model reproduces the anti-phase
+result (audit Part 26); Stage 3 is scoped and funded.
+**Conditions that would move it to Path B for good:** a functional advantage over a
+DNA latch is found that does not depend on voltage; or the founders decide voltage
+is not part of the project.
+
+## Decision record (to be filled in by the founders)
+
+- Decision (A, B or C):
+- Date:
+- Who decided:
+- One-line reason:
+- Revisit when:

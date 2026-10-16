@@ -2,7 +2,9 @@
 
 **Tests:** `docs/SCIENTIFIC_AUDIT_2026.md` Part 8 (`simulations/bsubtilis_07_colony_regrowth.py`), Part 20 (`bsubtilis_13_reporter_colony_regrowth.py`), Part 22 (`bsubtilis_15_partition_noise_regrowth.py`).
 **Bench protocol this is drawn from:** `experiments/BENCH_PROTOCOL_BSUBTILIS.md`, Stage B2.
-**Prerequisite:** Experiment 1 passes (M1 confirmed bistable).
+**Prerequisite:** Experiment 1a passes (M1 confirmed bistable by hysteresis and the
+mechanism number). Experiment 1b's growth-rate and competition results are needed
+to interpret any shortfall here.
 
 ## The goal, plainly
 

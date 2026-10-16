@@ -64,7 +64,9 @@ def run_colony_trial_ex(surviving_fraction: float, target_bit: int, seed: int,
                         stress_minutes: float = 0.0,
                         stress_doubling_multiplier: float = 1.0,
                         stress_shift_mv: float = 0.0,
-                        stress_noise_multiplier: float = 1.0) -> Dict[str, float]:
+                        stress_noise_multiplier: float = 1.0,
+                        survivor_wrong_prob: float = 0.0,
+                        survivor_lost_prob: float = 0.0) -> Dict[str, float]:
     """One regrowth trial. With every stress/delay argument at its default
     this is the bsubtilis_07 / bsubtilis_14 trial. Returns genetic fidelity,
     a single-snapshot voltage read, a long-window voltage read, whether the
@@ -86,6 +88,16 @@ def run_colony_trial_ex(surviving_fraction: float, target_bit: int, seed: int,
         return c
 
     cells = [new_cell() for _ in range(n_surv)]
+    # Survivor composition (bsubtilis_30 section G): each survivor is, with the
+    # given probabilities, written to the WRONG state or already circuit-LOST.
+    # Draws only happen when a probability is set, so default runs are unchanged.
+    if survivor_wrong_prob > 0 or survivor_lost_prob > 0:
+        for c in cells:
+            r = rng.random()
+            if r < survivor_lost_prob:
+                c.lost = True
+            elif r < survivor_lost_prob + survivor_wrong_prob:
+                c.write(1 - target_bit)
     total = settle_hours * 60.0
     t = 0.0
     next_div = doubling_min * (stress_doubling_multiplier if stress_minutes > 0 else 1.0)
@@ -99,6 +111,8 @@ def run_colony_trial_ex(surviving_fraction: float, target_bit: int, seed: int,
         if stressed:
             offset += stress_shift_mv * V_TRACK_RATE
         for c in cells:
+            if getattr(c, 'lost', False):
+                continue
             c.tx_noise = tx_noise * (stress_noise_multiplier if stressed else 1.0)
             c.step(dt=0.02)
             if offset:
@@ -106,7 +120,10 @@ def run_colony_trial_ex(surviving_fraction: float, target_bit: int, seed: int,
         if t_full is None and t >= next_div:
             fresh = []
             for c in cells:
-                fresh.append(new_cell(c.u, c.v, c.V))
+                d = new_cell(c.u, c.v, c.V)
+                if getattr(c, 'lost', False):
+                    d.lost = True
+                fresh.append(d)
                 if len(cells) + len(fresh) >= n_cells:
                     break
             cells = (cells + fresh)[:n_cells]
@@ -118,9 +135,11 @@ def run_colony_trial_ex(surviving_fraction: float, target_bit: int, seed: int,
             if not histories:
                 histories = [[] for _ in cells]
             for i, c in enumerate(cells):
-                histories[i].append(c.read_voltage())
+                histories[i].append((1 - target_bit) if getattr(c, 'lost', False)
+                                    else c.read_voltage())
 
-    genetic = sum(1 for c in cells if c.read_genetic() == target_bit) / len(cells)
+    genetic = sum(1 for c in cells if not getattr(c, 'lost', False)
+                  and c.read_genetic() == target_bit) / len(cells)
     if histories and histories[0]:
         snap = sum(1 for h in histories if h[-1] == target_bit) / len(histories)
         w = min(long_window_min, len(histories[0]))
@@ -128,7 +147,8 @@ def run_colony_trial_ex(surviving_fraction: float, target_bit: int, seed: int,
                   if eis_style_read(h, len(h) - w, w) == target_bit) / len(histories)
         used = float(w)
     else:
-        snap = win = sum(1 for c in cells if c.read_voltage() == target_bit) / len(cells)
+        snap = win = sum(1 for c in cells if not getattr(c, 'lost', False)
+                         and c.read_voltage() == target_bit) / len(cells)
         used = 0.0
     return {'genetic': genetic, 'voltage_snapshot': snap, 'voltage_window': win,
             'regrown': float(t_full is not None), 'window_used_min': used}

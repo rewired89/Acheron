@@ -643,7 +643,12 @@ in Experiment 1 measures s directly. Section F sweeps SURVIVOR BIAS: if the
 cells that survive damage are not a random sample, selection that happened
 before the damage carries into the regrowth result (from a 72-generation-old
 culture at s of 0.10 and mu of 1e-4, only 35% hold the bit after regrowth even
-with random survivors). The direction of real bias is unknown.
+with random survivors). The direction of real bias is unknown. Section G puts
+the same question in the cell-level regrowth engine: each survivor is wrong-state
+or already lost with probability q, and recovery fidelity just tracks that
+composition (one survivor, q of 0.25: 83% of colonies still clear the 70% bar).
+The "2% survivors recover to 100%" headline is exactly as good as the assumption
+that survivors are all correct.
 
 ---
 

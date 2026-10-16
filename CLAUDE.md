@@ -419,3 +419,18 @@ disproven, and where to start reading.
    is the point of Acheron (Paths A, B, C). It does NOT make the decision; the
    founders must, and before strains are ordered because the paths want
    different chassis.
+   **A fourth review round (still Part 30)** produced: Experiment 1 split into
+   **1a** (M1 and M3, response-time calibration on its own cultures, hysteresis,
+   24 hour read; the cheap go/no-go gate) and **1b** (M2, the 72 hour run, the
+   competition checklist, sporulation rule; runs only if 1a passes), mirrored as
+   Stage B0a and B0b in the bench protocol; a pre-registered bin-pattern
+   interpretation table and a fixed gating hierarchy; the sporulation threshold
+   as a rule (upper end of the parental W168 spore fraction in a pilot, no
+   invented number) with ranked fallbacks; a Path C recommendation and a blank
+   decision record in `docs/VOLTAGE_DECISION_MEMO.md`; and section G of
+   `bsubtilis_30` (survivor composition in the cell-level engine: recovery just
+   tracks survivor composition, so the "2% survivors recover to 100%" headline is
+   only as good as the assumption that survivors are correct). The remaining
+   unfixed values (spore threshold, neutral integration site, sample counts) can
+   only be set by a lab; a flow-cytometry-literate microbiologist should review
+   the protocol before more outside AI rounds.

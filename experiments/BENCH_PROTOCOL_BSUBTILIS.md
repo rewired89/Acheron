@@ -157,118 +157,233 @@ redirecting it into the next stage.
 **Tests audit Part 9 (`bsubtilis_01_gardner_toggle_circuit.py`) and Part 16
 (`bsubtilis_10_reporter_readout.py`).**
 
-- **Strain:** W168, variants M1, M2, M3.
-- **Culture:** LB or a defined minimal medium, 37 C, shaking. Standard,
-  nothing special required.
-- **Write:** transient inducer pulse. IPTG pulse sets one state, aTc pulse sets
-  the other. Pulse, then wash by centrifugation and resuspension into
-  inducer-free medium. Record pulse duration and concentration, because the
-  simulation's `write()` is an instantaneous idealization with no equivalent.
-- **Read:** **flow cytometry, at single-cell resolution.** This is not
-  optional. A plate reader reports a population mean, and a population mean
-  cannot tell a bistable population (two separated peaks) from a monostable
-  graded one (one broad peak at the same mean). Population-average lux or
-  lacZ is acceptable only as a first cheap screen before cytometry.
-- **Response-time calibration (first, it sets the hysteresis timing):**
-  hysteresis is only meaningful if each inducer level is held much longer than
-  the circuit takes to settle. Too short and a slow monostable circuit shows
-  apparent hysteresis (false positive); long enough and it relaxes to one
-  state (correct negative) while a real toggle keeps two. A washout cannot give
-  the settling time of a toggle, because a toggle never forgets, so use a step
-  response: step M1 from OFF history to a strong ON level and read fraction ON
-  by cytometry at short intervals until it plateaus, repeat in reverse and with
-  a step into the middle of the switching region (where settling is slowest).
-  Hold every hysteresis level for at least 3 times the slowest plateau time,
-  in culture kept growing by dilution, and confirm with two successive reads.
-- **Hysteresis arm (primary bistability test, M1 and M2):** pilot dose-response
-  to find the switching region, then pre-grow ON-history and OFF-history
-  populations and expose each to log-spaced inducer levels on both sides of it,
-  each held for the calibrated time. Read fraction ON by single-cell flow
-  cytometry at every level (a plate-reader mean blurs the loop into something
-  indistinguishable from a slow transient). A toggle's two history curves do
-  not overlap; a monostable circuit gives one curve.
-- **Culture method for long timepoints, with sporulation managed:** manual
-  serial dilution into fresh inducer-free medium at fixed intervals, chosen to
-  keep cells exponential and well away from nutrient exhaustion, recording OD
-  and generations elapsed. B. subtilis sporulates when nutrients run short;
-  spores do not divide or fluoresce, deplete the population, and can be carried
-  forward by manual passaging and germinate later with a different history.
-  Measure the spore fraction at every passage by heat-shock plating (a typical
-  step is 80 C for 10 minutes, confirm with the lab) against untreated plating,
-  plus phase-contrast at start and end. The maximum acceptable spore fraction
-  is set by the lab and founders BEFORE the run and written into the protocol;
-  it is left blank here because any number without data would be invented, and
-  the parental W168 spore fraction in the same regime is a sensible basis. If
-  exceeded, treat the timepoint as compromised and change the design: shorter
-  run with justified timepoints, a sporulation-suppressing medium, tighter
-  dilution, or continuous culture. A microfluidic chemostat is cleaner and not
-  needed for a first pass.
-- **Timepoints:** 0, 2, 4, 6, 12, 24, 48, 72 hours after washout under that
-  regime.
-- **Washout-and-reread arm:** re-wash a portion of each culture after 24
-  hours and re-read at 48 and 72 hours. A true toggle gives the same
-  distribution. A slow monostable circuit keeps narrowing.
-- **Fitness controls:**
-  - growth curves of each strain against parental W168 (ON and OFF cultures
-    separately);
-  - a competition assay, specified before it is run: a reference derived from
-    the same W168 stock with a constitutive fluorophore of a color distinct
-    from both reporters at a neutral locus (not amyE or lacA) and a different
-    resistance marker; a reference-versus-reference label-swap control (its
-    drift is the assay noise floor) and circuit-versus-reference run in both
-    labelings; sequencing of both strains to confirm they differ only by the
-    circuit, label and marker; no DNA exchange (168 lineages are naturally
-    competent under competence-inducing conditions, so avoid them, add DNase I,
-    plate clones on double selection to catch recombinants); and the same
-    medium, dilution schedule and temperature as the toggle run, tracked over
-    the full 72 hours;
-  - a four-bin cytometry gate at every timepoint: (A high, B low), (A low,
-    B high), (both low), (both high or intermediate), with thresholds set in
-    advance from parental W168, fully induced single-state controls and
-    single-color compensation controls, and dead cells, debris and spores
-    excluded with a viability or nucleic-acid stain plus scatter and reported
-    separately (otherwise they inflate the both-low bin and are misread as lost
-    circuit). The both-high bin is the most informative number: persistent
-    both-high cells mean mutual repression is failing and the circuit is a
-    co-expresser, not a switch; persistent intermediate cells mean a graded or
-    slow circuit.
-  Cells that lose or silence the circuit can outgrow the rest and mimic state
-  loss (`bsubtilis_30_fitness_cost_selection.py`).
-- **Optional single-cell tracking:** agarose-pad time-lapse of microcolonies
-  to confirm individual lineages hold their written state.
-- **Replicates:** three independent biological replicates, both write
-  directions, all three variants. Minimum 10,000 events per cytometry sample.
+- **Strain:** W168, variants M1 and M3 in B0a; M2 is added in B0b.
 
-**Pass criteria, fixed in advance:**
-- Hysteresis (M1 and M2): ON-history and OFF-history curves do not overlap
-  across a range of inducer levels by more than the replicate spread.
-- M1 and M2 show a clearly bimodal GFP/mCherry distribution after washout, with
-  the population sitting in the state it was written to.
-- At least 70 percent of cells hold the written state at 24 hours, with at
-  least 3:1 separation between the two state populations, and the bimodal
-  distribution is stable across at least three consecutive timepoints
-  spanning at least 48 hours. A 24 hour snapshot alone could be passed by a
-  slow monostable circuit relaxing over ~48 hours. These are the project's own
-  thresholds used throughout the computational work, so the numbers are
-  directly comparable.
-- Report two numbers at every timepoint and read them together. The product
-  number (fraction of all live cells in the written state) gates pass or fail
-  at 70 percent. The mechanism number (fraction of circuit-positive cells in the
-  written state) says whether the toggle works. All cells below 70 percent with
-  circuit-positive at or above 70 percent and a large both-low bin means the
-  toggle works but expression is lost or silenced (fix stability, not the
-  topology). Circuit-positive below 70 percent with a small both-low bin means
-  the toggle itself is broken; the both-high, intermediate and flipped bins say
-  how. A result met only after excluding both-low cells is uninterpretable at
-  that timepoint, not a pass.
-- The washout-and-reread arm reproduces the distribution at 48 and 72 hours.
-- Both write directions work, in both directions, on the same culture.
-- M3 fails to show bimodality, or collapses to one state regardless of what was
-  written, by 72 hours at the latest, and shows a single hysteresis curve.
+This stage is specified in full, to the same wording, in
+`wet_lab_experiments/Experiment_1_Toggle_Confirmation.md`, which is the standalone
+version. If one changes, change the other.
 
-**What a fail means:** M1 failing means the BBB parts plus the Gardner topology
-do not produce a toggle in this chassis. Stop and rethink the chassis or the
-repressor pair before spending anything further.
+## How this experiment is staged
+
+Run it in two parts so the budget is only spent on the expensive controls after
+the cheap question has a yes.
+
+- **Stage B0a, does the switch switch?** M1 and M3 only. Calibration, the
+  hysteresis test and a 24 hour read. This is the go/no-go gate.
+- **Stage B0b, does it hold, and can the result be trusted?** Runs only if B0a
+  passes. Adds M2, the 72 hour run, the fitness and competition controls and
+  the sporulation monitoring.
+
+#### Shared methods (apply to B0a and B0b)
+
+1. **Culture:** LB or a defined minimal medium, 37°C, shaking.
+2. **Write:** transient inducer pulse, IPTG pulse sets one state, aTc pulse
+   sets the other. Pulse, then wash by centrifugation and resuspension into
+   inducer-free medium. Record pulse duration and concentration.
+3. **Read:** flow cytometry at single-cell resolution. **Not optional.** A
+   plate reader reports a population mean and cannot distinguish a bistable
+   population (two separated peaks) from a monostable graded one (one broad
+   peak). Population-average lux or lacZ is acceptable only as a cheap
+   pre-screen before cytometry.
+4. **Gating hierarchy (fixed before any data, identical for every sample):**
+   all events, then singlets (forward-scatter area against height, to remove
+   doublets), then live cells (a viability or nucleic-acid stain), then
+   scatter-based exclusion of debris and spores (their share is reported
+   separately and never counted as cells), then fluorescence compensation, then
+   the four-bin classification below. Thresholds come from controls: parental
+   W168 sets the low gate (autofluorescence), fully induced single-state
+   controls set the high gate, and single-color controls set the compensation
+   between the two reporters. Record the exact gates and do not change them
+   between timepoints or strains.
+5. **Four bins, reported at every timepoint:** [A+B-] (A high, B low),
+   [A-B+] (A low, B high), [dark] (both low), and [both] (both high, or
+   intermediate).
+6. **Two numbers, reported together at every timepoint.** The *product number*
+   is the fraction of ALL live cells in the written state and gates pass or
+   fail (70%). The *mechanism number* is the fraction of circuit-positive cells
+   (everything outside [dark]) in the written state and says whether the toggle
+   itself works.
+7. **Pre-registered interpretation table.** Fixed before data are seen. Changing
+   it afterwards invalidates the pass.
+
+| Pattern at steady state (after the equilibration time) | Conclusion |
+|---|---|
+| Write A gives mostly [A+B-], write B gives mostly [A-B+]; [dark] and [both] small; hysteresis loop open | **Working toggle** |
+| Write A gives [A+B-] but write B also gives mostly [A+B-] (or the reverse) | **Asymmetric circuit**: one state is unstable. Name the failing direction. Suspect promoter matching |
+| Both write directions end in the same single bin whatever was written | **Monostable** (the expected result for M3) |
+| Persistent [both] population in both directions | **Mutual repression failed**: a co-expresser, not a switch. Brief [both] cells during switching are expected and do not count |
+| Broad or intermediate single-reporter populations that move with inducer; one hysteresis curve | **Graded circuit** |
+| Written state present but decaying over timepoints, with cells appearing in the opposite bin | **Spontaneous switching or slow relaxation**: check 48 and 72 hours against the washout-and-reread arm |
+| Large [dark] population, remaining cells in the correct bins (mechanism number passes, product number fails) | **Expression lost or silenced**: a stability and fitness problem, not a topology problem. The competition assay and sequencing of dark isolates decide the cause |
+| Large [dark] at time zero, before any long culture | **Construct or induction failure**, not state loss |
+| Large [dark] together with a high spore or dead-cell share | **Culture problem**: handled in Stage B0b's sporulation rule, not a circuit result |
+
+A result met only after excluding [dark] cells is reported as **uninterpretable
+at that timepoint**, not as a pass.
+
+#### Stage B0a: does the switch switch? (M1 and M3 only)
+
+1. Build and sequence-verify M1 and M3. Confirm each with a single-color control
+   and a parental W168 control for the gates.
+2. **Response-time calibration (its own cultures, run and finished first).**
+   Hysteresis is only interpretable if each inducer level is held much longer than
+   the circuit takes to settle. Too short and a slow monostable circuit shows
+   apparent hysteresis (a false positive); long enough and a monostable circuit
+   relaxes to its single state and shows none (a correct negative), while a real
+   toggle still shows two. The settling time cannot be assumed, and a washout
+   alone cannot give it for a toggle, because a toggle never "forgets". So measure
+   it with a step response: take M1 in the OFF history, step to a strong ON
+   inducer level, and read the fraction ON by cytometry at short intervals until
+   it plateaus; repeat in the other direction, and repeat with a step into the
+   middle of the switching region, where settling is slowest. The slowest plateau
+   time is the response time.
+   - **Independence:** the calibration uses its own cultures, set up and finished
+     before the hysteresis cultures are started. The equilibration time is fixed
+     from it in advance and is not adjusted after the hysteresis curves are seen.
+     The only allowed change is the pre-specified rule below.
+   - **Rule:** every hysteresis level is held for at least 3 times the slowest
+     plateau time, in culture kept growing by dilution, and confirmed by two
+     successive reads. If the two reads at a level still differ, lengthen that
+     level and repeat it. If the culture cannot be kept healthy for that long,
+     report the hysteresis as **untestable at that timescale**, not as a result.
+   - **Sample count (a count, not a price, because no lab has quoted):**
+     calibration cytometry samples = 3 step types x strains calibrated (M1, plus
+     M3 for comparison) x read times until plateau (set by a short pilot) x 3
+     replicates. Hysteresis samples = 2 histories x inducer levels x strains x 2
+     successive reads x 3 replicates.
+3. **Hysteresis (primary bistability test).** This is the decisive test,
+   because a slow monostable circuit can fake a bimodal snapshot but cannot fake a
+   history-dependent response (Gardner, Cantor & Collins 2000).
+   - Run a pilot dose-response first to find the inducer range that spans the
+     switching region, then choose log-spaced inducer levels across it, with levels
+     on both sides.
+   - Pre-grow one population in the ON state and one in the OFF state (strong
+     write, then washout), then expose each to every inducer level.
+   - Hold each level for the calibrated equilibration time from the calibration.
+   - Read the fraction ON by **flow cytometry at single-cell resolution** at every
+     level for both histories. A plate-reader mean gives a blurred loop that cannot
+     be told apart from a slow transient.
+4. **24 hour read:** write each strain in both directions, wash, keep growing by
+   dilution, and read at 0, 2, 4, 6, 12 and 24 hours with the four-bin gate.
+   Report the product and mechanism numbers and the four bins at every
+   timepoint. Check a sample by phase-contrast microscopy at the end for spores.
+5. **Replicates:** 3 independent biological replicates, both write directions,
+   both strains. Minimum 10,000 events per cytometry sample.
+
+##### Pass criteria for B0a (fixed in advance)
+
+- **Hysteresis:** the M1 ON-history and OFF-history curves do not overlap across
+  a range of inducer levels by more than the replicate-to-replicate spread, and
+  M3 shows a single curve.
+- M1 matches the **Working toggle** row of the interpretation table in both
+  write directions, with at least 3:1 separation between the two state
+  populations.
+- M1's product number is at least 70% at 24 hours, and its mechanism number is at
+  least 70%.
+- M3 matches the **Monostable** row.
+
+##### What a fail means, and the go/no-go for B0b
+
+- **M1 fails the mechanism number or the hysteresis test:** the BBB parts plus the
+  Gardner topology do not produce a toggle in this chassis. Stop and rethink the
+  chassis or repressor pair before spending anything further, including on B0b
+  and Experiments 2 through 7.
+- **M1 passes the mechanism number and hysteresis but fails the product number**
+  (large [dark] population): the toggle works and the problem is expression loss
+  or silencing. Proceed to B0b, whose controls exist to find the cause.
+- **M3 turns out bistable:** the simulation's central design constraint is wrong,
+  a real, publishable correction. Stop and re-examine before B0b.
+- Pass on all of the above: proceed to B0b.
+
+#### Stage B0b: does it hold, and can the result be trusted? (only if B0a passes)
+
+1. **Add M2** (moderate mismatch) and repeat the B0a calibration, hysteresis and
+   24 hour read for it.
+2. **Long timepoints, 0, 2, 4, 6, 12, 24, 48 and 72 hours after washout,** under
+   the dilution regime below (growth and dilution are what a slow-relaxing
+   monostable circuit cannot survive, so the dilution is part of the test).
+3. **Sporulation, managed with a rule.** B. subtilis in batch culture reaches
+   stationary phase and sporulates when nutrients run short. Spores do not divide,
+   do not fluoresce, germinate on their own schedule (so manual passaging can carry
+   them into later cultures with a different history from the vegetative cells) and
+   deplete the population, so survivors stop being a representative sample.
+   - **Regime:** manual serial dilution into fresh inducer-free medium at fixed
+     intervals chosen to keep cells exponential and well away from nutrient
+     exhaustion, with OD before and after each dilution and generations elapsed
+     recorded. A microfluidic chemostat is cleaner but not needed for a first pass.
+   - **Measure at every passage:** split a sample, heat-shock one half (the standard
+     step that kills vegetative cells and leaves spores; a typical protocol is 80 C
+     for 10 minutes, confirm with the lab) and plate both. The CFU ratio is the
+     spore fraction. Add phase-contrast microscopy at the start and end.
+   - **Threshold rule (no invented number):** the maximum acceptable spore fraction
+     is the upper end of the replicate range measured for parental W168 in the same
+     medium and dilution regime during a pilot, before the run. The lab and the
+     founders write that number into the protocol before the first timepoint.
+   - **If the threshold is exceeded at any passage:** mark that passage and every
+     later timepoint as compromised (not a result), stop the culture, and apply the
+     first workable fallback in this order:
+     1. Tighten the dilution schedule (no change to the design, re-check the spore
+        fraction on the next run, no extra cost beyond the repeat).
+     2. Shorten the run and report the longest duration that stayed under the
+        threshold as the limit of the claim.
+     3. Change the medium to one that suppresses sporulation. This changes the
+        experiment: the pilot baseline, the response-time calibration and M3 must be
+        redone in the new medium before any result can be compared.
+     4. Move to continuous culture (a chemostat or microfluidic device). This needs
+        equipment the collaborating lab must have and adds cost; the lab decides.
+4. **Washout-and-reread arm:** after the 24 hour read, wash a portion of each
+   culture again into fresh inducer-free medium and re-read it at 48 and 72
+   hours. A true toggle gives the same distribution. A slow monostable circuit
+   keeps narrowing toward its single attractor.
+5. **Growth-rate comparison:** growth curves of each strain against parental W168
+   in the same medium, ON-state and OFF-state cultures separately. Record the
+   doubling times.
+6. **Competition assay.** Before it is run, every row below must be answered "yes"
+   and written down. If any is "no", the assay is not run, because the result would
+   not mean anything.
+   
+   | Required | Specification |
+   |---|---|
+   | Reference strain is named | A derivative of the same W168 stock the circuit strains were built from ("REF"), with a constitutive fluorophore of a color distinct from both reporters at a standard integration site other than *amyE* and *lacA*, and a resistance marker different from the circuit strain's. The exact fluorophore and site are chosen with the lab |
+   | REF is isogenic outside the label | Both REF and the circuit strain are sequenced, and the only differences from the parental stock are the circuit, the label and its marker. A marker panel alone is not enough |
+   | The label's own cost is measured | Growth curves of REF against unlabelled parental W168, and a REF-versus-parental competition (told apart by plating or by fluorescence). REF counts as neutral only if it shows no measurable cost |
+   | Label swap and noise floor | REF-versus-REF with two different labels (any drift is the assay's noise floor), and circuit-versus-REF run in both labelings |
+   | No DNA exchange | Laboratory *B. subtilis* 168 lineages are naturally competent under competence-inducing conditions. Avoid them, add DNase I to the cultures, and plate recovered clones on double selection to catch recombinants. A recombination event that moves the circuit or the label invalidates the result |
+   | Same regime as the toggle run | Same medium, dilution schedule and temperature as Stage B0b. A cost measured in a chemostat is a different number |
+   
+   Start at a known ratio and track it over the full 72 hours by cytometry or
+   selective plating. The change in ratio per generation estimates the fitness cost,
+   the input `simulations/bsubtilis_30_fitness_cost_selection.py` needs.
+7. **Optional, single-cell tracking:** image microcolonies on an agarose pad over
+   time and confirm individual lineages hold their written state.
+8. **Replicates:** 3 independent biological replicates, both write directions, all
+   three variants. Minimum 10,000 events per cytometry sample.
+
+##### Pass criteria for B0b (fixed in advance)
+
+- M1 and M2 keep matching the **Working toggle** row at 24, 48 and 72 hours, with
+  the bimodal distribution stable across at least three consecutive timepoints
+  spanning at least 48 hours. A 24 hour snapshot alone could be passed by a slow
+  monostable circuit relaxing over about 48 hours.
+- The product number stays at least 70% and the mechanism number stays at least
+  70% across those timepoints. If the product number passes only after excluding
+  [dark] cells, the timepoint is uninterpretable, and the competition assay says
+  whether fitness cost explains it.
+- The washout-and-reread arm reproduces the same distribution at 48 and 72 hours.
+- Every timepoint is under the sporulation threshold; timepoints over it are
+  compromised and do not count toward the three consecutive.
+- The competition assay passed its pre-run checklist and its result (fitness cost
+  per generation, with the noise floor) is reported.
+- M3 matches the **Monostable** row by the 72 hour timepoint at the latest. A
+  slow collapse that has not finished by 24 hours still counts as monostable.
+
+##### What a fail means
+
+- Failing the mechanism number or the stability rule: the toggle does not hold.
+- Failing only the product number with a passing mechanism number: the toggle
+  holds in the cells that still carry it. Use the competition assay and sequencing
+  of dark isolates to decide between fitness cost, mutation and silencing.
+
 
 **Optional additional diagnostic, if time-lapse imaging is available
 alongside end-point cytometry:** Dunlop, Cox, Levine, Murray & Elowitz
@@ -286,11 +401,11 @@ Stage B0.
 
 ### Stage B1: does it hold, and what is the real noise?
 
-Runs on the same cultures as B0, extended. Low marginal cost, high value,
+Runs on the Stage B0b cultures, extended. Low marginal cost, high value,
 because it measures four parameters that every simulation in the repository
 currently carries as an unmeasured placeholder.
 
-- **Use B0's timepoints (to 72 hours)** with periodic dilution into fresh
+- **Use B0b's timepoints (to 72 hours)** with periodic dilution into fresh
   inducer-free medium to keep cells growing.
 - **Measure and record:**
   - Fraction of cells in the correct state at each timepoint, which is the

@@ -34,7 +34,10 @@ regrowth experiment (Experiment 3) involves, E) why gating matters, F)
 SURVIVOR BIAS: if the cells that survive damage are not a random sample
 (lost or downregulating cells survive more or less often than circuit cells),
 the regrowth result is measuring the wrong subpopulation, and selection that
-happened BEFORE the damage matters even though regrowth itself is short.
+happened BEFORE the damage matters even though regrowth itself is short, G)
+the same question in the cell-level regrowth engine of bsubtilis_27: the
+headline claim is that a handful of survivors regrows to a correct colony, so
+what if some survivors are already wrong-state or already lost the circuit?
 
 WHAT THIS DOES NOT DO:
 No value of s, mu or the flip rate is measured. All three are SWEEP AXES, so
@@ -125,6 +128,36 @@ def survivor_bias_outcome(s: float, mu: float, pre_gens: int, bias: float,
     return start, 1.0 - f
 
 
+def _survivor_job(args):
+    from bsubtilis_27_noise_robustness_sweep import run_colony_trial_ex
+    frac, bit, seed, wrong, lost = args
+    return run_colony_trial_ex(frac, bit, seed, survivor_wrong_prob=wrong,
+                               survivor_lost_prob=lost)['genetic']
+
+
+def survivor_composition_sweep(fractions, probs, kind: str, n_trials: int = 30):
+    """Cell-level regrowth where each survivor is independently WRONG-STATE
+    (kind='wrong') or already LOST (kind='lost') with the given probability.
+    Returns {(fraction, prob): (mean fidelity, share of trials >= 70%)}."""
+    from multiprocessing import Pool
+    jobs, keys = [], []
+    for f in fractions:
+        for q in probs:
+            for b in (0, 1):
+                for k in range(n_trials):
+                    jobs.append((f, b, int(f * 10000) + k * 97 + b + int(q * 1000) * 13,
+                                 q if kind == 'wrong' else 0.0,
+                                 q if kind == 'lost' else 0.0))
+                    keys.append((f, q))
+    with Pool(4) as pool:
+        out = pool.map(_survivor_job, jobs)
+    acc = {}
+    for key, r in zip(keys, out):
+        acc.setdefault(key, []).append(r)
+    return {k: (float(np.mean(v)), float(np.mean([x >= PASS_BAR for x in v])))
+            for k, v in acc.items()}
+
+
 def fmt_gen(g: int) -> str:
     return ">2000" if g < 0 else str(g)
 
@@ -191,6 +224,27 @@ def main():
     print("bias is unknown and is NOT modelled; both directions are swept. Where the")
     print("pre-damage lost share is already large, any bias above 1 makes recovery look worse,")
     print("and any bias below 1 makes it look better than a random-survivor model says.")
+    print("\n" + "=" * 92)
+    print("G) SURVIVOR COMPOSITION IN THE CELL-LEVEL ENGINE: each survivor independently")
+    print("   wrong-state (or already lost) with probability q. Cells show mean fidelity /")
+    print("   share of colonies that still clear the 70% bar. 1, 3 and 13 survivors = 2%, 5%, 20%.")
+    print("=" * 92)
+    fractions, probs = [0.02, 0.05, 0.20], [0.0, 0.05, 0.10, 0.25, 0.50]
+    for kind in ("wrong", "lost"):
+        res = survivor_composition_sweep(fractions, probs, kind)
+        print(f"\nsurvivors that are {kind.upper()}" + ("-STATE" if kind == "wrong" else " (circuit gone)"))
+        print(f"{'survivors':<11}" + "".join(f"q={q:g}".rjust(14) for q in probs))
+        for f in fractions:
+            n = max(1, int(round(64 * f)))
+            print(f"{n:<11}" + "".join(
+                f"{res[(f, q)][0]:>7.0%} /{res[(f, q)][1]:>4.0%} " for q in probs))
+    print("\nWrong-state and lost survivors give identical numbers on this ungated read, because")
+    print("both simply fail to hold the written bit. They differ only on the gated read (the")
+    print("mechanism number): lost cells leave it, wrong-state cells stay in it.")
+    print("\nRecovery fidelity tracks survivor composition, because division copies whatever the")
+    print("survivors hold. The claim that 2% survivors recover to 100% is therefore exactly as good")
+    print("as the assumption that those survivors are all correct. With one survivor the outcome is")
+    print("all or nothing; with more survivors the mean is the same but the spread narrows.")
     print("\nRead-me: ungated falls from BOTH loss and flipping, gated only from flipping.")
     print("A low ungated read with a high gated read means the circuit was lost, not the bit.")
     print("=" * 92)
