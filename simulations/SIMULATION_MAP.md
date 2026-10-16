@@ -566,6 +566,58 @@ mutual-repression term) showed no dip, only a near-zero-lag positive peak
 to this project's construct; does not measure anything about real cells,
 and does not replace Experiment 1's cytometry-based basin-separation read.
 
+### `bsubtilis_27_noise_robustness_sweep.py`
+**What it tested, plainly:** every "100 percent" result in this project used a
+noise setting that a later check suggested is 3x to 17x too low. This reruns
+the key results with noise turned up to 20 times that setting to see where the
+circuit starts to fail.
+**What it found, plainly:** the circuit holds up to about 5 times the original
+noise, wobbles at 10 times, and is down to coin-flip territory by 20 times.
+Badly mismatched promoters fail much sooner. So "does the first experiment
+pass" depends on a number nobody has measured yet, which is the exact thing the
+two-colour reporter test measures.
+**Technically:** single-cell 24 h genetic fidelity and colony recovery at noise
+multipliers 1, 2, 3, 5, 10, 20 times `transcriptional_noise_std=3.0`, across
+promoter ratios 1.0, 2.0, 5.0, 10.0 and 0.1. Matched promoters: 100% to 5x,
+60% at 10x, 53% at 20x. Colony recovery (6 h window, matched): 100% to 5x,
+84-85% at 10x, 55-57% at 20x. Also defines `run_colony_trial_ex`, a
+parameterised regrowth trial that reproduces `bsubtilis_07` at defaults and is
+reused by 28 and 29. Audit Part 29. The multipliers are a sweep axis, not
+measured noise.
+
+### `bsubtilis_28_regrowth_timing_sweep.py`
+**What it tested, plainly:** the recovery after damage depends on cells
+dividing every 30 minutes and being readable the instant the colony is back.
+Neither is measured. What if division is slower, or the colony needs time to
+settle?
+**What it found, plainly:** the colony still regrows and the fluorescent
+reporter still reads correctly in every case. The electrical readout is much
+more fragile: it needs a full three hour reading window, and anything less
+turns it into a coin flip.
+**Technically:** doubling time 30/45/60 min x settling delay 0/30/60 min x
+2/5/20% survivors x 30 and 70 mV native oscillation. Genetic fidelity 100% and
+full regrowth in all 54 cells of the grid. The 180 min averaged voltage read
+gives 50% whenever the window is shortened, including 151 min, and fails at
+2 and 5% survivors from 45 min doubling onward. Audit Part 29. Doubling times
+and delays are sweep axes, not measurements.
+
+### `bsubtilis_29_stressed_survivors.py`
+**What it tested, plainly:** the damage simulations assume survivors are
+perfectly healthy. Real survivors would be stressed. What if they divide
+slowly, get noisier, or have shifted voltage?
+**What it found, plainly:** slower growth did not hurt the fluorescent
+readout. Extra noise hurt it a little. A long-lasting voltage shift of about
+40 millivolts breaks the electrical readout completely, because the two
+voltage levels the model uses sit only 35 millivolts from the decision line,
+and those levels were inherited from the old planarian model.
+**Technically:** a stress window applies a doubling-time multiplier (1-3x), a
+noise multiplier (1-10x) and a steady voltage shift (-40 to +40 mV) to
+survivors, then they return to normal. Growth penalty alone: genetic 100%.
+10x noise for 180 min: 96%. Sustained 2x slower + 10x noise + 40 mV for 360
+min: 85-87% genetic, 50% voltage. 20 mV shifts: no effect. Audit Part 29. Every
+magnitude is a sweep axis, not measured. Narrows, but does not close, Known
+Gap 4; Stage B2 arm 2b still has to measure the real stress.
+
 ---
 
 # Methylation track
@@ -632,7 +684,8 @@ file.
 
 Stated here so nobody has to rediscover them file by file.
 
-1. **Every noise parameter is a placeholder.** Transcriptional noise, channel
+1. **Every noise parameter is a placeholder.** `bsubtilis_27` shows the
+   fidelity results hold only up to about 5x the placeholder. Transcriptional noise, channel
    noise, thermal noise, measurement noise and reporter maturation time are all
    unmeasured. Stage B1 in `experiments/BENCH_PROTOCOL_BSUBTILIS.md` exists to
    measure them.
@@ -641,9 +694,10 @@ Stated here so nobody has to rediscover them file by file.
 3. **The circuit-to-voltage link has never been built by anyone.** Every file
    downstream of `bsubtilis_01` that reports a voltage is tracking the genetic
    state through a first-order filter, not a measured biophysical relationship.
-4. **Damage is modelled as removing cells and nothing else.** No file models
-   damage stressing the survivors, changing their growth rate or triggering
-   stress responses. Arm 2b of Stage B2 in the bench protocol is designed to
-   measure the size of that blind spot.
+4. **Damage is modelled as removing cells and nothing else** in files 01-26.
+   `bsubtilis_29_stressed_survivors.py` now sweeps survivor stress (slower
+   growth, higher noise, voltage shift) but every magnitude there is a sweep
+   axis, not a measurement. Arm 2b of Stage B2 in the bench protocol is
+   designed to measure the real size of that blind spot.
 5. **The planarian coupling constant is borrowed, not measured.** It is the
    single weakest assumption in the project.

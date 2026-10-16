@@ -3,6 +3,17 @@ Acheron Simulation 24: Phase-Encoded Readout - Using the Native Oscillation
 as the Carrier Instead of Fighting It
 ================================================================================
 
+STATUS (added after audit Part 26): THIS FILE IS A SENSITIVITY ANALYSIS UNDER
+AN ASSUMED COUPLING, NOT A PREDICTION. The in-phase / anti-phase behavior of
+the two bit values is imposed by hand (see "WHAT THIS FILE IS NOT", item 3),
+and bsubtilis_21_optical_write_replication.py could not derive that
+anti-phase from the potassium mechanism Yang et al. describe, in a 12-point
+parameter sweep, for a structural reason. The accuracy figures below are
+therefore properties of the assumption, and say nothing about whether a real
+cell would behave this way. Phase encoding stands on their published
+experiment plus an assumed coupling, with no working mechanistic model in
+this repository behind it.
+
 PURPOSE:
 Five prior files in this project (bsubtilis_08_native_oscillation_interference.py,
 bsubtilis_09_eis_readout_interference.py, bsubtilis_11_phase_locked_readout.py,
@@ -287,6 +298,7 @@ def main():
     print("PHASE-ENCODED READOUT - the native oscillation as carrier, not noise")
     print("Tests the framing from Yang et al. 2020, Cell Systems,")
     print("DOI 10.1016/j.cels.2020.04.002, against this project's own level encoding.")
+    print("SENSITIVITY ANALYSIS UNDER AN ASSUMED COUPLING, NOT A PREDICTION (audit Part 26).")
     print("=" * 78)
 
     amplitudes = [0.0, 10.0, 30.0, 50.0, 70.0]

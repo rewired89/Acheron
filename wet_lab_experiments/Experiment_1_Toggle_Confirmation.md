@@ -50,19 +50,44 @@ not bistable, the whole *B. subtilis* circuit track is in trouble.
    population (two separated peaks) from a monostable graded one (one broad
    peak). Population-average lux/lacZ is acceptable only as a cheap
    pre-screen before cytometry.
-4. **Timepoints:** 0, 2, 4, 6, 12, 24 hours after washout.
-5. **Replicates:** 3 independent biological replicates, both write
+4. **Timepoints:** 0, 2, 4, 6, 12, 24, 48, 72 hours after washout, with
+   periodic dilution into fresh inducer-free medium so cells keep growing
+   (growth and dilution are what a slow-relaxing monostable circuit cannot
+   survive, so the dilution is part of the test, not housekeeping).
+5. **Washout-and-reread arm:** after the 24 hour read, wash a portion of
+   each culture again into fresh inducer-free medium and re-read it at 48
+   and 72 hours. A true toggle gives the same distribution. A slow
+   monostable circuit keeps narrowing toward its single attractor.
+6. **Hysteresis arm:** on separate cultures of M1, titrate the inducer up
+   and down across its range and read the population at each step after
+   equilibration. A toggle's state at a given inducer level depends on
+   history (the up-titration and down-titration curves do not overlap). A
+   monostable circuit gives one curve. This is the classic toggle test
+   (Gardner, Cantor & Collins 2000) and a slow monostable circuit cannot
+   fake it.
+7. **Replicates:** 3 independent biological replicates, both write
    directions, all 3 variants. Minimum 10,000 events per cytometry sample.
+8. **Optional, single-cell tracking:** image microcolonies on an agarose
+   pad over time and confirm individual lineages hold their written state,
+   not just that the population looks bimodal at a snapshot.
 
 ## Pass criteria (fixed in advance)
 
 - M1 and M2 show a clearly bimodal GFP/mCherry distribution after washout,
   sitting in the state written.
 - At least 70% of cells hold the written state at 24 hours, with at least
-  3:1 separation between the two state populations.
+  3:1 separation between the two state populations, **and the bimodal
+  distribution is stable across at least three consecutive timepoints
+  spanning at least 48 hours** (for example 24, 48 and 72). A single
+  snapshot at 24 hours is not enough, because a slow monostable circuit
+  that relaxes over ~48 hours would also pass it.
+- The washout-and-reread arm reproduces the same distribution at 48 and 72
+  hours, and the hysteresis arm shows non-overlapping up and down curves
+  for M1.
 - Both write directions work, on the same culture.
 - M3 fails to show bimodality, or collapses to one state regardless of what
-  was written.
+  was written, by the 72 hour timepoint at the latest. A slow collapse that
+  has not finished by 24 hours still counts as monostable.
 
 ## What fail means
 

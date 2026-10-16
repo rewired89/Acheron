@@ -28,6 +28,15 @@ survivors. Real damage stresses survivors, induces stress regulons, changes
 growth rate. No simulation represents that; 2a minus 2b is the size of that
 blind spot.
 
+**Locus-stability check (cheap, run on the same cultures).** After the
+final regrowth, and again after a second full round of damage and regrowth
+on the same lineage, confirm by colony PCR (and sequencing of a subset) that
+both circuit arms are still at their intended loci (*amyE*, *lacA*) and
+intact. A circuit that is duplicated, lost or rearranged during regrowth
+loses the bit for a reason no simulation here models, and it would look like
+a memory failure in the cytometry read. Run this before interpreting any
+arm 2a / 2b failure as a failure of the mechanism.
+
 **Read:** flow cytometry at the end of regrowth plus settling, same 70%
 correct / 3:1 separation thresholds as Experiment 1.
 

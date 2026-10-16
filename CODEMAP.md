@@ -639,6 +639,36 @@ they depend on each other.
   used_by: `main` (in the same file)
   side_effects: none
 
+- name: `run_colony_trial_ex`, `single_cell_fidelity`, `colony_recovery`
+  type: function
+  file: simulations/bsubtilis_27_noise_robustness_sweep.py
+  purpose: re-runs the fidelity results across transcriptional-noise multipliers 1x-20x of the uncited placeholder (3.0), because bsubtilis_25 found it may be 3.3x-16.8x too low. `run_colony_trial_ex` is a parameterised version of the bsubtilis_07/_14 regrowth trial (tx_noise, doubling_min, settle_hours, equil_delay_min, long_window_min, oscillation amplitude/period, and a stress window with doubling/noise/voltage-shift terms) that reproduces bsubtilis_07 at defaults and is imported by bsubtilis_28 and bsubtilis_29. Found (session run): matched promoters hold 100% to 5x and fall to 60% at 10x; mismatched ratios fail earlier; colony recovery 100% to 5x, 84-85% at 10x, 55-57% at 20x. Audit Part 29
+  inputs: `surviving_fraction`, `target_bit`, `seed`, plus the keyword parameters above
+  outputs: dict of `genetic`, `voltage_snapshot`, `voltage_window`, `regrown`, `window_used_min`
+  dependencies: `bsubtilis_01_gardner_toggle_circuit.GardnerParams/GardnerToggleCell/run_persistence` (imported, not modified), `bsubtilis_08_native_oscillation_interference.ambient_oscillation_offset`, `bsubtilis_09_eis_readout_interference.eis_style_read`, `multiprocessing.Pool`
+  used_by: `main` (same file), `simulations/bsubtilis_28_regrowth_timing_sweep.py`, `simulations/bsubtilis_29_stressed_survivors.py`
+  side_effects: none
+
+- name: `main` (grid sweep)
+  type: function
+  file: simulations/bsubtilis_28_regrowth_timing_sweep.py
+  purpose: sweeps doubling time (30/45/60 min) and a settling delay (0/30/60 min) at 2/5/20% survivors under 30 and 70 mV native oscillation. Found (session run): reporter (genetic) fidelity stays 100% and the colony regrows in every cell of the grid; the 180 min averaged electrical read drops to a coin flip (50%) whenever the budget leaves less than the full window, including 151 min, so the electrical readout needs the undisturbed 30 min doubling time. Audit Part 29
+  inputs: none (module constants `DOUBLING_TIMES`, `DELAYS`, `FRACTIONS`, `AMPLITUDES`)
+  outputs: printed table
+  dependencies: `bsubtilis_27_noise_robustness_sweep.run_colony_trial_ex`
+  used_by: none (terminal analysis)
+  side_effects: none
+
+- name: `main` (three sweeps A/B/C)
+  type: function
+  file: simulations/bsubtilis_29_stressed_survivors.py
+  purpose: tests the known gap that damage is modelled as cell removal only, by giving survivors a stress window with slower division, higher noise and a steady voltage shift. Found (session run): growth penalty alone did not move genetic fidelity; 10x noise for 180 min cost ~4 points; sustained 2x slower + 10x noise + 40 mV for the whole window gave 85-87% genetic and 50% voltage read; voltage shifts of 20 mV changed nothing and 40 mV sustained through the read flipped one bit (inherited V_HIGH/V_LOW sit 35 mV from the midpoint). Every magnitude is a sweep axis, not measured. Audit Part 29
+  inputs: none (module constants `GROWTH`, `SHIFTS`, `NOISE`, `STRESS_MIN`)
+  outputs: printed tables
+  dependencies: `bsubtilis_27_noise_robustness_sweep.run_colony_trial_ex`
+  used_by: none (terminal analysis)
+  side_effects: none
+
 ---
 
 ## experiments/ — runnable demonstrations and diagnostic scripts

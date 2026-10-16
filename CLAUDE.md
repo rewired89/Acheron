@@ -374,3 +374,22 @@ disproven, and where to start reading.
    distinguish a well-separated toggle from a collapsed one, cytometry
    still does that). None of the four papers required correcting anything
    already in the audit.
+   **Added October 2026 (audit Part 29)** after an outside AI's hostile
+   review of the project summary (about 70 percent of it restated gaps the
+   audit already lists; three points were wrong, see Part 29). Three new sweep
+   simulations came out of it: `bsubtilis_27_noise_robustness_sweep.py`
+   (fidelity holds only to about 5x the uncited noise placeholder, and the
+   Part 28 bound is 3.3x-16.8x, so whether Experiment 1 passes depends on the
+   unmeasured number; also holds the parameterised regrowth engine),
+   `bsubtilis_28_regrowth_timing_sweep.py` (the electrical readout needs the
+   undisturbed 30 min doubling time, the reporter readout does not) and
+   `bsubtilis_29_stressed_survivors.py` (reporter robust, voltage readout
+   fragile to a sustained shift of about 35 mV or more). All their axes are
+   sweep axes, not measurements. Experiment 1 and Stage B0 now run to 72
+   hours with dilution, a three-consecutive-timepoint stability rule, a
+   washout-and-reread arm and an inducer hysteresis arm; Experiment 3 and
+   Stage B2 gain a locus-stability PCR check; `bsubtilis_18` is relabelled a
+   sensitivity analysis under an assumed coupling. **Still open from that
+   review:** Bonnet et al. 2012's DNA latch also survives damage and
+   regrowth, so "survives division" does not separate Acheron from it; no
+   functional advantage over a DNA latch is established.

@@ -169,7 +169,16 @@ redirecting it into the next stage.
   cannot tell a bistable population (two separated peaks) from a monostable
   graded one (one broad peak at the same mean). Population-average lux or
   lacZ is acceptable only as a first cheap screen before cytometry.
-- **Timepoints:** 0, 2, 4, 6, 12, 24 hours after washout.
+- **Timepoints:** 0, 2, 4, 6, 12, 24, 48, 72 hours after washout, with
+  periodic dilution into fresh inducer-free medium so cells keep growing.
+- **Washout-and-reread arm:** re-wash a portion of each culture after 24
+  hours and re-read at 48 and 72 hours. A true toggle gives the same
+  distribution. A slow monostable circuit keeps narrowing.
+- **Hysteresis arm (M1):** titrate the inducer up and down and read at each
+  step. A toggle's up and down curves do not overlap; a monostable circuit
+  gives one curve.
+- **Optional single-cell tracking:** agarose-pad time-lapse of microcolonies
+  to confirm individual lineages hold their written state.
 - **Replicates:** three independent biological replicates, both write
   directions, all three variants. Minimum 10,000 events per cytometry sample.
 
@@ -177,7 +186,12 @@ redirecting it into the next stage.
 - M1 and M2 show a clearly bimodal GFP/mCherry distribution after washout, with
   the population sitting in the state it was written to.
 - At least 70 percent of cells hold the written state at 24 hours, with at
-  least 3:1 separation between the two state populations. These are the
+  least 3:1 separation between the two state populations, and the bimodal
+  distribution is stable across at least three consecutive timepoints
+  spanning at least 48 hours. A 24 hour snapshot alone could be passed by a
+  slow monostable circuit relaxing over ~48 hours.
+- The washout-and-reread arm reproduces the distribution at 48 and 72
+  hours, and the hysteresis arm shows non-overlapping curves for M1. These are the
   project's own thresholds used throughout the computational work, so the
   numbers are directly comparable.
 - Both write directions work, in both directions, on the same culture.
@@ -208,7 +222,7 @@ Runs on the same cultures as B0, extended. Low marginal cost, high value,
 because it measures four parameters that every simulation in the repository
 currently carries as an unmeasured placeholder.
 
-- **Extend timepoints to 48 hours** with periodic dilution into fresh
+- **Use B0's timepoints (to 72 hours)** with periodic dilution into fresh
   inducer-free medium to keep cells growing.
 - **Measure and record:**
   - Fraction of cells in the correct state at each timepoint, which is the
@@ -260,6 +274,14 @@ real BBB promoters is exactly what this control would answer.
 (`bsubtilis_13_reporter_colony_regrowth.py`), Part 22 (`bsubtilis_15_partition_noise_regrowth.py`).**
 
 Run two damage arms, because they separate a variable the simulations combine.
+
+**Locus-stability check, run first on the same cultures.** After the final
+regrowth, and again after a second full damage-and-regrowth round on the same
+lineage, confirm by colony PCR (and sequencing of a subset) that both circuit
+arms are intact at their intended loci (*amyE*, *lacA*). A duplicated, lost or
+rearranged construct would look like a memory failure in the cytometry read
+and no simulation models it. Interpret no arm 2a or 2b failure as a failure of
+the mechanism until this passes.
 
 - **Arm 2a, dilution only.** Write a bit, then dilute the culture to a defined
   low CFU count and let it regrow. This isolates exactly what the simulations

@@ -2322,6 +2322,111 @@ rather than revise it.
 
 ---
 
+## Part 29: Hostile External Review, and Three Robustness Sweeps That Came Out of It (October 2026)
+
+**What triggered it.** The founder pasted the project summary into an outside
+AI model and asked for a hostile review. Most of what came back restated gaps
+this audit already lists (the unbuilt circuit-to-voltage link, the W168 versus
+NCIB 3610 strain mismatch, damage modelled as removing cells only, the zero
+margin regrowth budget, the assumed phase coupling). Four points were new or
+sharper than the audit, and one of those, that the placeholder noise makes
+every fidelity number optimistic, had never been tested. Three points were
+wrong: the SOS response in `bsubtilis_16` is the damage SENSOR, not a
+duplicate of something the cell already does; the stored state is a
+protein-level toggle, not a voltage (voltage is only the planned readout);
+and the two-colour reporter assay is cheaper than the toggle but not free.
+Experiment 1 needs neither the voltage link nor the strain match.
+
+**What was built.** Three new simulations, all sweeps, none measured:
+`bsubtilis_27_noise_robustness_sweep.py` (also holds the parameterised
+regrowth engine, which at defaults reproduces `bsubtilis_07` and `_14`),
+`bsubtilis_28_regrowth_timing_sweep.py`, `bsubtilis_29_stressed_survivors.py`.
+Every axis in them is a sweep axis, not a prediction.
+
+**Result 1, noise (Part 28 found the placeholder 3.3x to 16.8x too low).**
+Single-cell genetic fidelity at 24 h, passing bar 70 percent:
+
+| promoter ratio | 1x | 2x | 3x | 5x | 10x | 20x |
+|---|---|---|---|---|---|---|
+| 1.0 (matched) | 100% | 100% | 100% | 100% | 60% | 53% |
+| 2.0 | 100% | 100% | 100% | 87% | 53% | 52% |
+| 5.0 | 100% | 100% | 83% | 70% | 50% | 55% |
+| 10.0 | 100% | 77% | 65% | 52% | 50% | 52% |
+| 0.1 | 50% | 50% | 50% | 50% | 47% | 47% |
+
+Colony recovery after damage and regrowth (matched promoters, 6 h window, so
+not directly comparable to the 24 h table): 100 percent at 1x through 5x for
+2, 5 and 20 percent survivors, 84 to 85 percent at 10x, 55 to 57 percent at
+20x. **Reading it honestly:** the earlier 100 percent figures hold only if
+real noise is under roughly 5x the placeholder. At the lower end of the
+Part 28 bound (3.3x) matched and moderately mismatched promoters still pass
+and a 5x mismatch is marginal. At the upper end (16.8x) nothing in the
+single-cell table passes. So the answer to "does Experiment 1 pass" now
+depends on a number nobody has measured, which is exactly what the
+two-colour reporter assay in Stage B0 measures. Promoter MATCHING matters
+more at higher noise, because mismatch fails earlier (ratio 10 fails at 2x).
+
+**Result 2, the regrowth budget (doubling time 30/45/60 min, settling delay
+0/30/60 min).** Reporter (genetic) fidelity stayed at 100 percent and the
+colony regrew in all 54 grid cells, including 60 minute doubling from a
+single cell, where it finishes with essentially zero minutes to spare. The
+electrical readout is a different story: the 180 minute averaged read works
+only when the budget leaves the full window. Any shortfall, even to 151
+minutes, dropped it to a coin flip (50 percent) at the worst damage level,
+and a 45 minute doubling time alone is enough to break it at 2 and 5 percent
+survivors. At 20 percent survivors it survived delays up to 60 minutes at
+45 minute doubling at 30 mV, but failed at 70 mV with 166 minutes of window,
+so it is fragile near the edge. **The zero-margin finding stands and is
+stronger than stated in Part 21: the electrical readout needs the
+undisturbed 30 minute doubling time, and the reporter readout does not.**
+This is a second, independent reason (after the interference problem in
+Parts 12 and 13) why the reporter readout is the recommended first readout.
+
+**Result 3, stressed survivors (slower division, higher noise, voltage
+shift, applied to survivors for a stress window after damage).**
+- A growth penalty up to 3x slower did not change genetic fidelity (100
+  percent) at any survival level.
+- A 10x noise rise during a 180 minute stress window cost about four points
+  (96 percent) for both readouts. If the stress lasts the whole 6 hour window,
+  with 2x slower growth and 10x noise, genetic fidelity fell to 85 to 87
+  percent, still above the 70 percent bar.
+- A voltage shift of 20 mV in either direction changed nothing. A shift of
+  40 mV in either direction, lasting through the read, took the long-window
+  voltage read to 50 percent. The reason is inherited, not new:
+  `V_HIGH=-10 mV` and `V_LOW=-80 mV` sit 35 mV on either side of the decision
+  midpoint, and both numbers came from the planarian model with no B.
+  subtilis measurement behind them. A transient shift that ends before the
+  read has no effect.
+- **Reading it honestly:** the reporter readout is robust to everything
+  swept here except combined sustained high noise. The voltage readout is
+  fragile to any sustained shift of about 35 mV or more, which nobody knows
+  is or is not what damaged B. subtilis cells do. This does not replace
+  Stage B2 arm 2b, which measures it.
+
+**Protocol changes made in response (not results).** Experiment 1 and Stage B0
+now run to 72 hours with dilution, require the bimodal distribution to hold
+across three consecutive timepoints spanning at least 48 hours, and add a
+washout-and-reread arm and an inducer hysteresis arm (a slow monostable
+circuit can pass a 24 hour snapshot, it cannot fake a toggle's
+history-dependent curve), plus optional single-cell tracking. Experiment 3 and
+Stage B2 gain a locus-stability check (colony PCR of both integrated arms
+after each regrowth round) so a lost or rearranged construct is not mistaken
+for a memory failure. `bsubtilis_18_phase_encoded_readout.py` is relabelled a
+sensitivity analysis under an assumed coupling, per Part 26.
+
+**Not done, and still open:** the review's strongest strategic point.
+Bonnet, Subsoontorn & Endy (2012) already showed a heritable, rewritable DNA
+recombinase latch with non-destructive fluorescent readout, and a DNA latch
+also survives damage and regrowth for the same reason a protein toggle
+does. "Survives division" therefore does not separate this project from that
+work. What would is a stated functional advantage of a protein toggle with
+damage-sensing reinforcement (`bsubtilis_16`) over a DNA latch, and none is
+established. Until one is, the honest framing is that the project's value is
+in testing self-detecting, self-reinforcing memory through damage, not in
+beating existing DNA memory on stability.
+
+---
+
 ## Next Action: One Experiment Changes Everything
 
 **The experiment:**

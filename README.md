@@ -56,6 +56,13 @@ project has been tested at a bench.
   to as little as 2% surviving cells regrows to full fidelity, because cell
   division copies the circuit's existing proteins into daughters. This is the
   project's actual differentiator.
+- **Those recovery numbers depend on an unmeasured noise setting.** They were
+  computed with a transcriptional-noise placeholder that a later check
+  suggests is 3x to 17x too low. Re-running with the noise turned up shows
+  recovery holds up to about 5 times the placeholder, drops at 10 times, and
+  is near chance by 20 times, with mismatched promoters failing sooner. Whether
+  the first experiment passes therefore depends on a number only the lab can
+  supply. See audit Part 29.
 - **Stochastic partition noise does not break it.** Modeling real, uneven
   splitting of molecules between daughter cells (binomial partitioning) leaves
   recovery at 99-100% down to about five molecules per cell. Only at an
