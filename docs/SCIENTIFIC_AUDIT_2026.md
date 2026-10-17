@@ -2686,6 +2686,69 @@ Bonnet et al. (2012) overlap matters.
 
 ---
 
+## Part 31: The Noise Setting's Scale, Found While Planning Model Cross-Checks (October 2026)
+
+**Status: OPEN. Found and measured, not yet fixed. No earlier simulation result has been changed.**
+
+**How it was found.** The founder asked whether the simulations could be stress-tested
+with different mathematics. While preparing the answer, the noise term in
+`GardnerToggleCell.step` (`bsubtilis_01`) was checked against the standard way to
+discretize a noisy equation, and two problems appeared.
+
+**Problem 1: the noise depends on the step size.** The random kick is added to the
+derivative and then multiplied by dt (`u += (drift + noise) * dt`). A correctly
+discretized stochastic equation scales the noise by the square root of dt, so that
+the noise intensity per unit time does not change when the step changes. Here it
+does. Measured (single seed, same total simulated time, standard deviation of the
+repressor level in the written state): at `tx_noise` 3.0 it was 1.43 at dt 0.02, 1.19
+at 0.01 and 0.69 at 0.005; at `tx_noise` 30 it was 9.39, 8.56 and 6.80. Every
+simulation uses dt 0.02, so comparisons between runs stay internally consistent and
+the sweeps in `bsubtilis_27` to `_30` remain valid as statements about this model.
+But `tx_noise` is not a physical quantity. It cannot be compared with a measured
+noise without recalibrating at that step size.
+
+**Problem 2: `bsubtilis_25` compares unlike quantities.** It computed the
+protein-level standard deviation implied by Swain et al.'s formula (10.0 to 50.5,
+from CV squared = (1 + b) / <P>, with the model's level of 50 treated as a molecule
+count) and divided it by `tx_noise` (3.0), which is the size of a random kick per
+step, not a level standard deviation. Measured over a 24 hour equivalent (40 runs
+each), the in-state standard deviation of the repressor level was 2.58 at
+`tx_noise` 3, 5.55 at 6, 7.26 at 9, 8.38 at 15, 8.16 at 21 and 7.43 at 30. In level
+terms the implied range is therefore about 4x to 20x of the placeholder (10 / 2.58
+and 50.5 / 2.58), or roughly 7x to 35x if the placeholder's level noise is taken
+from the shorter run (1.43). The stated 3.3x to 16.8x is close at the low end by
+luck but is the wrong quantity.
+
+**Why it matters more than the ratio.** The level standard deviation stops growing
+near 8 because the circuit starts to flip. Share of runs that flipped in a 24 hour
+equivalent (40 runs each): 0% at `tx_noise` 3, 6 and 9; 12% at 15; 55% at 21; 90% at
+30; 100% at 45 and above. So the modelled toggle is lost at a level standard
+deviation of about 8, and the whole implied range from Swain (10 to 50) sits beyond
+that. If the model's level of 50 really were a molecule count, the modelled toggle
+would not hold.
+
+**What this does and does not say.** The level of 50 is a model unit, not a molecule
+count. Real repressor numbers per cell are unmeasured (Experiment 4) and may be far
+higher, and the formula's CV falls as the molecule count rises, so the implied noise
+could be much smaller. The comparison therefore cannot say how far real noise is
+from the model's. It says the outcome depends on two unmeasured numbers, molecules
+per cell and burst size, and that "holds to about 5x the placeholder" is a statement
+about this model's `tx_noise` at dt 0.02, not about cells.
+
+**What needs doing (not done).**
+1. Reformulate the noise so it does not depend on dt: a stochastic differential
+   equation with square-root-of-dt scaling, or an exact stochastic simulation in
+   molecule counts using published burst parameters.
+2. Redo the noise comparison in level terms.
+3. Rerun the `bsubtilis_27` to `_30` sweeps on the corrected noise and compare.
+4. Add the wider model cross-checks: analytic bistability conditions, an exact
+   stochastic (Gillespie) simulation, first-passage theory for the flip rate, an
+   alternative circuit form with mRNA, and an independent reimplementation from a
+   plain-English specification. Agreement between those would show the math and the
+   code are consistent. It would not show the biology is right.
+
+---
+
 ## Next Action: One Experiment Changes Everything
 
 **The experiment:**

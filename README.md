@@ -62,7 +62,9 @@ project has been tested at a bench.
   recovery holds up to about 5 times the placeholder, drops at 10 times, and
   is near chance by 20 times, with mismatched promoters failing sooner. Whether
   the first experiment passes therefore depends on a number only the lab can
-  supply. See audit Part 29.
+  supply. See audit Part 29. The scale of that noise setting is itself being
+  re-checked (audit Part 31): it depends on the simulation step size, so it cannot yet
+  be compared with a measured noise.
 - **Stochastic partition noise does not break it.** Modeling real, uneven
   splitting of molecules between daughter cells (binomial partitioning) leaves
   recovery at 99-100% down to about five molecules per cell. Only at an

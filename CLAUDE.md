@@ -455,3 +455,15 @@ disproven, and where to start reading.
    so "a toggle can be flipped repeatedly and a recombinase latch cannot" must not
    appear anywhere. The README keeps stating that no advantage over a DNA latch is
    established.
+   **Audit Part 31 (OPEN, found 17 October 2026 while the founder asked about
+   stress-testing the simulations with other mathematics):** `tx_noise` in
+   `GardnerToggleCell.step` is scaled by dt instead of sqrt(dt), so the noise
+   intensity depends on the step size, and `bsubtilis_25` compared a per-step kick
+   size with a level standard deviation. The sweeps in `bsubtilis_27` to `_30` stay
+   valid as statements about this model at dt 0.02, but `tx_noise` cannot be
+   compared with a measured noise until it is reformulated. Not fixed. Proposed next
+   step: a model cross-check suite (sqrt(dt) noise, analytic bistability, Gillespie
+   in molecule counts, first-passage theory, a two-stage mRNA-protein variant, an
+   independent reimplementation). Agreement would show the math and code are
+   consistent, not that the biology is right. The interview guide and cheat sheet
+   were synced to Parts 29 to 31 the same day.
