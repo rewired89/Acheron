@@ -219,6 +219,15 @@ do not.
   history or reasoning to the reader (no "(original pitch)" labels, no
   "why this document leads with X" sections); write only what the external
   audience needs, keep process/reasoning notes in chat or in this file.
+- **Plain-language rule for explaining results to the founder (set 17 October
+  2026, her own request):** when explaining data, results, questions or
+  concepts to the founder in chat, do not over-explain the science. Lead with
+  the answer in the simplest words possible, as to someone with no science
+  background: did it work, for how long, how many, and what it means. Use
+  everyday comparisons, few numbers, and no jargon unless it is defined in a
+  few words on the spot. Keep the technical detail in the audit and the other
+  docs, not in the chat reply. She learns the science gradually and wants to
+  follow the results first.
 - **Founders:** Dayana Sanchez (Founder & Lead Researcher, originated the
   concept, does the technical work) and Jacqueline Solano (Co-Founder,
   business operations, satisfies a US-citizen-founder requirement for some
