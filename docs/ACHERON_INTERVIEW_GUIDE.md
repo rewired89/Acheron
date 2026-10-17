@@ -221,6 +221,72 @@ math and code are consistent. It does not show the biology is right.
 
 ---
 
+## 6b. The results in plain words
+
+Everything here is a simulation. No cell has been tested in a lab.
+
+**What we do.** We write one 0 or 1 into bacteria and damage most of them. The
+survivors regrow, and we check whether the 0 or 1 is still there.
+
+**Did the bit survive?** In the simulation, yes. Even with only 2 out of 100
+cells surviving, almost every cell in the regrown colony still held the right
+bit. The catch: the survivors have to hold the right bit to begin with.
+
+**For how long?** At the setting we tested, one bit flips by itself about once
+every three weeks. That rate is a guess from the simulation. Nobody has
+measured the real number.
+
+**More than one bit.** Think of writing in pencil on a whiteboard that slowly
+fades. A 4-byte message (32 bits) with no protection lasts about 3 days before
+it is a coin flip whether something has changed. Two things help:
+- Spare copies: write each bit several times and let the copies vote.
+- Rewriting: check the message and rewrite it into fresh cells on a schedule.
+
+| Protection | Cells for 32 bits | Roughly how long it lasts |
+|---|---|---|
+| None | 32 | about 3 days |
+| 3 copies of each bit | 96 | about 2 weeks |
+| 5 copies of each bit | 160 | about 3 weeks |
+| 5 copies, rewritten every 6 hours | 160 | a month or longer |
+
+Rewriting needs a machine that reads and rewrites every cell, and the table
+assumes the rewrite makes no mistakes. If something hits many cells at once,
+like contamination, spare copies do not help.
+
+**Do the 3 weeks mean the data must be copied before then?** Yes. Three weeks is
+the point where it is a coin flip whether the message has gone wrong. With five
+copies per bit, the message was 90 percent safe for about 11 days, so you would
+read it and rewrite it into fresh cells well before that, maybe every few days.
+If the real flip rate is 10 times faster, it would be every few hours.
+
+**How much data can the simulations say we can write?** They do not say. They
+show how one bit behaves, not how many bits fit. The amount depends on how many
+separate spots a reader can read, which is a hardware question. The table below
+is only arithmetic (decimal units, 1 byte = 8 bits), not biology:
+
+| Amount | Bits | Cells or spots with 5 copies | With a compact code |
+|---|---|---|---|
+| 1 megabyte | 8 million | 40 million | about 11 million |
+| 1 gigabyte | 8 billion | 40 billion | about 11 billion |
+| 1 terabyte | 8 trillion | 40 trillion | about 11 trillion |
+
+A first version is more likely to hold bytes to kilobytes. Treat the rows above
+as the size of the problem, not a promise. If an investor asks "how much data",
+say: "The simulations do not tell us. Capacity is a reader question. What we can
+say is how one bit behaves and how spare copies and rewriting stretch its life."
+
+**What to do next to prove it.** In order, and each step can stop the project:
+1. Pilot P0, then Experiment 1: does the switch really have two stable states
+   in real bacteria? This is step zero.
+2. Have a microbiologist read the protocol.
+3. Experiments 2 and 4: count the molecules per cell and how bursty they are.
+4. Experiment 3: damage and regrowth, the first real test of the Acheron idea.
+5. Self-detection of damage (step 3 of the hypothesis), the least tested part.
+
+Passing Experiment 1 does not prove Acheron. Only steps 4 and then 5 would.
+
+---
+
 ## 7. The tests
 
 - `tests/` holds **17 unit tests across 3 files**, all passing (checked today).
