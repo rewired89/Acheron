@@ -258,6 +258,7 @@ explains how the project connects, what is proven versus assumed versus
 disproven, and where to start reading.
 
 - **`docs/ACHERON_INTERVIEW_GUIDE.md`** (added 8 October 2026) is the founder's study document for interviews and investor calls: pitches, concepts, simulation scoreboard, experiments, hard Q&A, 7-day plan, video search list. Keep it in sync with the audit when headline results change. Video entries are channel plus search phrase on purpose, no URLs were verifiable. `docs/ACHERON_CHEAT_SHEET.docx` is its one-page companion (generated with python-docx, not from the markdown), update both together.
+- **`docs/ACHERON_101_part2.md`** (added 17 October 2026, at the founder's request) retells the project in a gossip-style voice because that is how she learns best. It sits beside `docs/ACHERON_101.md`, which stays untouched. Keep its facts in step with the audit and keep the tone; no invented numbers.
 - **`simulations/`** holds every simulation of a scientific claim, named
   `<organism>_<number>_<topic>.py`, in four tracks: `planarian_`, `bsubtilis_`,
   `methylation_`, `crossorganism_`. The number is reading order within that
