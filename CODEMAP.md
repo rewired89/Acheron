@@ -739,6 +739,16 @@ they depend on each other.
   used_by: `main` (in the same file)
   side_effects: none
 
+- name: `run_word`, `run_grid`, `budget_section`, `crosstalk_section`, `wilson`
+  type: function
+  file: simulations/bsubtilis_37_multibit_word_storage.py
+  purpose: N independent exact two-stage Gillespie toggles in one lineage (growth, binomial partitioning), with a total molecule budget B shared as B / N per toggle and a crosstalk weight eps adding foreign repressor concentration to every promoter's repression. Found (session run): budget alone barely matters up to 8 bits at 25 or more molecules per toggle (word 90 to 100 percent, matches per-bit ** N); crosstalk eps of 0.01 drops an 8-bit word to 30 percent and 0.03 destroys it; tolerable eps about 1 / (50 (N - 1)) under the fixed dynamic range of 50. Audit Part 31 sixth follow-up
+  inputs: N bits, Omega per toggle, burst b, eps, seed
+  outputs: list of per-bit correct flags; printed tables
+  dependencies: numpy, `multiprocessing.Pool`
+  used_by: `main` (in the same file)
+  side_effects: none
+
 ---
 
 ## experiments/ — runnable demonstrations and diagnostic scripts

@@ -507,3 +507,9 @@ disproven, and where to start reading.
    95 to 97 percent) at one marginal setting. Window is 11.4 protein lifetimes, not 24 hours.
    Monostable is now defined by memory (96 h interval contains 50 percent, or a drop of more
    than 10 points), at a fixed burst size.
+   **Sixth follow-up (`bsubtilis_37_multibit_word_storage.py`):** first look at N bits in one cell. The
+   shared molecule budget hardly matters up to 8 bits (word 90 to 100 percent at 25 or more
+   molecules per toggle); crosstalk is what breaks it (eps 0.01 gives a 30 percent word at 8 bits,
+   tolerable eps about 1 / (50 (N - 1)) under the model's fixed dynamic range). A sweep axis, not a
+   measurement: orthogonal repressor pairs in B. subtilis are a biology question. No error-correcting
+   code, machinery sharing or burden modelled. `bsubtilis_01` was deliberately left unchanged.

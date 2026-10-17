@@ -750,6 +750,22 @@ about 64 cells then single-lineage following, 11.4 protein lifetimes in total (a
 multiplies transcription of the currently dominant arm during the regrowth phase only. No selection, copy
 number, crowding or shared noise. Audit Part 31, fifth follow-up.
 
+### `bsubtilis_37_multibit_word_storage.py`
+**What it tested, plainly:** everything so far stored one bit. If a cell holds several switches at once (a
+"word"), does the whole word survive a day of growth and division? Two things could hurt: the switches sharing a
+fixed number of molecules, and the switches accidentally muting each other (crosstalk).
+**What it found, plainly:** sharing molecules was not the problem. Up to 8 switches in one cell held the whole
+word 90 to 100 percent of the time, even at 25 molecules each. Crosstalk was the problem: if each switch's
+helper molecules leak onto the others' controls by even 1 percent, an 8-bit word fell to 30 percent intact,
+and by 3 percent it was lost. The usable leak size shrinks as more switches are added (about 1 divided by 50
+times the number of other switches). This follows from the model's assumptions, so it is a rule of thumb, and
+whether enough clean, non-leaking switch parts exist in the real bacterium is a lab question.
+**Technically:** N independent exact two-stage Gillespie toggles in one lineage with growth and binomial
+partitioning, burst 5, 30 words per cell, B = 200, 400, 800 total mean ON molecules shared (B / N each) and a
+crosstalk weight eps added to the opposing repressor concentration at every promoter. Word fidelity matches
+per-bit fidelity ** N. Tolerable eps about 1 / (50 (N - 1)). Audit Part 31, sixth follow-up. No machinery
+sharing beyond the budget, no burden, no copy number, no selection, no error-correcting code.
+
 Note on `bsubtilis_25`: its "placeholder 3x to 17x too low" conclusion is SUPERSEDED (audit Part 31);
 the file's header says so.
 

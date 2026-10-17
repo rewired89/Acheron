@@ -83,6 +83,12 @@ project has been tested at a bench.
 - **A fluorescent reporter readout tracks the genetic state exactly**, through
   damage and regrowth, with no added fragility of its own. This is why the
   first funded experiment uses a reporter assay and not an electrode.
+- **More than one bit.** A first model of several switches in one cell
+  (`bsubtilis_37`) says the shared molecule budget is not the limit up to about
+  8 bits, but leakage between switches is: if each switch's repressors leak onto
+  the others' controls at a weight of 1% an 8-bit word is only 30% intact, and
+  the tolerable leak shrinks as bits are added. Whether enough clean repressor
+  pairs exist in *B. subtilis* is unmeasured (audit Part 31).
 - **Reading the bit as a voltage level is the hard part.** *B. subtilis*
   biofilms run their own native potassium-wave signaling, real and published
   and unrelated to anything this project builds. A single voltage snapshot

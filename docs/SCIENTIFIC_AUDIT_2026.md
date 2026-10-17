@@ -2996,6 +2996,36 @@ that nobody has measured (swept, not bracketing reality). The boost remains a pr
 nothing about whether an SOS-type promoter can be wired to a toggle arm, and any wrong-state cell would be
 reinforced toward the wrong state.
 
+### Part 31, sixth follow-up: more than one bit in a cell
+
+Until here every result was for one toggle. `bsubtilis_37_multibit_word_storage.py` gives a first, rough idea of
+what N bits in one cell implies, in the exact molecular model (burst 5, 24 hour equivalent, growth and
+binomial division, 30 random words per setting). Two questions.
+
+*Shared budget.* With a fixed total of B mean ON repressor molecules shared by N toggles (B / N each), the
+whole word stayed right in 100 percent of words for N up to 4 at every B tested (200, 400, 800), and at N = 8
+in 100 percent at B = 800, 93 percent at B = 400 (50 molecules per toggle) and 90 percent at B = 200 (25
+molecules per toggle); per-bit fidelity was 99 to 100 percent throughout. The word result matched the
+independent-bits prediction (per-bit fidelity to the power N) in every cell, so no interference appeared when
+the toggles are independent. Intervals at 30 words are wide (89 to 100 percent at the 100 percent cells).
+
+*Crosstalk.* This is where it breaks. If a foreign toggle's repressors count with weight eps at another toggle's
+promoters, 8 bits at 100 molecules each held 100 percent of words at eps = 0, 90 percent at eps = 0.003, 30
+percent at 0.01 (per-bit 89 percent), and 0 percent at 0.03 and 0.1 (per-bit 54 to 55 percent, near chance).
+The cause is simple arithmetic and should be read as a rule of thumb, not a discovery: each toggle's ON
+repressor sits at about 50 times the repression threshold (the model's fixed dynamic range), so the foreign
+repressors from the other N - 1 toggles add up to roughly (N - 1) x 50 x eps threshold units of repression at
+EVERY promoter; once that approaches 1 the toggle loses its two states. That gives a tolerable eps of about 1 /
+(50 (N - 1)), about 0.003 for 8 bits, and shrinking as N grows. It depends on the assumed dynamic range of 50.
+
+*Reading.* Under this model, the molecule budget is not what limits a multi-bit word at these sizes; repressor
+orthogonality is. Whether enough well-separated repressor pairs exist in *B. subtilis* is a biology question the
+model cannot answer: its pairs are free, and eps is a sweep axis, not a measurement. Not modelled: shared
+transcription and translation machinery beyond the molecule budget, growth burden from extra circuits, gene
+copy number, selection against the heavier cell, readout, and error-correcting codes (which would let a word
+survive a few wrong bits at the price of more toggles). Experiment 4 (molecules per cell) and a crosstalk
+measurement between candidate repressor pairs would turn these axes into numbers.
+
 ---
 
 ## Next Action: One Experiment Changes Everything
