@@ -2970,6 +2970,32 @@ degradation; with two different repressors (for example LacI and TetR) the degra
 and unequal degradation is also a design lever that can move the window. (e) A bistable M3 at a measured ratio
 of 0.01 or lower falsifies the simulation's window claim, a model correction, not a retraction of the project.
 
+### Part 31, fifth follow-up: colony regrowth and the damage-sensing boost in the molecular model
+
+`bsubtilis_36_molecular_colony_regrowth.py` reruns the project's headline (a small fraction of survivors regrows
+into a colony that holds the bit) and the proposed damage-sensing boost (`bsubtilis_16`) in the exact molecular
+model, additively: no earlier file was changed and the earlier numbers stand as results of those models.
+Survivors (all assumed correct) found lineages that divide with binomial partitioning to about 64 cells, then
+follow one daughter each over 6 hours of settling (11.4 protein lifetimes in all, about 9.5 hours, shorter than
+the 24 hours of `bsubtilis_34`). Recovery is the fraction of final cells holding the bit; the 100 percent
+survivor row is the no-damage baseline over the same time.
+
+*Result.* In the five cells of the main table (25 to 200 mean molecules; burst 5 at 25 and 50, burst 20 at 50,
+100 and 200), mean recovery was 98 to 100 percent at every survivor level tested (2, 5, 20 and 100 percent), with
+worst single colonies at 89 to 100 percent in 12 colonies per cell. Recovery after damage was no worse than the undamaged baseline, which is the point of
+`bsubtilis_30` section G: with correct survivors, regrowth adds little loss beyond the single-lineage hold. At
+the most marginal cell tested (25 molecules, burst 20, 2 percent survivors) mean recovery was 91 percent
+(worst colony 75), and the boost raised it to 95, 97 and 97 percent at multipliers 2, 5 and 10 (worst colony 89,
+94 and 89) in 20 colonies per setting. That is a suggestive gain at one marginal cell, not an established
+one; at the other cells there was little to rescue (97 to 100 percent without it).
+
+*Reading.* The Gaussian-model figures for the headline (`bsubtilis_07`, `27`) were more pessimistic than the
+molecular model near zero copies, and the colony conclusion holds there too. This is still conditional on
+survivors being correct, no selection, no crowding, no gene copy number, and molecule counts and burst sizes
+that nobody has measured (swept, not bracketing reality). The boost remains a proposal; its gain here says
+nothing about whether an SOS-type promoter can be wired to a toggle arm, and any wrong-state cell would be
+reinforced toward the wrong state.
+
 ---
 
 ## Next Action: One Experiment Changes Everything

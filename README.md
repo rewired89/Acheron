@@ -54,8 +54,10 @@ project has been tested at a bench.
 
 - **The genetic state survives damage and regrowth.** A colony knocked down
   to as little as 2% surviving cells regrows to full fidelity, because cell
-  division copies the circuit's existing proteins into daughters. This is the
-  project's actual differentiator.
+  division copies the circuit's existing proteins into daughters. This holds
+  only if the surviving cells all hold the bit, and it held again in the exact
+  molecular model (audit Part 31, `bsubtilis_36`, a 6 hour window). This is the
+  project's actual differentiator, and Bonnet et al. (2012) also survives division.
 - **Those recovery numbers depend on how noise is modelled, and on two numbers
   nobody has measured.** With the project's Gaussian noise, recovery holds up to
   about 5 times the placeholder and fails by 10 to 20 times, with mismatched

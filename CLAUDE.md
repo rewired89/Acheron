@@ -499,3 +499,10 @@ disproven, and where to start reading.
    "3x to 17x" conclusion has a superseded header. The `bsubtilis_15` "5 molecules" figure belongs
    to the colony model and must not be quoted for the molecular model. The interview
    guide, cheat sheet and README were updated to this on the same day.
+   **Fifth follow-up (`bsubtilis_36_molecular_colony_regrowth.py`):** the colony-regrowth headline
+   and the damage-sensing boost were rerun in the exact molecular model, additively. Recovery
+   was 98 to 100 percent on average at 25 to 200 molecules and 2 to 100 percent survivors (no worse
+   than undamaged), conditional on correct survivors; the boost gave a suggestive gain (91 to
+   95 to 97 percent) at one marginal setting. Window is 11.4 protein lifetimes, not 24 hours.
+   Monostable is now defined by memory (96 h interval contains 50 percent, or a drop of more
+   than 10 points), at a fixed burst size.

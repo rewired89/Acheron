@@ -736,6 +736,20 @@ Hill exponent and arm ratio as inputs and first-passage tracking; Wilson interva
 exact Poisson intervals on flip rates from 250 hour runs. No Kramers closed form, flip rates assume a
 constant rate, all burst and copy-number values are sweep axes. Monostable is defined by memory at a fixed burst size (96 h interval contains 50%, or a drop of more than 10 points from 24 h). Audit Part 31, fourth follow-up.
 
+### `bsubtilis_36_molecular_colony_regrowth.py`
+**What it tested, plainly:** our headline (a colony cut down to a few percent regrows and still holds the bit)
+and our damage-sensing idea were built on simpler noise models that later turned out to be pessimistic. Does
+the headline still hold in the molecule-by-molecule model?
+**What it found, plainly:** yes. Starting from correct survivors, colonies recovered to 98 to 100 percent on
+average at every survivor level from 2 to 100 percent, no worse than a colony that was never damaged. At the
+shakiest setting tested (about 25 molecules, large bursts) it was 91 percent, and the proposed boost raised it
+to 95 to 97 percent, a suggestive gain at one setting, not an established one. It still assumes the survivors
+are correct and that the molecule counts are what we assume.
+**Technically:** exact two-stage Gillespie lineages with growth, binomial partitioning at every division,
+about 64 cells then single-lineage following, 11.4 protein lifetimes in total (about 9.5 hours); boost
+multiplies transcription of the currently dominant arm during the regrowth phase only. No selection, copy
+number, crowding or shared noise. Audit Part 31, fifth follow-up.
+
 Note on `bsubtilis_25`: its "placeholder 3x to 17x too low" conclusion is SUPERSEDED (audit Part 31);
 the file's header says so.
 

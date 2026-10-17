@@ -729,6 +729,16 @@ they depend on each other.
   used_by: `main` (in the same file)
   side_effects: none
 
+- name: `evolve`, `trial`, `sweep`, `wilson`, `main`
+  type: function
+  file: simulations/bsubtilis_36_molecular_colony_regrowth.py
+  purpose: colony regrowth and the damage-sensing boost in the exact molecular model. `evolve` runs one two-stage Gillespie cell until it divides or the window ends (optional boost multiplier on the dominant arm's transcription); `trial` founds lineages from correct survivors, divides with binomial partitioning to about 64 cells, then follows one daughter, and returns the fraction of final cells holding the bit. Found (session run): 98 to 100 percent mean recovery at 25 to 200 molecules, bursts 5 and 20, survivors 2 to 100 percent; at 25 molecules burst 20 and 2 percent survivors 91 percent, boost 95 to 97 percent (suggestive). Audit Part 31 fifth follow-up. No selection, copy number or crowding
+  inputs: Omega, burst b, survivor fraction, boost multiplier, bit, seed
+  outputs: (fraction correct, final cell count); printed tables
+  dependencies: numpy, `multiprocessing.Pool`
+  used_by: `main` (in the same file)
+  side_effects: none
+
 ---
 
 ## experiments/ — runnable demonstrations and diagnostic scripts
