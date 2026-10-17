@@ -719,7 +719,7 @@ they depend on each other.
   used_by: `main` (in the same file)
   side_effects: none
 
-- name: `stable_count`, `window`, `sim`, `wilson`, `analytic_section`, `falsification_section`, `intervals_section`, `flip_section`
+- name: `stable_count`, `window`, `sim`, `wilson`, `analytic_section`, `falsification_section`, `decay_section`, `intervals_section`, `flip_section`
   type: function
   file: simulations/bsubtilis_35_falsification_window_and_flip_rate.py
   purpose: answers an outside review of the molecular results. `window` gives the exact bistable window of promoter strength ratios for any Hill exponents and u-loss rate (fixed points plus Jacobian stability). `sim` is the two-stage Gillespie toggle with Hill exponent, arm ratio, optional growth/division and first-passage tracking. Found (session run): the window moves with the model (Hill 3: 0.104 to 73.7, Hill 4: 0.067 to 9.46), ratio 0.1 can lie inside it but 0.01 never did in 13 cases; the molecular model fails where theory says (Hill 1, outside the window) and shifts as predicted; Wilson intervals make the burst-20 threshold about 100 molecules; flip rates measured with Poisson intervals. Audit Part 31 fourth follow-up. No Kramers closed form

@@ -66,7 +66,7 @@ project has been tested at a bench.
   algebra agrees with the simulation on the structure (promoter matching is the
   make-or-break rule, with an exact window). The molecular model's robustness
   survives adding an mRNA stage, cell-wide shared noise, and cell division with
-  uneven splitting of molecules. Whether the first experiment passes therefore
+  uneven splitting of molecules. For the burst sizes swept (1 to 20). Real burst size for these promoters is unmeasured. If it is higher than 20 the molecule threshold moves up; the tables do not bracket reality. Whether the first experiment passes therefore
   depends on molecules per cell and burst size, which only the lab can supply.
   See audit Part 31.
 - **Stochastic partition noise does not break it, in the colony model.** In

@@ -50,8 +50,19 @@ nominal 0.1, as M3's value; (2) pick an M3 pair whose measured ratio is 0.01 or
 lower if the parts allow; (3) if they do not, add a structural negative control
 that does not depend on the window at all: one arm whose repressor-binding
 operator is deleted, so it cannot be repressed and cannot be bistable at any Hill
-coefficient or ratio. A "M3 bistable" result only counts against the simulation
+coefficient or ratio. A "M3 bistable" result only counts against the simulation's window claim (a model
+correction, not a retraction of the project)
 if M3's measured ratio is at or below 0.01 or it is the operator-deleted control.
+If M3 is bistable at a measured ratio between 0.01 and the model's lower edge
+(0.247), that is informative, not a failed control: the real window is wider than
+modelled (a higher Hill coefficient or unequal loss rates). Pre-registered.
+
+**Equal loss is an assumption.** The model's window assumes equal protein loss.
+Growth dilution is equal for both arms, but proteolytic degradation is equal only
+if both arms use the same repressor or tag. With two different repressors (for
+example LacI and TetR) the degradation rates must be measured, and unequal
+degradation moves the window (`bsubtilis_35`); state the degradation assumption
+next to M3's promoter ratio when reporting it.
 
 ## How this experiment is staged
 

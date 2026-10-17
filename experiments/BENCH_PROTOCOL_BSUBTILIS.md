@@ -147,7 +147,11 @@ Hill coefficient and loss rates (a ratio of 0.1 is inside it at Hill 4, a ratio 
 0.01 was outside in every case in `bsubtilis_35`). Measure each arm's promoter
 strength with a single-promoter reporter fusion, use a measured ratio of 0.01 or
 lower if the parts allow, and otherwise add an operator-deleted arm as a
-window-independent negative control (see Experiment 1). If M1 is not
+window-independent negative control (see Experiment 1). A bistable M3 at a
+measured ratio of 0.01 or lower corrects the simulation's window claim, not the
+project; between 0.01 and 0.247 it only shows the real window is wider than
+modelled. The window assumes equal protein loss, which holds for growth dilution
+but not for proteolysis if the two arms use different repressors; state it. If M1 is not
 bistable, the whole *B. subtilis* circuit track is in trouble and the project
 finds that out for the price of the cheapest experiment on the list.
 

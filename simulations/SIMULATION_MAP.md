@@ -734,7 +734,7 @@ at 12 molecules down to under once per 2,500 hours at 100 molecules, burst 5.
 stability code, search range fixed after a floating-point miss at Hill 4); Gillespie two-stage model with
 Hill exponent and arm ratio as inputs and first-passage tracking; Wilson intervals on the bsubtilis_34 grid;
 exact Poisson intervals on flip rates from 250 hour runs. No Kramers closed form, flip rates assume a
-constant rate, all burst and copy-number values are sweep axes. Audit Part 31, fourth follow-up.
+constant rate, all burst and copy-number values are sweep axes. Monostable is defined by memory at a fixed burst size (96 h interval contains 50%, or a drop of more than 10 points from 24 h). Audit Part 31, fourth follow-up.
 
 Note on `bsubtilis_25`: its "placeholder 3x to 17x too low" conclusion is SUPERSEDED (audit Part 31);
 the file's header says so.

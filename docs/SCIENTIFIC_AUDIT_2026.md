@@ -2950,6 +2950,26 @@ state at one moment, so they are not the same quantity). Retention beyond 24 hou
 assumes a constant rate; a zero-flip cell gives only a bound. A closed-form (Kramers-type) rate is still not
 derived.
 
+*Further review round (closing points).* (a) Whether the weak arm "does any work" at a severe mismatch: halving
+its production at ratios 0.01, 0.1 and 0.2 changes the strong arm's steady state by a relative 3e-8, 3e-6 and
+1.2e-5, and at 0.3 (inside the window) by 2.7e-5. A steady-state sensitivity check is therefore not an
+indicator of bistability in this circuit: it is tiny on both sides of the window edge, because the strong arm
+sits near its ceiling and the weak arm near zero either way. What distinguishes the two sides is whether a
+pulse of the weak arm can hold the switched state, which is what Experiment 1 tests. The check does not show
+that the weak arm is irrelevant to the design, and it says nothing about real parts. (b) Monostable is now
+defined by memory, at a fixed burst size of 10 (Omega 4, no division, 40 runs per cell, horizons 24, 48, 96 and
+192 h): monostable if the 96 h fidelity interval contains 50 percent or fidelity fell by more than 10 points
+between 24 h and 96 h; bistable only if it is clearly above chance and the drop is 10 points or less. The
+first version of this rule, a drop of more than 10 points, was wrong and failed on its first data: Hill 1 was
+already at chance at 24 h (50, 52, 42, 50 percent), showed no drop, and would have been called bistable. Hill 2
+stayed at 100, 98, 98, 95 percent (drop 3 points at 96 h). The earlier 72 percent for Hill 1 was at burst 5,
+where relaxation is slower; fixing the burst size is what makes the comparison readable. (c) Flip-rate runs are right-censored at 250 h; zero flips in
+10,000 cell-hours gives a 95 percent upper bound of about 3e-4 per hour (one-sided), and lower rates are
+bounds, not estimates. (d) Equal protein loss assumes equal growth dilution and identical repressor
+degradation; with two different repressors (for example LacI and TetR) the degradation rates must be measured,
+and unequal degradation is also a design lever that can move the window. (e) A bistable M3 at a measured ratio
+of 0.01 or lower falsifies the simulation's window claim, a model correction, not a retraction of the project.
+
 ---
 
 ## Next Action: One Experiment Changes Everything

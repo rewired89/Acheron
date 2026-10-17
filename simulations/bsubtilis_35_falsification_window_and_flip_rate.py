@@ -240,6 +240,46 @@ def falsification_section(n_per_bit=20):
     print("memory; the 4x horizon row shows it decaying toward 50%.")
 
 
+def decay_section(n_per_bit=20):
+    print("\n" + "=" * 92)
+    print("B2) OPERATIONAL DEFINITION OF MONOSTABLE: DOES MEMORY DECAY WITH THE HORIZON?")
+    print("   burst size FIXED at 10 for every row, Omega 4 (about 200 molecules), ratio 1, no division,")
+    print("   40 runs per cell, horizons are multiples of 24 h")
+    print("=" * 92)
+    hz = [1, 2, 4, 8]
+    jobs = [(4, 10, beta, 1.0, 0.0, 'none', bit, 41000 + 211 * beta + 37 * h + 5 * k + bit, T_UNITS * h, False)
+            for beta in (1, 2) for h in hz for bit in (0, 1) for k in range(n_per_bit)]
+    with Pool(4) as pool:
+        out = pool.map(sim, jobs, chunksize=4)
+    acc = {}
+    for j, o in zip(jobs, out):
+        acc.setdefault((j[2], round(j[8] / T_UNITS)), []).append(o[0])
+    print(f"{'Hill':>5}" + "".join(f"{f'{24 * h} h':>16}" for h in hz))
+    for beta in (1, 2):
+        row = f"{beta:>5}"
+        fid = {}
+        for h in hz:
+            v = acc[(beta, h)]
+            fid[h] = sum(v) / len(v)
+            lo, hi = wilson(sum(v), len(v))
+            row += f"  {fid[h]:>5.0%} ({lo:.0%}-{hi:.0%})"
+        drop = fid[1] - fid[4]
+        lo4, hi4 = wilson(sum(acc[(beta, 4)]), len(acc[(beta, 4)]))
+        if lo4 <= 0.5 <= hi4:
+            verdict = "MONOSTABLE: 96 h consistent with chance"
+        elif drop > 0.10:
+            verdict = "MONOSTABLE: decaying"
+        else:
+            verdict = "BISTABLE: high and flat"
+        print(row + f"   drop 1x to 4x: {drop * 100:+.0f} points -> {verdict}")
+    print("\nRule: monostable if the 96 h fidelity interval contains 50% (memory is gone) OR fidelity fell by more")
+    print("than 10 points between 24 h and 96 h (memory is decaying); bistable only if fidelity at 96 h is clearly")
+    print("above chance AND the drop is 10 points or less. A drop-only rule fails: Hill 1 at burst 10 is already")
+    print("at chance at 24 h, so it shows no drop and would be misread as flat. With 40 runs per cell one interval")
+    print("is about +/-4 to 5 points. Burst size is held at 10 so a burst-limited drop cannot be mistaken for")
+    print("monostability.")
+
+
 # ------------------------------------------------------------------ C: intervals
 def intervals_section(n_per_bit=50):
     print("\n" + "=" * 92)
@@ -292,13 +332,18 @@ def flip_section(n_runs=40):
         ret = math.exp(-rate * 24.0)
         rng = f"{lo:.4f} to {hi:.4f}"
         print(f"{O:>6}{50 * O:>7.0f}{b:>7}{flips:>7}{expo:>12.0f}{rate:>12.4f}{rng:>22}{ret:>15.0%} ")
-    print("\nA cell with zero flips gives an upper bound only. First committed flip is a first-passage time;")
+    print("\nCensoring rule: runs with no flip by 250 h are right-censored (no flip observed, not 'never').")
+    print("Resolution floor: zero flips in 10,000 cell-hours gives a 95% upper bound of about 3e-4 per hour")
+    print("(one-sided; the two-sided interval printed above gives about 4e-4). Rates below that are bounds,")
+    print("not estimates.")
+    print("A cell with zero flips gives an upper bound only. First committed flip is a first-passage time;")
     print("a flip back is not counted. Retention = exp(-rate * 24 h) assumes a constant rate.")
 
 
 def main():
     analytic_section()
     falsification_section()
+    decay_section()
     intervals_section()
     flip_section()
 
