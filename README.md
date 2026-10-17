@@ -69,9 +69,13 @@ project has been tested at a bench.
   uneven splitting of molecules. Whether the first experiment passes therefore
   depends on molecules per cell and burst size, which only the lab can supply.
   See audit Part 31.
-- **Stochastic partition noise does not break it.** Modeling real, uneven
-  splitting of molecules between daughter cells (binomial partitioning) leaves
-  recovery at 99-100% down to about five molecules per cell. Only at an
+- **Stochastic partition noise does not break it, in the colony model.** In
+  the deterministic-inheritance colony model (`bsubtilis_15`, no bursts, no mRNA
+  stage), binomial splitting of molecules between daughter cells leaves
+  recovery at 99-100% down to about five molecules per cell. That number does
+  not carry over to the molecular model with bursts, which needs about 12 to
+  100 mean repressor molecules depending on burst size (burst size is
+  unmeasured), and is a different question (holding 24 hours, not recovery). Only at an
   extreme and probably unrealistic single-molecule level does recovery degrade,
   and even then it does not fall to chance.
 - **A fluorescent reporter readout tracks the genetic state exactly**, through

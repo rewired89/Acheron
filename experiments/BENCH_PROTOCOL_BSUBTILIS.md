@@ -141,7 +141,13 @@ variants to test that directly:
 | **M3, severe mismatch** | P*liaG* / P*veg* (or the inverse) | approximately 0.1 or 10x in the collapsing direction | Monostable, fidelity floors near 50% |
 
 M3 is the falsification arm. If M3 is bistable, the simulation's central design
-constraint is wrong and that is a real, publishable correction. If M1 is not
+constraint is wrong and that is a real, publishable correction. It only counts
+if M3 lies outside the real window, which is a model result that moves with the
+Hill coefficient and loss rates (a ratio of 0.1 is inside it at Hill 4, a ratio of
+0.01 was outside in every case in `bsubtilis_35`). Measure each arm's promoter
+strength with a single-promoter reporter fusion, use a measured ratio of 0.01 or
+lower if the parts allow, and otherwise add an operator-deleted arm as a
+window-independent negative control (see Experiment 1). If M1 is not
 bistable, the whole *B. subtilis* circuit track is in trouble and the project
 finds that out for the price of the cheapest experiment on the list.
 

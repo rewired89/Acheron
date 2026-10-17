@@ -1678,7 +1678,9 @@ has no citation for that conversion; real bacterial transcription factor
 copy numbers span single digits to thousands depending on the protein).
 
 **Result: the circuit's own bistability makes it robust to this noise
-down to a strikingly low copy number.** At ~5 molecules per cell and
+down to a strikingly low copy number.** (Deterministic-inheritance colony model, no bursts, no mRNA stage; the molecular
+model of Part 31 asks a different question and needs about 12 to 100 mean molecules
+depending on burst size.) At ~5 molecules per cell and
 above, recovery stayed at 99-100%, matching the noise-free result,
 across every damage level tested (2% to 100% surviving). Manually
 verified the noise itself is real and large at this scale (single
@@ -2820,8 +2822,10 @@ reason (inferred from these numbers, not isolated by a further experiment).
   noise, and it fixes the ON level at 50 times the repression threshold. The molecule counts above are model results. Whether
   real repressor numbers (Experiment 4) and burst sizes (Experiment 2) are above them is the open
   question, and the fix for the failing part is now sharper: measure those two numbers.
-- **The structural conclusions stand and are now independently supported:** promoter matching
-  is the make-or-break rule, with a computable window.
+- **The structural conclusions stand and are supported by a second method within this
+  parameterization:** promoter matching is the make-or-break rule, with a computable window
+  (0.247 to 16.25 for Hill 2 and equal loss rates; it moves with both, see the fourth
+  follow-up below and `bsubtilis_35`).
 - **Which noise model to trust is itself a result:** the exact molecular model is the more faithful
   description of the reactions it represents, and the Gaussian ones are known to fail near zero
   copies. Unit-free CV is the right yardstick for comparing any of them with a measurement.
@@ -2894,6 +2898,57 @@ the circuit (the cause was not isolated; faster loss through dilution plus the f
 is one candidate). Not tested: discrete gene copy number across the cell cycle, a population with
 selection (see `bsubtilis_30`), promoter switching, a lower dynamic range, and any real value for
 molecules per cell or burst size, which only Experiments 2 and 4 can supply.
+
+### Part 31, fourth follow-up: falsification controls, window dependence, intervals, flip rate
+
+An outside review of the molecular results made four fair points; `bsubtilis_35_falsification_window_and_flip_rate.py`
+answers them. Also logged here: the "3x to 17x too low" noise headline of Part 28 (`bsubtilis_25`) is withdrawn
+(Part 31), and `bsubtilis_25` now carries a superseded header. The "about 5 molecules per cell" result of
+`bsubtilis_15` and Part 22 belongs to the colony model without bursts and does not carry over to the molecular
+model; the two answer different questions (recovery after damage versus holding 24 hours) and the molecular
+range of 12 to 100 mean molecules, depending on burst size, is the more demanding. Burst size for
+*B. subtilis* is unmeasured, so the demanding end (burst 20) is not proven to be the realistic one either way.
+The damage-sensing boost of `bsubtilis_16` was tested only against the colony model; whether it helps in the
+molecular model is untested.
+
+*Window depends on the model.* The exact bistable window (ratio of promoter strengths, equal loss rates) is
+none for Hill 1, 0.533 to 2.54 for Hill 1.5, 0.247 to 16.2 for Hill 2, 0.104 to 73.7 for Hill 3 and 0.067 to
+9.46 for Hill 4. With Hill 2, making the weak arm's repressor lost 4 times faster gives 0.121 to 1.03; 4 times
+slower gives 0.496 to 260. A ratio of 0.1 (the nominal M3 of Experiment 1) is inside the window at Hill 4 and at
+Hill 3 with a 4-fold loss-rate difference, and a ratio of 0.01 was outside in all thirteen cases. So the
+severe-mismatch control is only a negative control if the real window resembles the modelled one. Experiment 1
+and Stage B0 now say so, require measuring each arm's promoter strength, ask for a ratio of 0.01 or lower if
+the parts allow, and add an operator-deleted arm as a window-independent negative control. "Independently
+supported" in Part 31 has been narrowed to "within this parameterization".
+
+*Falsification control.* The molecular model was run where theory says the toggle must fail. Hill 1 at ratio
+1: 72 percent at 24 hours (95 percent interval 57 to 84), 48 percent at four times the horizon; the
+antisymmetric mode relaxes at only about 0.14 per protein lifetime, so a 24 hour read still carries memory,
+which is slow forgetting and not bistability. Ratios outside the window (0.01, 0.1, 0.2 and 30 at Hill 2,
+0.01 and 0.05 at Hill 3, ratio 2 at Hill 1): 50 to 52 percent in every cell. Inside: 98 percent at 0.5 and 80
+percent at 0.3 (Hill 2, just inside the 0.247 edge), and at Hill 3 52 percent at 0.15, 80 at 0.2 and 100 at
+0.5. Hill 3 moves the molecular window down as the analytic part predicts (0.2 fails at Hill 2, works at Hill
+3), and near an edge the molecular model fails slightly before the analytic one, as noise would narrow the
+window. The two models therefore fail together where they should, which is a real test but still not a test
+of biology. A caution found on the way: the root finder in the first draft missed the ON fixed point at Hill 4
+(floating-point rounding put F exactly at zero); fixed by extending the search range.
+
+*Intervals.* The `bsubtilis_34` binomial grid with 100 runs per cell and Wilson 95 percent intervals: the
+whole interval sits at or above 90 percent from 25 molecules at burst 1 (93 to 99), 50 molecules at burst 5
+(95 to 100), 50 at burst 10 (93 to 99) and 100 at burst 20 (93 to 99). At burst 20 and 50 molecules the
+estimate is 91 percent (84 to 95), so the earlier "about 50" for burst 20 is the optimistic reading and 100 is
+the conservative one. Thresholds should be read as ranges.
+
+*Flip rate.* Long runs (300 time units, about 250 hours, 40 runs per cell, binomial split) with the first
+committed flip as the event give rates per hour with exact Poisson intervals: 12 molecules burst 5: 0.0062
+(0.0042 to 0.0088) per hour; 25 molecules burst 5: 0.0009 (0.0004 to 0.0018); 50 molecules burst 5: 0.0003
+(0.0001 to 0.0009); 100 molecules burst 5: no flips in 10,000 hours, upper bound 0.0004 per hour; 25 molecules
+burst 20: 0.011 (0.0078 to 0.015); 50 molecules burst 20: 0.0021 (0.0012 to 0.0034); 100 molecules burst 20:
+0.0006 (0.0002 to 0.0014); 200 molecules burst 20: one flip, 0.0001 per hour. Implied 24 hour retention agrees
+with measured fidelity to within about 10 points in both directions (a flip can reverse, and fidelity reads the
+state at one moment, so they are not the same quantity). Retention beyond 24 hours is an extrapolation that
+assumes a constant rate; a zero-flip cell gives only a bound. A closed-form (Kramers-type) rate is still not
+derived.
 
 ---
 

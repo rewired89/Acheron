@@ -3,6 +3,15 @@ Acheron Simulation 25: What Real Noise Formula Is the tx_noise Placeholder
 Standing In For? (Swain, Elowitz & Siggia 2002)
 =====================================================================
 
+SUPERSEDED IN PART (audit Part 31, October 2026): the conclusion below that the
+tx_noise placeholder is "3.3x to 16.8x too low" is WITHDRAWN. It compared a
+per-step kick size with a spread of the repressor level, which are different
+quantities, so the ratio has no meaning. The Swain formula itself is not wrong
+(bsubtilis_33 confirms it against an exact two-stage model, within a few percent),
+and the placeholder is still uncited and unmeasured. What this file still gives is
+the formula and the list of what Experiments 2 and 4 must measure. Noise
+comparisons belong in unit-free CV terms.
+
 PURPOSE:
 bsubtilis_01_gardner_toggle_circuit.py's `transcriptional_noise_std` is a
 flat, uncited Gaussian noise term (default 3.0, applied identically to

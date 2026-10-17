@@ -39,6 +39,20 @@ M3 is the falsification arm: if M3 turns out bistable, the simulation's
 central design constraint is wrong, a real, publishable correction. If M1 is
 not bistable, the whole *B. subtilis* circuit track is in trouble.
 
+**M3 is only a negative control if it lies outside the real bistable window, and
+the window is a model result.** The model's window (strength ratio 0.247 to 16.25)
+assumes Hill coefficient 2 on both arms and equal protein loss rates; at Hill 4, or
+with the repressor of the weak arm lost four times faster, a ratio of 0.1 is
+inside the window (`bsubtilis_35`). A ratio of 0.01 was outside it in every case
+tested. So: (1) measure each arm's promoter strength with a single-promoter
+reporter fusion before calling M3 severe, and treat the measured ratio, not the
+nominal 0.1, as M3's value; (2) pick an M3 pair whose measured ratio is 0.01 or
+lower if the parts allow; (3) if they do not, add a structural negative control
+that does not depend on the window at all: one arm whose repressor-binding
+operator is deleted, so it cannot be repressed and cannot be bistable at any Hill
+coefficient or ratio. A "M3 bistable" result only counts against the simulation
+if M3's measured ratio is at or below 0.01 or it is the operator-deleted control.
+
 ## How this experiment is staged
 
 Three steps, each a go/no-go gate for the next, so money is only spent on the
