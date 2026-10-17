@@ -176,8 +176,27 @@ is not part of the project.
 
 ## Decision record (to be filled in by the founders)
 
-- Decision (A, B or C):
-- Date:
-- Who decided:
-- One-line reason:
-- Revisit when:
+- Decision (A, B or C): **C**, reporter first, voltage held open.
+- Date: 17 October 2026.
+- Who decided: Claude, on the founder's explicit delegation ("you have more knowledge
+  than me to make better decisions"). The founders may overturn it at no cost until
+  strains are ordered.
+- One-line reason: it is the cheapest ordering, nothing is spent on the unbuilt
+  voltage link before a toggle works, and a failing Experiment 1a ends all three
+  paths together.
+- Revisit when: Experiment 1a returns, or before any strain order, whichever is
+  first; also if a mechanistic model of the anti-phase result appears (audit Part
+  26) or a real advantage over a DNA latch is shown.
+
+**Consequences, checked 17 October 2026.** Under Path C no material may claim voltage
+novelty or an advantage over a DNA latch. A scan of the investor-facing documents
+(`docs/INVESTOR_PITCH.md`, the two campaign drafts, `docs/pitch/build_deck.js`,
+`docs/pitch/YESDELFT_INTAKE_PREP.md`) found no sentence claiming voltage-storage
+novelty or a DNA-latch advantage; the "nobody has built or measured that link"
+lines describe an unbuilt link, which stays true. What remains is framing: the
+pitch title and competitor section call Acheron "bioelectric memory". That is not
+a false claim but it is voltage-first wording, and it should be softened to
+"state held in the cell's own circuit, read with a reporter, voltage as a planned
+later readout" the next time the pitch or deck is revised. It was not changed in
+this pass because the deck is generated and needs the full validate and
+text-dump review.

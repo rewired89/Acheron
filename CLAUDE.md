@@ -134,10 +134,11 @@ do not.
   latches by Bonnet et al. 2012, and the environment-adaptive longevity subject
   has nothing measured behind it and should not be refiled. No claim in any
   draft recites a number, per the no-numeric-invention rule.
-  **Open question nobody has answered:** whether `docs/BIORXIV_MANUSCRIPT.md`
-  was ever posted to bioRxiv. The GitHub repo is private, so it is not a public
-  disclosure, but a posted preprint is, and it would set a one year US filing
-  deadline and very likely bar European novelty. Ask the founder before filing.
+  **Resolved 17 October 2026, confirmed by the founder:** nothing has been posted
+  to bioRxiv or anywhere else, so no public disclosure has happened and no filing
+  clock is running. That changes once anything is posted, shared without
+  confidentiality, or launched as a public campaign, so file a provisional first
+  (see `docs/FUNDING_ROUTE.md`, `docs/MICROBIOLOGIST_OUTREACH.md`).
 - **`experiments/BENCH_PROTOCOL_BSUBTILIS.md`** (added September 2026) is the
   bench-level *B. subtilis* protocol derived from the simulations and the
   audit: strain choice, BBB parts, stages B0-B6 in cheapest-first order,

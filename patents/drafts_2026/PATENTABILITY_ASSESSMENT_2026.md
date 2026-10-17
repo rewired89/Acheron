@@ -99,7 +99,7 @@ disclosure and starts no clock. `docs/BIORXIV_MANUSCRIPT.md` is the open
 question: if that manuscript was actually posted to bioRxiv, it is a public
 disclosure, which leaves a one year grace period for a US filing under 35 USC
 102(b)(1) and very likely bars novelty in Europe and most other absolute-novelty
-jurisdictions. **Someone has to confirm whether it was posted, and when.** The
+jurisdictions. **Resolved 17 October 2026: the founder confirmed it was never posted, so no clock is running; any posting, unprotected sharing or public campaign would start one.** (Original text: someone has to confirm whether it was posted, and when.) The
 answer changes the filing deadline and the achievable geographic scope. Nothing
 in this repository records it either way.
 

@@ -29,6 +29,8 @@ experiment, so please read them as one document:
 | Sporulation rule and competition checklist | Stage 1b |
 | Values only a lab can set | The table in this note, below |
 
+**Status (17 October 2026):** not yet sent to a reviewer. See `docs/MICROBIOLOGIST_OUTREACH.md` for who to ask and what to attach.
+
 ## What to read, in this order
 
 1. `wet_lab_experiments/Experiment_1_Toggle_Confirmation.md`, the standalone

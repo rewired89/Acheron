@@ -49,9 +49,9 @@ Environment-adaptive longevity prediction is not redrafted. Its numbers are
 tuning parameters from a degradation model and its accuracy claim compares a
 simulation against itself. There is nothing there to enable.
 
-## One thing nobody has answered yet
+## Answered 17 October 2026 (founder confirmed): nothing was ever posted
 
-Whether `docs/BIORXIV_MANUSCRIPT.md` was actually posted to bioRxiv, and when.
+The founder confirmed that `docs/BIORXIV_MANUSCRIPT.md` and everything else was never posted anywhere, so there is no public disclosure and no filing clock running. The text below records why the question mattered and stays true for any future posting. Whether `docs/BIORXIV_MANUSCRIPT.md` was actually posted to bioRxiv, and when, was:
 The GitHub repository is private, so it is not a public disclosure. A posted
 preprint is. If it was posted, a US filing has a one year grace period from that
 date and European novelty is very likely already barred. The filing deadline and
