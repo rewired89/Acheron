@@ -749,6 +749,16 @@ they depend on each other.
   used_by: `main` (in the same file)
   side_effects: none
 
+- name: `hamming_encode`, `hamming_decode`, `rep_encode`, `rep_decode`, `success_given_p`, `word_success`, `time_to`, `self_check`
+  type: function
+  file: simulations/bsubtilis_38_error_correcting_array.py
+  purpose: one-bit-per-cell array with error-correcting codes (none, repetition x3/x5, Hamming(7,4)/(15,11)/(31,26)) on a 32-bit word. Exact word-success formulas (symmetric two-state bit flips, Poisson common-cause shocks, periodic refresh), checked by `self_check` against real encoders and decoders. Found (session run): codes stretch word life roughly 3 to 8 times (repeat x5 longest, Hamming shortest), refresh stretches it far more, shocks defeat all codes. lambda swept 0.0001 to 0.01 per hour from bsubtilis_35. Audit Part 31 seventh follow-up
+  inputs: scheme, lambda per hour, time, shock rate h and size f
+  outputs: word-success probability, time to a success level; printed tables
+  dependencies: numpy, math
+  used_by: `main` (in the same file)
+  side_effects: none
+
 ---
 
 ## experiments/ — runnable demonstrations and diagnostic scripts

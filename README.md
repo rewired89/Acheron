@@ -88,7 +88,10 @@ project has been tested at a bench.
   8 bits, but leakage between switches is: if each switch's repressors leak onto
   the others' controls at a weight of 1% an 8-bit word is only 30% intact, and
   the tolerable leak shrinks as bits are added. Whether enough clean repressor
-  pairs exist in *B. subtilis* is unmeasured (audit Part 31).
+  pairs exist in *B. subtilis* is unmeasured (audit Part 31). Spreading a word
+  over many cells, one bit each, with an error-correcting code (`bsubtilis_38`)
+  avoids the leakage but stretches how long the word lasts only by a few times;
+  periodic rewriting stretches it much further and needs a reader and writer.
 - **Reading the bit as a voltage level is the hard part.** *B. subtilis*
   biofilms run their own native potassium-wave signaling, real and published
   and unrelated to anything this project builds. A single voltage snapshot

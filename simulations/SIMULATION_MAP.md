@@ -766,6 +766,20 @@ crosstalk weight eps added to the opposing repressor concentration at every prom
 per-bit fidelity ** N. Tolerable eps about 1 / (50 (N - 1)). Audit Part 31, sixth follow-up. No machinery
 sharing beyond the budget, no burden, no copy number, no selection, no error-correcting code.
 
+### `bsubtilis_38_error_correcting_array.py`
+**What it tested, plainly:** if each cell holds one bit and a word is spread over many cells with a
+spell-checker style code, how many cells does it cost and how long does the word last?
+**What it found, plainly:** a 4-byte word costs from about 1.4 to 5 cells per bit depending on the code.
+Codes stretch the life of the word by roughly 3 to 8 times, not by orders of magnitude. The simple 5-copy
+vote lasted longest, the compact codes the shortest. Re-reading and rewriting the word every few hours
+stretches it much further, but needs a reader and writer for every cell. A shock that hits many cells at
+once (contamination, a medium change) defeats all of them. The flip rate itself is unmeasured.
+**Technically:** exact formulas for no code, repetition x3 and x5, Hamming(7,4), (15,11), (31,26) on 32 data
+bits, symmetric two-state flips with P(wrong) = 0.5 (1 - exp(-2 lambda t)), Poisson common-cause shocks with
+flip fraction f, periodic perfect refresh, and a Monte Carlo of real encoders and decoders agreeing within
+about 1 point. lambda swept 0.0001 to 0.01 per hour from `bsubtilis_35`. Audit Part 31, seventh follow-up.
+No readout error, erasure, addressing or reader cost.
+
 Note on `bsubtilis_25`: its "placeholder 3x to 17x too low" conclusion is SUPERSEDED (audit Part 31);
 the file's header says so.
 

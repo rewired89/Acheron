@@ -513,3 +513,7 @@ disproven, and where to start reading.
    tolerable eps about 1 / (50 (N - 1)) under the model's fixed dynamic range). A sweep axis, not a
    measurement: orthogonal repressor pairs in B. subtilis are a biology question. No error-correcting
    code, machinery sharing or burden modelled. `bsubtilis_01` was deliberately left unchanged.
+   **Seventh follow-up (`bsubtilis_38_error_correcting_array.py`):** one bit per cell over many cells with
+   error-correcting codes (4-byte word). Codes stretch word life about 3 to 8 times, repeat x5 longest;
+   refresh (assumed perfect) stretches it far more; common-cause shocks defeat all codes; flip rate is the
+   dominant unmeasured lever. Exact formulas checked by Monte Carlo with real encoders.

@@ -3026,6 +3026,40 @@ copy number, selection against the heavier cell, readout, and error-correcting c
 survive a few wrong bits at the price of more toggles). Experiment 4 (molecules per cell) and a crosstalk
 measurement between candidate repressor pairs would turn these axes into numbers.
 
+### Part 31, seventh follow-up: one bit per cell, many cells, and an error-correcting code
+
+`bsubtilis_38_error_correcting_array.py` takes the other route to a word: one toggle per cell or spot, many
+cells, no leakage between toggles, and redundancy so a few wrong bits do not ruin the word. Inputs are the
+per-bit flip rates of `bsubtilis_35` (about 0.0001 to 0.01 per hour, simulation results at assumed molecule
+counts), used as a sweep axis. Each bit is a symmetric two-state switch, so P(wrong) = 0.5 (1 - exp(-2 lambda
+t)). Exact formulas for a 32-bit (4 byte) word, checked against a Monte Carlo that runs real encoders and
+decoders (agreement within about 1 point; the decoders fix every single error).
+
+*Cost.* No code 32 cells; Hamming(15,11) 45; Hamming(7,4) 56; Hamming(31,26) 62; repeat x3 96; repeat x5 160.
+
+*Life.* At 0.0003 per hour, time until the word has a 50 percent chance of being intact: no code 3 days; repeat
+x5 23 days; repeat x3 13 days; Hamming(7,4) 11 days; Hamming(15,11) 8 days; Hamming(31,26) 5 days. At 0.001 per
+hour: 22 hours uncoded, 7 days for repeat x5. At 0.0001 per hour: 9 days uncoded, 68 days for repeat x5. So a
+code buys roughly 3 to 8 times the lifetime at this word size, not orders of magnitude, because the word fails
+as soon as any one block is overwhelmed. Single-error Hamming codes are cheap but give the shortest life;
+repetition x5 gives the longest at about five cells per bit.
+
+*Common-cause shocks.* Shocks that flip a fraction f of all cells at once (rate h per hour) defeat the codes.
+At 0.0003 per hour, after one week: repeat x5 97 percent with no shocks, 94 percent at h = 0.001 and f = 0.05,
+82 percent at h = 0.001 and f = 0.3, and 18 percent at h = 0.01 and f = 0.3. Contamination, a medium change,
+loss of the circuit or a sporulation wave would act this way; redundancy only helps against independent flips.
+
+*Refresh.* Reading, decoding and rewriting the word on a schedule (assumed perfect, so an upper bound) turns a
+short life into a long one. At 0.001 per hour after one month: no refresh 0 percent for every scheme; refresh
+every 6 hours 99 percent for repeat x5 and 50 percent for Hamming(7,4); every 2 hours 99.9 and 79 percent. This
+uses Acheron's rewritable property and moves the limit from the cells to the reader and writer hardware.
+
+*Reading.* The per-bit flip rate, not the code, is the dominant lever, and it is unmeasured. Coding stretches
+retention by a small factor; refresh stretches it by far more but needs hardware for every cell; common-cause
+shocks, which this model can only sweep, are the failure that neither addresses. Not modelled: readout error,
+cell loss, spot addressing, correlated flips within the same culture beyond the shock model, and the cost of
+the reader. Hamming codes are the simplest choice, not the best one.
+
 ---
 
 ## Next Action: One Experiment Changes Everything
