@@ -493,7 +493,8 @@ currently carries as an unmeasured placeholder.
     (it compared unlike quantities) and showed that what matters is the noise as a
     fraction of the mean (CV), which depends on molecules per cell and burst size.
     An exact molecule-by-molecule model of the toggle holds at about 5 times the
-    burst size in mean repressor molecules (`simulations/bsubtilis_32_analytic_and_gillespie_crosscheck.py`),
+    burst size in mean repressor molecules (`simulations/bsubtilis_32_analytic_and_gillespie_crosscheck.py`,
+    unchanged by adding an mRNA stage and shared noise in `bsubtilis_33`),
     so this measurement, plus measured molecules per cell (Experiment 4), is exactly
     what is needed to say which side of that line the real circuit is on.
   - Spontaneous switching rate per generation, which no simulation in the

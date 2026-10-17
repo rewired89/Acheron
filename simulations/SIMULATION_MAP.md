@@ -687,6 +687,23 @@ b = 1, 5, 10, 20, against a Gaussian-model failure at CV about 0.32 (exact model
 (noise-free 0.020): exact 0.000, Langevin 0.62, additive 0.66 to 1.61. Audit Part 31. The exact
 model has no mRNA stage, extrinsic noise or division, so its robustness is a model result.
 
+### `bsubtilis_33_mrna_and_extrinsic_noise_gillespie.py`
+**What it tested, plainly:** the molecule-by-molecule model that kept the switch working was simple: no
+messenger-RNA step and no noise shared across the cell. Real cells have both. Does the good news
+survive when they are put back?
+**What it found, plainly:** yes. With the messenger-RNA step the switch still holds down to roughly the
+same small molecule counts (about 12 to 50 molecules, depending on burst size), and cell-wide noise that
+raises and lowers both genes together cost at most a few points. The known noise formula also checked out
+against the simulation. This makes the earlier conclusion firmer: our simple noise model fails early
+because of how it treats a nearly absent gene, not because the molecular model leaves something out.
+**Technically:** exact stochastic simulation (transcription, mRNA decay at gamma_m = 20, translation one
+protein per event with k_p = b * gamma_m, protein decay) with an optional Ornstein-Uhlenbeck shared factor
+on transcription of both arms, handled exactly by stopping at each update. Unregulated CV matches
+sqrt((1 + b * gamma_m / (gamma_m + 1)) / <P>); Swain's (1 + b) is within a few percent. Fidelity at or
+above 90% down to about 12, 25, 25, 50 mean ON molecules for b = 1, 5, 10, 20; shared noise (CV 0.2 and
+0.5, correlation 1 and 5 lifetimes) leaves 92 to 100% fidelity down to 50 molecules. Audit Part 31. No
+division or partition noise, no promoter switching, gamma_m and the shared-factor parameters are assumed.
+
 ---
 
 # Methylation track

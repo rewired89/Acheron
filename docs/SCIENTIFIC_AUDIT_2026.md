@@ -2814,9 +2814,10 @@ reason (inferred from these numbers, not isolated by a further experiment).
   realistic molecule counts does not break it. That weakens Part 29's Result 1 and Part 28's
   "optimistic placeholder" worry, and it withdraws the "3x to 17x too low" headline: it compared
   a kick size with a level spread, and in CV terms it depends entirely on molecules per cell.
-- **It does not make the toggle safe.** The exact model has no mRNA stage, no extrinsic (shared)
-  noise (`bsubtilis_23` found a real but second-order effect in the Gaussian model), no division and partition noise, and it fixes the ON level
-  at 50 times the repression threshold. The molecule counts above are model results. Whether
+- **It does not make the toggle safe.** The first exact model had no mRNA stage and no extrinsic
+  (shared) noise (both added and tested in the second follow-up below; `bsubtilis_23` had found a
+  real but second-order effect in the Gaussian model), and it still has no division and partition
+  noise, and it fixes the ON level at 50 times the repression threshold. The molecule counts above are model results. Whether
   real repressor numbers (Experiment 4) and burst sizes (Experiment 2) are above them is the open
   question, and the fix for the failing part is now sharper: measure those two numbers.
 - **The structural conclusions stand and are now independently supported:** promoter matching
@@ -2825,12 +2826,49 @@ reason (inferred from these numbers, not isolated by a further experiment).
   description of the reactions it represents, and the Gaussian ones are known to fail near zero
   copies. Unit-free CV is the right yardstick for comparing any of them with a measurement.
 
-*Still open.* An mRNA-stage molecular model, extrinsic noise in the exact model, and division
-with partition noise would test how far the exact model's robustness survives. The cross-checks
-that were proposed and not run: first-passage theory for the flip rate, and an independent
+*Still open (updated in the second follow-up below).* Division with partition noise in the
+molecular model, promoter switching, and cell-to-cell differences. The cross-checks that were
+proposed and not run: first-passage theory for the flip rate, and an independent
 reimplementation from a plain-English specification. The earlier sweeps (`bsubtilis_27` to `_30`)
 were not changed; their noise axis should be read as "Gaussian noise" until a molecular version
 of the colony engine exists.
+
+**Second follow-up (same day): does the exact model's robustness survive an mRNA stage and shared
+noise?** New file `bsubtilis_33_mrna_and_extrinsic_noise_gillespie.py`, an exact stochastic
+simulation with transcription, mRNA decay (gamma_m = 20, so an mRNA lives 1/20 of a protein
+lifetime, an assumption), translation (one protein per event, k_p = b * gamma_m) and protein
+decay, plus an optional shared factor that scales transcription of both repressors (an
+Ornstein-Uhlenbeck process with mean 1). Results are simulation results; cells with 40 runs carry
+roughly plus or minus 5 to 8 points of sampling noise.
+
+*Formula check.* For an unregulated gene the measured CV follows the exact two-stage result
+CV^2 = (1 + b * gamma_m / (gamma_m + gamma_p)) / <P>, for example 0.138 against 0.139 at about 100
+molecules with b = 1, and 0.436 against 0.440 with b = 20. Swain, Elowitz & Siggia's (1 + b) / <P>
+is within a few percent of it, so the formula used in `bsubtilis_25` is right for a model with an
+mRNA stage (the earlier problem was the comparison, not the formula). The protein-only model of
+`bsubtilis_32` follows b / <P> and underestimates noise when b is small (0.099 against 0.138 at 100
+molecules, b = 1).
+
+*Toggle with an mRNA stage.* Fidelity at 90 percent or better holds down to about 12, 25, 25 and 50
+mean ON repressor molecules for bursts of 1, 5, 10 and 20 (protein-only model: 12, 25, 50, 98).
+Everything at 100 molecules or more is 98 to 100 percent. Within sampling noise the mRNA stage does
+not reduce the robustness found in `bsubtilis_32`.
+
+*Shared noise.* Letting both repressors' transcription rise and fall together (shared factor CV 0.2
+or 0.5, correlation time 1 or 5 protein lifetimes) left fidelity at 92 to 100 percent in all six
+molecule-count and burst-size cells tested, down to 50 molecules. The worst cells were 92 percent
+(50 molecules, burst 5, CV 0.5, one lifetime) and 92 percent (200 molecules, burst 5, CV 0.5, five
+lifetimes), so shared noise cost up to about 8 points, comparable to the few points it cost in the
+Gaussian model (Part 27) and well inside what would break the toggle.
+
+*Reading.* The exact model's robustness survives an mRNA stage and shared noise at the parameter
+values tried. That makes the Part 31 conclusion firmer: the Gaussian model's early failure comes
+from the Gaussian approximation near zero copies, not from anything the exact model leaves out
+that these two additions put back. It still does not show cells behave this way. Not yet tested:
+division and partition noise at the molecule level, promoter switching (telegraph) noise,
+plasmid copy number, cell-to-cell differences, and a different dynamic range (the model fixes the
+maximum output at 50 times the repression threshold, and the analytic window of Part 31 narrows as
+that ratio falls). The mRNA decay rate and the shared-factor parameters are assumptions.
 
 ---
 

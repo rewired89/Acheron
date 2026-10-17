@@ -472,11 +472,16 @@ disproven, and where to start reading.
    The Gaussian models raise the near-zero repressed gene by tens of times. So "holds to
    about 5x the placeholder, fails by 10x to 20x" (Parts 29 and 30, README) is a
    property of the Gaussian noise model, not of cells, and the "placeholder is 3x to
-   17x too low" headline of Part 28 is withdrawn (it compared unlike quantities). The
-   exact model has no mRNA stage, shared noise or cell division, so its robustness is a
-   model result, and whether real molecules per cell and burst size (Experiments 2
-   and 4) clear the line is the open question. Noise comparisons must be in unit-free
-   CV terms. Still not done: an mRNA-stage molecular model, extrinsic noise in the
-   exact model, division with partition noise, first-passage theory, and an
-   independent reimplementation from a plain-English specification. The interview
+   17x too low" headline of Part 28 is withdrawn (it compared unlike quantities). 
+   `bsubtilis_33_mrna_and_extrinsic_noise_gillespie.py` then added an mRNA stage and
+   cell-wide shared noise to the exact model and its robustness survived (fidelity at 90
+   percent or better down to about 12, 25, 25, 50 mean ON molecules for bursts of 1, 5,
+   10, 20; shared noise cost at most a few points), and it confirmed the Swain formula
+   against a model with an mRNA stage. The exact model still has no cell division or
+   partition noise and fixes the ON level at 50 times the repression threshold, so its
+   robustness is a model result, and whether real molecules per cell and burst size
+   (Experiments 2 and 4) clear the line is the open question. Noise comparisons must be
+   in unit-free CV terms. Still not done: division with partition noise in the molecular
+   model, promoter switching, first-passage theory, and an independent reimplementation
+   from a plain-English specification. The interview
    guide, cheat sheet and README were updated to this on the same day.

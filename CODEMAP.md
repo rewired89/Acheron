@@ -699,6 +699,16 @@ they depend on each other.
   used_by: `main` (in the same file)
   side_effects: none
 
+- name: `run`, `unregulated`, `formula_section`, `fidelity_section`, `extrinsic_section`
+  type: function
+  file: simulations/bsubtilis_33_mrna_and_extrinsic_noise_gillespie.py
+  purpose: exact stochastic (Gillespie) simulation of the toggle with an mRNA stage (transcription, mRNA decay at gamma_m = 20, translation one protein per event, protein decay) and an optional shared Ornstein-Uhlenbeck factor on transcription of both arms (handled exactly by stopping at each update). `unregulated` checks the noise formula: measured CV follows sqrt((1 + b * gamma_m / (gamma_m + gamma_p)) / <P>) and Swain's (1 + b) is within a few percent. Found (session run): fidelity at or above 90% down to about 12, 25, 25, 50 mean ON molecules for b = 1, 5, 10, 20, and shared noise (CV 0.2 and 0.5, correlation 1 and 5 protein lifetimes) leaves 92 to 100% down to 50 molecules, so the exact model's robustness (bsubtilis_32) survives both additions. Audit Part 31. No division or partition noise or promoter switching
+  inputs: Omega (molecule scale), burst size b, eta and tau (shared factor CV and correlation time), bit, seed
+  outputs: tuple of (Omega, b, eta, tau, final-state correct, in-state CV, mean ON protein); printed tables
+  dependencies: numpy, `multiprocessing.Pool` (no dependence on the Gardner classes)
+  used_by: `main` (in the same file)
+  side_effects: none
+
 ---
 
 ## experiments/ — runnable demonstrations and diagnostic scripts

@@ -64,10 +64,11 @@ project has been tested at a bench.
   repressor molecules (about 25 to 100 for bursts of 5 to 20). The Gaussian models
   overstate the noise of the repressed gene, which sits near zero copies. Pen-and-paper
   algebra agrees with the simulation on the structure (promoter matching is the
-  make-or-break rule, with an exact window). Whether the first experiment passes
-  therefore depends on molecules per cell and burst size, which only the lab can
-  supply, and the exact model still lacks an mRNA stage, shared noise and cell
-  division. See audit Part 31.
+  make-or-break rule, with an exact window). The molecular model's robustness
+  survives adding an mRNA stage and cell-wide shared noise. Whether the first
+  experiment passes therefore depends on molecules per cell and burst size, which
+  only the lab can supply, and the molecular model still lacks cell division and
+  partition noise. See audit Part 31.
 - **Stochastic partition noise does not break it.** Modeling real, uneven
   splitting of molecules between daughter cells (binomial partitioning) leaves
   recovery at 99-100% down to about five molecules per cell. Only at an
