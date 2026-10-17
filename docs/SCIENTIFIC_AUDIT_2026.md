@@ -2343,7 +2343,7 @@ regrowth engine, which at defaults reproduces `bsubtilis_07` and `_14`),
 `bsubtilis_28_regrowth_timing_sweep.py`, `bsubtilis_29_stressed_survivors.py`.
 Every axis in them is a sweep axis, not a prediction.
 
-**Result 1, noise (Part 28 found the placeholder 3.3x to 16.8x too low).**
+**Result 1, noise (Part 28 found the placeholder 3.3x to 16.8x too low; this reading is superseded in part by Part 31, which shows the failure point belongs to the Gaussian noise model and that the 3.3x to 16.8x comparison used unlike quantities).**
 Single-cell genetic fidelity at 24 h, passing bar 70 percent:
 
 | promoter ratio | 1x | 2x | 3x | 5x | 10x | 20x |
@@ -2688,7 +2688,10 @@ Bonnet et al. (2012) overlap matters.
 
 ## Part 31: The Noise Setting's Scale, Found While Planning Model Cross-Checks (October 2026)
 
-**Status: OPEN. Found and measured, not yet fixed. No earlier simulation result has been changed.**
+**Status: PARTLY RESOLVED the same day (see "Follow-up" at the end of this part). The step-size
+dependence is understood and the old sweeps survive it. A cross-check with different mathematics
+then found something bigger: the noise-tolerance conclusions are specific to the Gaussian noise
+model. No earlier simulation file has been edited.**
 
 **How it was found.** The founder asked whether the simulations could be stress-tested
 with different mathematics. While preparing the answer, the noise term in
@@ -2719,7 +2722,9 @@ and 50.5 / 2.58), or roughly 7x to 35x if the placeholder's level noise is taken
 from the shorter run (1.43). The stated 3.3x to 16.8x is close at the low end by
 luck but is the wrong quantity.
 
-**Why it matters more than the ratio.** The level standard deviation stops growing
+**Why it matters more than the ratio (SUPERSEDED, read the follow-up).** This paragraph reads the
+additive-noise model's failure point as if it applied to cells. The follow-up shows an exact
+molecular model of the same toggle does not fail there. The level standard deviation stops growing
 near 8 because the circuit starts to flip. Share of runs that flipped in a 24 hour
 equivalent (40 runs each): 0% at `tx_noise` 3, 6 and 9; 12% at 15; 55% at 21; 90% at
 30; 100% at 45 and above. So the modelled toggle is lost at a level standard
@@ -2735,7 +2740,7 @@ from the model's. It says the outcome depends on two unmeasured numbers, molecul
 per cell and burst size, and that "holds to about 5x the placeholder" is a statement
 about this model's `tx_noise` at dt 0.02, not about cells.
 
-**What needs doing (not done).**
+**What needed doing (done in the follow-up below, except where marked).**
 1. Reformulate the noise so it does not depend on dt: a stochastic differential
    equation with square-root-of-dt scaling, or an exact stochastic simulation in
    molecule counts using published burst parameters.
@@ -2746,6 +2751,86 @@ about this model's `tx_noise` at dt 0.02, not about cells.
    alternative circuit form with mRNA, and an independent reimplementation from a
    plain-English specification. Agreement between those would show the math and the
    code are consistent. It would not show the biology is right.
+
+**Follow-up (same day): what the cross-checks found.** Two new files:
+`bsubtilis_31_dt_independent_noise_rerun.py` and
+`bsubtilis_32_analytic_and_gillespie_crosscheck.py`. All numbers below are simulation results,
+with the sampling noise that comes from 40 to 60 runs per cell.
+
+*1. The step-size problem is real but does not damage the earlier sweeps.* A dt-independent
+version of the noise (square-root-of-dt scaling, subclassing the original class, which is
+unmodified) reproduces the original trajectories to machine precision at the reference step
+(checked on two seeds). Integrated 4x more finely, the same equation gives the same picture:
+single-cell fidelity still holds to about 5x the placeholder for matched promoters and collapses
+by 10x, mismatched promoters still fail sooner (individual cells move by up to about 16 points,
+which is the sampling noise of 40 runs), colony recovery is 99 to 100 percent to 5x, 83 to 85
+percent at 10x and 51 to 55 percent at 20x (original 84 to 85, 55 to 57), and the headline cells
+of the timing and stress sweeps reproduce (colour read 100 percent throughout, voltage read 50
+percent when the window is short or voltage is shifted 40 mV, 100 percent otherwise; the one
+difference is the 10x-noise-for-180-minutes cell, 100 percent against an original 96, which is
+inside sampling noise at 12 runs). The measured demonstration of the problem: the original class's
+repressor-level standard deviation at tx 3 was 2.27, 1.41, 0.87, 0.48 as dt halved from 0.02, while
+the dt-independent class gave 2.27, 2.34, 2.50, 2.48. So the sweeps are valid for the Gaussian
+model; the issue was that `tx_noise` had no physical scale.
+
+*2. Pen-and-paper math agrees with the simulation on the toggle's structure.* Solving for the
+fixed points (u = a1/(1+v^2), v = a2/(1+u^2), a1 = 50) gives an exact bistable window in the
+promoter strength ratio of 0.247 to 16.25. The noise-free simulation matched it at all 16 ratios
+tried, including two it had never been run at (0.20 gives one state and 0.25 gives two, 15
+gives two and 18 gives one). Ratio 0.1, the "dead switch" of Part 9, is analytically monostable.
+The noise-free distance from each stable state to the saddle (46.5, 44.0, 37.8, 27.4 for ratios
+1, 2, 5, 10) ranks the mismatched variants in the same order as their failure under noise in the
+simulation (10x, 5x, 3x, 2x). This is real agreement between independent methods, on the
+structural claim that promoter matching is the make-or-break design rule.
+
+*3. On noise, the methods do NOT agree.* An exact stochastic simulation (Gillespie) of the same
+toggle in molecule counts, with protein bursts of mean size b, measured CVs that match the
+exact protein-only result CV^2 = b/<P> (for example CV 0.139 against 0.141 at 50 molecules and
+b = 1). Swain, Elowitz & Siggia's (1+b)/<P> is the same result with an extra Poisson mRNA
+stage, so the two agree only for large b; `bsubtilis_25` used the mRNA form without an mRNA stage
+in the model. Final-state fidelity after a 24 hour equivalent, by mean ON-repressor molecules:
+
+| burst b | holds at 90 percent or better down to about |
+|---|---|
+| 1 | 12 molecules |
+| 5 | 25 molecules |
+| 10 | 50 molecules |
+| 20 | 98 molecules |
+
+That is roughly 5 times the burst size, in a model where the repression threshold is 1/50 of the
+ON level. The Gaussian simulation fails at a level CV of about 0.32; the exact model at about 0.58 to
+0.60 (burst 5 to 20), and never in the grid at burst 1. A chemical-Langevin version (Gaussian but
+with noise proportional to the reaction fluxes) fails like the additive simulation, not like
+the exact model, so it is the Gaussian approximation itself, not the additive form, that matters.
+Mean level of the repressed repressor (noise-free value 0.020): exact model 0.000, chemical
+Langevin 0.62, additive simulation 0.66 at tx 9 and 1.61 at tx 21. A Gaussian kick with a floor at
+zero cannot represent a species that is almost always absent, so it raises the repressed arm by
+tens of times, which suppresses the active arm and makes flips far likelier. That is the likely
+reason (inferred from these numbers, not isolated by a further experiment).
+
+*What this changes.*
+- **The "holds to about 5x, fails by 10x to 20x" result (Parts 29 and 30) is a property of the
+  Gaussian noise model, not of cells.** In an exact molecular model of the same toggle, noise at
+  realistic molecule counts does not break it. That weakens Part 29's Result 1 and Part 28's
+  "optimistic placeholder" worry, and it withdraws the "3x to 17x too low" headline: it compared
+  a kick size with a level spread, and in CV terms it depends entirely on molecules per cell.
+- **It does not make the toggle safe.** The exact model has no mRNA stage, no extrinsic (shared)
+  noise (`bsubtilis_23` found a real but second-order effect in the Gaussian model), no division and partition noise, and it fixes the ON level
+  at 50 times the repression threshold. The molecule counts above are model results. Whether
+  real repressor numbers (Experiment 4) and burst sizes (Experiment 2) are above them is the open
+  question, and the fix for the failing part is now sharper: measure those two numbers.
+- **The structural conclusions stand and are now independently supported:** promoter matching
+  is the make-or-break rule, with a computable window.
+- **Which noise model to trust is itself a result:** the exact molecular model is the more faithful
+  description of the reactions it represents, and the Gaussian ones are known to fail near zero
+  copies. Unit-free CV is the right yardstick for comparing any of them with a measurement.
+
+*Still open.* An mRNA-stage molecular model, extrinsic noise in the exact model, and division
+with partition noise would test how far the exact model's robustness survives. The cross-checks
+that were proposed and not run: first-passage theory for the flip rate, and an independent
+reimplementation from a plain-English specification. The earlier sweeps (`bsubtilis_27` to `_30`)
+were not changed; their noise axis should be read as "Gaussian noise" until a molecular version
+of the colony engine exists.
 
 ---
 

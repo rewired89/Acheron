@@ -193,8 +193,9 @@ All simulated. None measured. Scoreboard for the ones you will be asked about.
 | Does a bit held passively in flatworm tissue last 24h? | Perfect with zero noise. Coin flip (about 50%) with realistic noise. **Retired.** | `planarian_01`, `planarian_02` | Strongest evidence of honesty. Lead with it. |
 | Do three copies and a vote fix it? | No. Voting cannot rescue copies that are already near chance. | `planarian_08` | Closes a tempting escape |
 | Does an engineered toggle hold two states? | Yes, if promoter strengths are matched. Badly mismatched collapses to one state. | `bsubtilis_01` | The make-or-break design rule. Basis of the $2K to $5K ask. |
-| Does the bit survive a colony cut to 2%? | Yes in the model, but only if the survivors are all correct (division copies whatever they hold) and only up to about 5 times the assumed noise | `bsubtilis_07`, `27`, `30` | The headline. Conditional, still a model. |
-| How much noise can the switch take? | Holds to about 5 times the assumed noise, wobbles at 10 times, near chance by 20 times. Mismatched promoters fail sooner. The noise setting's scale is being re-checked (audit Part 31). | `bsubtilis_25`, `27` | Whether Experiment 1 passes depends on a number only the lab can give |
+| Does the bit survive a colony cut to 2%? | Yes in the model, but only if the survivors are all correct (division copies whatever they hold). How much noise it tolerates depends on how noise is modelled (next row). | `bsubtilis_07`, `30` | The headline. Conditional, still a model. |
+| How much noise can the switch take? | Depends on the noise model. With simple Gaussian noise: holds to about 5 times the assumed level, fails by 10 to 20 times. With an exact molecule-by-molecule model: holds down to about 5 times the burst size in repressor molecules (roughly 25 to 100 for bursts of 5 to 20). The Gaussian models overstate the noise of the switched-off gene. | `bsubtilis_27`, `31`, `32` | What matters is molecules per cell and burst size, which Experiments 2 and 4 measure |
+| Do different kinds of math agree with the simulation? | On structure, yes: algebra gives an exact window of promoter strengths (0.25 to 16 times) where the switch has two states, and it matches the simulation at 16 of 16 ratios and ranks mismatches the same way. On noise, no, see above. | `bsubtilis_32` | An independent check that found one real problem. Still no biology in it. |
 | What if division is slower or survivors are stressed? | The colour readout stays correct. The voltage readout needs the undisturbed doubling time and breaks if voltage drifts about 35 mV. | `bsubtilis_28`, `29` | Another reason colour comes first |
 | What if cells that drop the circuit grow faster? | Harmless for a short regrowth test, a real threat to a 72 hour run. Depends on a fitness cost and loss rate nobody has measured. | `bsubtilis_30` | Why Experiment 1 now has controls for it |
 | What if the survivors are not a fair sample? | Recovery just inherits what the survivors hold, so the 2% result is only as good as that assumption. With one survivor it is all or nothing. | `bsubtilis_30` (section G) | Experiment 3 plates survivors to measure it |
@@ -210,10 +211,11 @@ All simulated. None measured. Scoreboard for the ones you will be asked about.
 **Plain answer to "can I trust simulations?"** A simulation tells you what
 follows from your assumptions. It cannot tell you the assumptions are true. Every
 noise magnitude here is assumed. Experiment 2 and 4 exist to replace those
-assumptions with measurements. Outside review also found a scale problem in our own
-noise setting (audit Part 31, open), and we logged it the same day. A planned
-cross-check with different mathematics would show whether the math and code agree
-with each other. It would not show the biology is right.
+assumptions with measurements. We also cross-checked the model with different
+mathematics (audit Part 31): algebra agreed on the structure, and an exact
+molecule-by-molecule model disagreed on how much noise the switch survives, which
+told us our simple noise model is too pessimistic. Agreement between methods shows the
+math and code are consistent. It does not show the biology is right.
 
 ---
 
@@ -308,10 +310,12 @@ first experiment uses a colour reporter. Until the founders record a decision, d
 claim voltage novelty.
 
 **How sensitive are your results to the noise you assumed?**
-Very. In the model, recovery holds up to about five times the assumed noise,
-wobbles at ten times and is near chance by twenty. We also found that the scale of
-our noise setting needs re-checking (audit Part 31, open). So whether the first
-experiment passes depends on numbers only the lab can supply.
+It depends on how noise is modelled, and we tested that. With simple Gaussian noise
+the switch holds up to about five times our assumed level and fails by ten to twenty.
+With an exact molecule-by-molecule model it holds down to roughly five times the burst
+size in repressor molecules, which is far more forgiving. The simple model exaggerates
+the noise of the switched-off gene. So whether the first experiment passes depends on
+molecules per cell and burst size, which only the lab can measure (Experiments 2 and 4).
 
 **What if the cells that survive damage are not typical?**
 Then recovery inherits that. In the simulation, regrowth copies whatever the
@@ -401,7 +405,7 @@ reporter-first plan sidesteps the choice for Experiment 1.
 
 Follow-ups:
 - **Are the numbers measured?** "Promoter strengths come from the Bacillus BioBrick Box. The noise levels are assumed and labelled that way. Experiments 2 and 4 replace them with measurements."
-- **Did you validate them?** "The 17 unit tests cover the analysis methods, checked against the original published code. The biology simulations have not been checked against lab data. That is what the wet lab is for. Outside review found gaps and one scale problem in our noise setting, all logged in the audit, and a cross-check with different mathematics is proposed."
+- **Did you validate them?** "The 17 unit tests cover the analysis methods, checked against the original published code. The biology simulations have not been checked against lab data. That is what the wet lab is for. Outside review found gaps, and our own cross-check with different mathematics (algebra and an exact molecule-by-molecule simulation) found that our noise model was too pessimistic. All of it is logged in the audit."
 - **Why trust them?** "Don't. Fund the test that replaces them. One simulation already overturned our own first result, and it is documented."
 - **How many are there?** "43 simulation files in four tracks. Three carry the argument: the toggle switch, the colony regrowth, and the noise test that retired our first idea."
 - **Can experts check them?** "Yes. Every one is in the repo, and the audit says which parameters are published and which are assumed." (Confirm repo access before offering it, the repo is private.)
@@ -445,7 +449,9 @@ Do not say "all of them are based on real measured data." Some parameters are pu
 - "Proven" about anything in `simulations/`. Say "simulated".
 - "2% is the limit." It is the lowest level tested, not a measured limit.
 - "2% of survivors recover fully" without the conditions: only if the survivors are
-  all correct, and only up to about 5 times the assumed noise, which is unmeasured.
+  all correct, and noise tolerance depends on molecules per cell and burst size, which
+  are unmeasured.
+- "Our switch fails above 5 times the noise." That belongs to a Gaussian model, not cells.
 - That our memory beats Bonnet's DNA memory. No advantage has been shown.
 - That voltage is our novelty. That decision is open.
 - "$2K to $5K" as a quote. It is an old planning figure, now a floor.

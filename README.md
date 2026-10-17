@@ -56,15 +56,18 @@ project has been tested at a bench.
   to as little as 2% surviving cells regrows to full fidelity, because cell
   division copies the circuit's existing proteins into daughters. This is the
   project's actual differentiator.
-- **Those recovery numbers depend on an unmeasured noise setting.** They were
-  computed with a transcriptional-noise placeholder that a later check
-  suggests is 3x to 17x too low. Re-running with the noise turned up shows
-  recovery holds up to about 5 times the placeholder, drops at 10 times, and
-  is near chance by 20 times, with mismatched promoters failing sooner. Whether
-  the first experiment passes therefore depends on a number only the lab can
-  supply. See audit Part 29. The scale of that noise setting is itself being
-  re-checked (audit Part 31): it depends on the simulation step size, so it cannot yet
-  be compared with a measured noise.
+- **Those recovery numbers depend on how noise is modelled, and on two numbers
+  nobody has measured.** With the project's Gaussian noise, recovery holds up to
+  about 5 times the placeholder and fails by 10 to 20 times, with mismatched
+  promoters failing sooner. An exact molecule-by-molecule model of the same switch
+  is much more forgiving: it holds down to about 5 times the burst size in mean
+  repressor molecules (about 25 to 100 for bursts of 5 to 20). The Gaussian models
+  overstate the noise of the repressed gene, which sits near zero copies. Pen-and-paper
+  algebra agrees with the simulation on the structure (promoter matching is the
+  make-or-break rule, with an exact window). Whether the first experiment passes
+  therefore depends on molecules per cell and burst size, which only the lab can
+  supply, and the exact model still lacks an mRNA stage, shared noise and cell
+  division. See audit Part 31.
 - **Stochastic partition noise does not break it.** Modeling real, uneven
   splitting of molecules between daughter cells (binomial partitioning) leaves
   recovery at 99-100% down to about five molecules per cell. Only at an

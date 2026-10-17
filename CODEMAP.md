@@ -622,7 +622,7 @@ they depend on each other.
 - name: `intrinsic_noise_cv`, `cv_to_absolute_std`, `sweep_burst_size_vs_placeholder`, `copy_number_scaling`
   type: function
   file: simulations/bsubtilis_25_transcription_translation_noise_scaling.py
-  purpose: checks bsubtilis_01_gardner_toggle_circuit.py's uncited `transcriptional_noise_std=3.0` placeholder against the real noise-scaling formula from Swain, Elowitz & Siggia (2002, PNAS 99:12795-800, DOI 10.1073/pnas.162041399), eta_int^2 ~= (1+b)/<P> (b = burst size, that paper's own cited E. coli literature range, "order tens," used only to bound plausible scenarios), plus eta^2 ~ 1/n for gene copy number n. Found (session run): implied absolute noise std of 10.0-50.5 across burst sizes 1-50 (using GardnerParams' default alpha=50.0 as the mean-level anchor), 3.3x-16.8x higher than the current placeholder at every burst size tested, not just the high end; and confirms chromosomal (n=1) integration is a real, quantifiable noisier choice than a multi-copy plasmid. Explicitly caveated in the file: omits Swain et al.'s own cell-cycle correction (up to 65% overestimate per their Eq. 22), a bound not a precise prediction. Audit Part 28
+  purpose: checks bsubtilis_01_gardner_toggle_circuit.py's uncited `transcriptional_noise_std=3.0` placeholder against the real noise-scaling formula from Swain, Elowitz & Siggia (2002, PNAS 99:12795-800, DOI 10.1073/pnas.162041399), eta_int^2 ~= (1+b)/<P> (b = burst size, that paper's own cited E. coli literature range, "order tens," used only to bound plausible scenarios), plus eta^2 ~ 1/n for gene copy number n. NOTE (audit Part 31): that comparison put a per-step kick size next to a level spread, and in unit-free terms it depends on molecules per cell, so the "3x-17x too low" headline is withdrawn pending measurement. Found (session run): implied absolute noise std of 10.0-50.5 across burst sizes 1-50 (using GardnerParams' default alpha=50.0 as the mean-level anchor), 3.3x-16.8x higher than the current placeholder at every burst size tested, not just the high end; and confirms chromosomal (n=1) integration is a real, quantifiable noisier choice than a multi-copy plasmid. Explicitly caveated in the file: omits Swain et al.'s own cell-cycle correction (up to 65% overestimate per their Eq. 22), a bound not a precise prediction. Audit Part 28
   inputs: `burst_sizes: List[float]`, `mean_protein_levels: List[float]`, `copy_numbers: List[int]`
   outputs: per-(burst size, mean level) noise/ratio-to-placeholder rows; per-copy-number relative noise dict
   dependencies: `simulations.bsubtilis_01_gardner_toggle_circuit.GardnerParams` (imported for its default alpha1 value only)
@@ -676,6 +676,26 @@ they depend on each other.
   inputs: `s: float`, `mu: float`, `generations: int`, `flip: float`, `bottleneck: int`
   outputs: ungated/gated fraction arrays per generation; generations to the bar
   dependencies: numpy only (no import of the Gardner classes, by design: it models populations, not single cells)
+  used_by: `main` (in the same file)
+  side_effects: none
+
+- name: `GardnerToggleCellSDE`, `level_std`, `fidelity_table`, `colony_with`, `section4`
+  type: class and functions
+  file: simulations/bsubtilis_31_dt_independent_noise_rerun.py
+  purpose: `GardnerToggleCellSDE` subclasses `GardnerToggleCell` (imported, not modified) with square-root-of-dt noise scaling so noise intensity does not depend on the step size; `transcriptional_noise_std` keeps its old meaning at dt 0.02 (sigma = tx * sqrt(0.02)) and at `substeps=1` it reproduces the original trajectories to machine precision. Found (session run): the original class's repressor-level std at tx 3 fell 2.27, 1.41, 0.87, 0.48 as dt halved, the new class stayed 2.27, 2.34, 2.50, 2.48; single-cell fidelity, colony recovery and the headline timing and stress cells from bsubtilis_27 to 29 reproduce within sampling noise at 4x finer integration. `colony_with` swaps the new class into `bsubtilis_27`'s engine at run time without editing it. Audit Part 31
+  inputs: `substeps`, noise multipliers, promoter ratios, surviving fractions
+  outputs: printed tables comparing the original and finer-integration results
+  dependencies: `bsubtilis_01_gardner_toggle_circuit.GardnerParams/GardnerToggleCell`, `bsubtilis_27_noise_robustness_sweep` (engine, patched at run time), `multiprocessing.Pool`
+  used_by: `simulations/bsubtilis_32_analytic_and_gillespie_crosscheck.py` (imports `GardnerToggleCellSDE`)
+  side_effects: none
+
+- name: `fixed_points`, `window_edge`, `margin`, `gillespie_run`, `cle_run`, `off_arm_section`
+  type: function
+  file: simulations/bsubtilis_32_analytic_and_gillespie_crosscheck.py
+  purpose: two independent cross-checks of the Gardner toggle. (A) Analytic: roots of u = a1/(1+v^2), v = a2/(1+u^2) by bracketed root finding, stability from Jacobian eigenvalues -1 +/- sqrt(d_u d_v); exact bistable window in a2/a1 of 0.247 to 16.25, matching the noise-free simulation at 16 of 16 ratios and ranking the noise-free stable-to-saddle margin in the same order as simulated failure. (B) Exact stochastic (Gillespie) simulation in molecule counts with geometric protein bursts of mean b: CV matches sqrt(b/<P>); fidelity stays at or above 90% down to about 12, 25, 50, 98 mean ON molecules for b = 1, 5, 10, 20, whereas the additive-noise simulation fails at level CV about 0.32 (exact model about 0.58 to 0.60). (C) `cle_run`: a chemical Langevin version fails like the additive model, so it is the Gaussian approximation that matters. (D) `off_arm_section`: mean repressed-arm level (noise-free 0.020) is 0.000 exact, 0.62 Langevin, 0.66 to 1.61 additive, the likely reason. Audit Part 31. The exact model has no mRNA stage, extrinsic noise or division
+  inputs: promoter ratio, Omega (molecule scale), burst size b, seeds
+  outputs: printed tables (window, margins, CV and fidelity grids)
+  dependencies: numpy, scipy.optimize.brentq, `bsubtilis_01_gardner_toggle_circuit`, `bsubtilis_31_dt_independent_noise_rerun.GardnerToggleCellSDE`, `multiprocessing.Pool`
   used_by: `main` (in the same file)
   side_effects: none
 

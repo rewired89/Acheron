@@ -455,15 +455,28 @@ disproven, and where to start reading.
    so "a toggle can be flipped repeatedly and a recombinase latch cannot" must not
    appear anywhere. The README keeps stating that no advantage over a DNA latch is
    established.
-   **Audit Part 31 (OPEN, found 17 October 2026 while the founder asked about
-   stress-testing the simulations with other mathematics):** `tx_noise` in
-   `GardnerToggleCell.step` is scaled by dt instead of sqrt(dt), so the noise
-   intensity depends on the step size, and `bsubtilis_25` compared a per-step kick
-   size with a level standard deviation. The sweeps in `bsubtilis_27` to `_30` stay
-   valid as statements about this model at dt 0.02, but `tx_noise` cannot be
-   compared with a measured noise until it is reformulated. Not fixed. Proposed next
-   step: a model cross-check suite (sqrt(dt) noise, analytic bistability, Gillespie
-   in molecule counts, first-passage theory, a two-stage mRNA-protein variant, an
-   independent reimplementation). Agreement would show the math and code are
-   consistent, not that the biology is right. The interview guide and cheat sheet
-   were synced to Parts 29 to 31 the same day.
+   **Audit Part 31 (17 October 2026, partly resolved, found while the founder asked
+   about stress-testing the simulations with other mathematics):** `tx_noise` in
+   `GardnerToggleCell.step` is scaled by dt instead of sqrt(dt), so its strength
+   depends on the step size. `bsubtilis_31_dt_independent_noise_rerun.py` fixes that in
+   a subclass (original untouched) and shows the earlier sweeps survive finer
+   integration. `bsubtilis_32_analytic_and_gillespie_crosscheck.py` then compared the
+   model with different mathematics. **Agreement:** the exact fixed-point analysis
+   gives a bistable promoter-ratio window of 0.247 to 16.25 and matches the noise-free
+   simulation at 16 of 16 ratios, and its margins rank mismatch failure in the same
+   order, so "promoter matching is the make-or-break rule" is independently
+   supported. **Disagreement, the important finding:** an exact molecule-by-molecule
+   (Gillespie) model of the same toggle holds at 90 percent or better down to about
+   5 times the burst size in mean repressor molecules (about 12, 25, 50, 98 for bursts
+   of 1, 5, 10, 20), whereas the Gaussian-noise simulation fails at a much lower noise.
+   The Gaussian models raise the near-zero repressed gene by tens of times. So "holds to
+   about 5x the placeholder, fails by 10x to 20x" (Parts 29 and 30, README) is a
+   property of the Gaussian noise model, not of cells, and the "placeholder is 3x to
+   17x too low" headline of Part 28 is withdrawn (it compared unlike quantities). The
+   exact model has no mRNA stage, shared noise or cell division, so its robustness is a
+   model result, and whether real molecules per cell and burst size (Experiments 2
+   and 4) clear the line is the open question. Noise comparisons must be in unit-free
+   CV terms. Still not done: an mRNA-stage molecular model, extrinsic noise in the
+   exact model, division with partition noise, first-passage theory, and an
+   independent reimplementation from a plain-English specification. The interview
+   guide, cheat sheet and README were updated to this on the same day.

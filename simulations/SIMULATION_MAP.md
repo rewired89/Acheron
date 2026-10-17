@@ -535,7 +535,7 @@ Swain, Elowitz & Siggia (2002, *PNAS* 99:12795-800, DOI
 measurement), and eta^2 ~ 1/n for gene copy number n. Swept against
 GardnerParams' default alpha=50.0 as the mean-level anchor: implied
 absolute noise std ranged 10.0-50.5 across burst sizes 1-50, versus the
-current tx_noise_std=3.0 placeholder (3.3x-16.8x higher). Audit Part 28.
+current tx_noise_std=3.0 placeholder (3.3x-16.8x higher). Audit Part 28. NOTE (audit Part 31): that comparison put a per-step kick size next to a level spread, and in unit-free CV terms it depends on molecules per cell, so treat "3x to 17x too low" as withdrawn pending measurement.
 Caveat stated in the file: this simplified form omits Swain et al.'s own
 cell-cycle correction, which their Eq. 22 shows can move a naive estimate
 by up to 65%, so treat this as a bound, not a precise prediction; the real
@@ -573,9 +573,12 @@ the key results with noise turned up to 20 times that setting to see where the
 circuit starts to fail.
 **What it found, plainly:** the circuit holds up to about 5 times the original
 noise, wobbles at 10 times, and is down to coin-flip territory by 20 times.
-Badly mismatched promoters fail much sooner. So "does the first experiment
-pass" depends on a number nobody has measured yet, which is the exact thing the
-two-colour reporter test measures.
+Badly mismatched promoters fail much sooner. IMPORTANT (audit Part 31): this
+failure point belongs to the simulation's Gaussian noise model. An exact
+molecule-by-molecule model of the same switch keeps working at much lower copy
+numbers, so read this row as "what Gaussian noise does", not "what cells do".
+Whether the first experiment passes depends on molecules per cell and burst
+size, which nobody has measured.
 **Technically:** single-cell 24 h genetic fidelity and colony recovery at noise
 multipliers 1, 2, 3, 5, 10, 20 times `transcriptional_noise_std=3.0`, across
 promoter ratios 1.0, 2.0, 5.0, 10.0 and 0.1. Matched promoters: 100% to 5x,
@@ -649,6 +652,40 @@ or already lost with probability q, and recovery fidelity just tracks that
 composition (one survivor, q of 0.25: 83% of colonies still clear the 70% bar).
 The "2% survivors recover to 100%" headline is exactly as good as the assumption
 that survivors are all correct.
+
+### `bsubtilis_31_dt_independent_noise_rerun.py`
+**What it tested, plainly:** the noise knob in the toggle simulation changed its strength when the
+computer's time step changed, which a noise setting should never do. This builds a version where it
+does not, and reruns the key results with finer steps to see whether anything breaks.
+**What it found, plainly:** the knob really did depend on the step, but the earlier results
+survive. Run more finely, the same switch still holds to about 5 times the assumed noise and still
+fails after, and the timing and stress findings reproduce. The knob just never had a physical scale.
+**Technically:** `GardnerToggleCellSDE` subclasses `GardnerToggleCell` (unmodified) with
+square-root-of-dt scaling; `transcriptional_noise_std` keeps its old meaning at dt 0.02 so old
+values map exactly, and at `substeps=1` it reproduces the original trajectories to machine
+precision. Level standard deviation at tx 3 against dt 0.02, 0.01, 0.005, 0.0025: original 2.27,
+1.41, 0.87, 0.48; new 2.27, 2.34, 2.50, 2.48. Single-cell fidelity, colony recovery (99-100% to
+5x, 83-85% at 10x, 51-55% at 20x) and headline timing and stress cells match the originals within
+sampling noise. Audit Part 31.
+
+### `bsubtilis_32_analytic_and_gillespie_crosscheck.py`
+**What it tested, plainly:** do other kinds of math give the same answers as our simulation?
+Pen-and-paper algebra for the switch's structure, and a molecule-by-molecule random simulation
+for the noise.
+**What it found, plainly:** the algebra and the simulation agree exactly on when the switch can hold
+two states, including the rule that mismatched promoters kill it. On noise they disagree. Our
+simulation fails at a noise level where the molecule-by-molecule version keeps working, because our
+simulation's random kicks push the nearly-absent repressor up from zero. The molecule version holds
+down to about 5 times the burst size in molecules (roughly 25 to 100 for bursts of 5 to 20).
+**Technically:** (A) fixed points of u = a1/(1+v^2), v = a2/(1+u^2) with Jacobian eigenvalues
+-1 +/- sqrt(d_u d_v): bistable window in a2/a1 of 0.247 to 16.25, matching the noise-free simulation
+at 16 of 16 ratios, and the noise-free stable-to-saddle distance ranks ratios 1, 2, 5, 10 in the
+same order as their simulated failure. (B) Gillespie with geometric bursts of mean b: measured CV
+matches sqrt(b/<P>); fidelity at or above 90% down to about 12, 25, 50, 98 mean ON molecules for
+b = 1, 5, 10, 20, against a Gaussian-model failure at CV about 0.32 (exact model about 0.58 to
+0.60). (C) A chemical Langevin version fails like the additive model. (D) Mean repressed-arm level
+(noise-free 0.020): exact 0.000, Langevin 0.62, additive 0.66 to 1.61. Audit Part 31. The exact
+model has no mRNA stage, extrinsic noise or division, so its robustness is a model result.
 
 ---
 

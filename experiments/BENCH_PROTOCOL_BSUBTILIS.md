@@ -488,10 +488,14 @@ currently carries as an unmeasured placeholder.
     Swain, Elowitz & Siggia (2002, *PNAS* 99:12795-800, DOI
     10.1073/pnas.162041399) give the real formula this placeholder stands in
     for (noise as a function of burst size and mean expression level); their
-    own cited E. coli range for burst size implies this placeholder may be
-    3x to 17x too low (`simulations/bsubtilis_25_transcription_translation_noise_scaling.py`,
-    audit Part 28), which is exactly what this measurement, plus a measured
-    burst size, would resolve.
+    own cited E. coli range for burst size was read in Part 28 as implying this
+    placeholder may be 3x to 17x too low. Audit Part 31 withdrew that headline
+    (it compared unlike quantities) and showed that what matters is the noise as a
+    fraction of the mean (CV), which depends on molecules per cell and burst size.
+    An exact molecule-by-molecule model of the toggle holds at about 5 times the
+    burst size in mean repressor molecules (`simulations/bsubtilis_32_analytic_and_gillespie_crosscheck.py`),
+    so this measurement, plus measured molecules per cell (Experiment 4), is exactly
+    what is needed to say which side of that line the real circuit is on.
   - Spontaneous switching rate per generation, which no simulation in the
     repository models at all.
   - Reporter maturation half-life, which
