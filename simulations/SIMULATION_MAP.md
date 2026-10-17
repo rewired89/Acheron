@@ -716,7 +716,28 @@ perfectly even split. It is still a model: nobody has counted the real molecules
 scales with V, repression uses P/(Omega V)), a share f of protein loss from dilution (total loss kept at
 1), and division with Binomial(n, 1/2) or floor-split partitioning of mRNA and protein, one lineage
 followed. 90% fidelity down to about 12, 12, 25, 50 mean ON molecules for b = 1, 5, 10, 20 (binomial,
-f = 1). Audit Part 31. No discrete gene copy number, no selection, no promoter switching.
+f = 1); with confidence intervals (`bsubtilis_35`) the conservative threshold at b = 20 is about 100. Audit Part 31. No discrete gene copy number, no selection, no promoter switching.
+
+### `bsubtilis_35_falsification_window_and_flip_rate.py`
+**What it tested, plainly:** whether our two kinds of math really agree, or only agree because they share
+assumptions. It asks (1) how the safe range of promoter strengths changes if the real switch is more
+cooperative or its proteins decay at different speeds, (2) whether the molecular model also fails where the
+theory says a switch must fail, (3) how precise the earlier numbers are, and (4) how fast the bit actually
+flips.
+**What it found, plainly:** the safe range moves a lot with the model, so the "severe mismatch" control of
+Experiment 1 is only a true negative control if the real switch resembles the modelled one (a mismatch of
+0.1 can be inside the safe range, 0.01 never was). The molecular model failed where it should (no cooperativity,
+strengths outside the range) and the range moved as theory predicted. The thresholds are ranges, not points
+(about 100 molecules is the careful figure at burst 20). Measured flip rates run from about once per 100 hours
+at 12 molecules down to under once per 2,500 hours at 100 molecules, burst 5.
+**Technically:** exact bistable window for Hill 1 to 4 and loss ratios 0.25 to 4 (own fixed-point and
+stability code, search range fixed after a floating-point miss at Hill 4); Gillespie two-stage model with
+Hill exponent and arm ratio as inputs and first-passage tracking; Wilson intervals on the bsubtilis_34 grid;
+exact Poisson intervals on flip rates from 250 hour runs. No Kramers closed form, flip rates assume a
+constant rate, all burst and copy-number values are sweep axes. Audit Part 31, fourth follow-up.
+
+Note on `bsubtilis_25`: its "placeholder 3x to 17x too low" conclusion is SUPERSEDED (audit Part 31);
+the file's header says so.
 
 ---
 

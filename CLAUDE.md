@@ -487,5 +487,15 @@ disproven, and where to start reading.
    bursts of 1, 5, 10, 20, and no measurable penalty against an even split (audit Part
    31, third follow-up). Still no discrete gene copy number or selection. Still not
    done: promoter switching, first-passage theory, a lower dynamic range, and an
-   independent reimplementation from a plain-English specification. The interview
+   independent reimplementation from a plain-English specification.
+   **Fourth follow-up (audit Part 31, `bsubtilis_35_falsification_window_and_flip_rate.py`),
+   after an outside review:** the bistable window depends on the model (Hill 3: 0.104 to
+   73.7, Hill 4: 0.067 to 9.46, shifted by unequal loss rates), so Experiment 1's M3 at ratio
+   0.1 is only a negative control if the real window resembles the modelled one; the protocols
+   now require measured promoter strengths, ask for 0.01 or lower, and add an operator-deleted
+   arm. The molecular model failed where theory says it must (Hill 1, outside the window).
+   Wilson intervals put the conservative burst-20 threshold at about 100 molecules, not 50.
+   Flip rates measured (about 0.002 per hour at 50 molecules burst 20). The `bsubtilis_25`
+   "3x to 17x" conclusion has a superseded header. The `bsubtilis_15` "5 molecules" figure belongs
+   to the colony model and must not be quoted for the molecular model. The interview
    guide, cheat sheet and README were updated to this on the same day.
