@@ -481,7 +481,11 @@ disproven, and where to start reading.
    partition noise and fixes the ON level at 50 times the repression threshold, so its
    robustness is a model result, and whether real molecules per cell and burst size
    (Experiments 2 and 4) clear the line is the open question. Noise comparisons must be
-   in unit-free CV terms. Still not done: division with partition noise in the molecular
-   model, promoter switching, first-passage theory, and an independent reimplementation
-   from a plain-English specification. The interview
+   in unit-free CV terms. `bsubtilis_34_division_partition_noise_gillespie.py` then added
+   cell growth and division with binomial splitting of molecules to the exact model:
+   fidelity at 90 percent or better down to about 12, 12, 25, 50 mean ON molecules for
+   bursts of 1, 5, 10, 20, and no measurable penalty against an even split (audit Part
+   31, third follow-up). Still no discrete gene copy number or selection. Still not
+   done: promoter switching, first-passage theory, a lower dynamic range, and an
+   independent reimplementation from a plain-English specification. The interview
    guide, cheat sheet and README were updated to this on the same day.

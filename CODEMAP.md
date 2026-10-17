@@ -709,6 +709,16 @@ they depend on each other.
   used_by: `main` (in the same file)
   side_effects: none
 
+- name: `run`, `_split`, `fidelity_section`
+  type: function
+  file: simulations/bsubtilis_34_division_partition_noise_gillespie.py
+  purpose: bsubtilis_33's two-stage Gillespie toggle plus cell division: volume grows 1 to 2 (advanced in fixed steps, propensities piecewise constant), production scales with volume, repression uses concentration, a share f of protein loss is dilution, and at division mRNA and protein are split by Binomial(n, 1/2) ('binom') or as evenly as possible ('even'); one lineage followed. Found (session run): 90% fidelity down to about 12, 12, 25, 50 mean ON molecules for b = 1, 5, 10, 20 (binomial, f = 1), no measurable penalty versus even splitting. Audit Part 31. No discrete gene copy number, selection or promoter switching
+  inputs: Omega, burst size b, f (dilution share), split mode, bit, seed
+  outputs: tuple of (Omega, b, f, mode, final-state correct, divisions, mean ON concentration); printed tables
+  dependencies: numpy, `multiprocessing.Pool`
+  used_by: `main` (in the same file)
+  side_effects: none
+
 ---
 
 ## experiments/ — runnable demonstrations and diagnostic scripts

@@ -65,10 +65,10 @@ project has been tested at a bench.
   overstate the noise of the repressed gene, which sits near zero copies. Pen-and-paper
   algebra agrees with the simulation on the structure (promoter matching is the
   make-or-break rule, with an exact window). The molecular model's robustness
-  survives adding an mRNA stage and cell-wide shared noise. Whether the first
-  experiment passes therefore depends on molecules per cell and burst size, which
-  only the lab can supply, and the molecular model still lacks cell division and
-  partition noise. See audit Part 31.
+  survives adding an mRNA stage, cell-wide shared noise, and cell division with
+  uneven splitting of molecules. Whether the first experiment passes therefore
+  depends on molecules per cell and burst size, which only the lab can supply.
+  See audit Part 31.
 - **Stochastic partition noise does not break it.** Modeling real, uneven
   splitting of molecules between daughter cells (binomial partitioning) leaves
   recovery at 99-100% down to about five molecules per cell. Only at an

@@ -704,6 +704,20 @@ above 90% down to about 12, 25, 25, 50 mean ON molecules for b = 1, 5, 10, 20; s
 0.5, correlation 1 and 5 lifetimes) leaves 92 to 100% fidelity down to 50 molecules. Audit Part 31. No
 division or partition noise, no promoter switching, gamma_m and the shared-factor parameters are assumed.
 
+### `bsubtilis_34_division_partition_noise_gillespie.py`
+**What it tested, plainly:** real cells divide, and when they do, the molecules inside are shared out
+unevenly, like cutting a handful of marbles in two by coin flip. Does that extra randomness break the
+molecule-level switch that survived everything else?
+**What it found, plainly:** no. With growth, division and a fair coin flip per molecule, the switch still
+holds at the same small molecule counts (roughly 12 to 50, depending on burst size), and every setting at
+100 molecules or more stays at 98 to 100 percent. Uneven splitting did not measurably do worse than a
+perfectly even split. It is still a model: nobody has counted the real molecules.
+**Technically:** the bsubtilis_33 two-stage Gillespie model plus volume growth (V from 1 to 2, production
+scales with V, repression uses P/(Omega V)), a share f of protein loss from dilution (total loss kept at
+1), and division with Binomial(n, 1/2) or floor-split partitioning of mRNA and protein, one lineage
+followed. 90% fidelity down to about 12, 12, 25, 50 mean ON molecules for b = 1, 5, 10, 20 (binomial,
+f = 1). Audit Part 31. No discrete gene copy number, no selection, no promoter switching.
+
 ---
 
 # Methylation track

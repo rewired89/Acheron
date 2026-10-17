@@ -2870,6 +2870,31 @@ plasmid copy number, cell-to-cell differences, and a different dynamic range (th
 maximum output at 50 times the repression threshold, and the analytic window of Part 31 narrows as
 that ratio falls). The mRNA decay rate and the shared-factor parameters are assumptions.
 
+### Part 31, third follow-up: division with uneven splitting of molecules
+
+`bsubtilis_34_division_partition_noise_gillespie.py` adds the first item on that list to the exact
+model. Cell volume grows from 1 to 2 and the cell divides; mRNA and protein are split between
+daughters, one lineage is followed. Production scales with volume, repression uses concentration.
+Growth supplies a share f of the protein loss (f = 1 is a 35 minute doubling at the repo's time
+mapping; protein degradation is 1 - f so total loss stays 1). Four conditions, 40 runs per cell:
+no division, even split (same dilution, no partition noise), binomial split at f = 0.5 and f = 1.
+
+*Result.* Fidelity at 90 percent or better down to about (mean ON molecules, bursts 1, 5, 10, 20):
+no division 12, 50, 50, 50; even split 12, 12, 25, 25; binomial f = 0.5 12, 25, 25, 50; binomial
+f = 1 12, 12, 25, 50. At 100 molecules or more every condition is 98 to 100 percent. Binomial
+splitting did not do measurably worse than even splitting (differences of up to about 10 points
+in single cells at 12 to 25 molecules, in both directions, are within the sampling noise of 40 runs).
+Mean ON concentration stayed within about 8 percent of nominal.
+
+*Reading.* Partition noise does not break the exact model at the values tried, which fits
+`bsubtilis_15` and Huh and Paulsson's result that binomial splitting is the mild case. Division
+did not make the model worse than having none; the no-division rows look slightly weaker at
+bursts of 5 to 10, which this run does not explain and which should not be read as growth helping
+the circuit (the cause was not isolated; faster loss through dilution plus the fixed total rate
+is one candidate). Not tested: discrete gene copy number across the cell cycle, a population with
+selection (see `bsubtilis_30`), promoter switching, a lower dynamic range, and any real value for
+molecules per cell or burst size, which only Experiments 2 and 4 can supply.
+
 ---
 
 ## Next Action: One Experiment Changes Everything
