@@ -134,10 +134,11 @@ do not.
   latches by Bonnet et al. 2012, and the environment-adaptive longevity subject
   has nothing measured behind it and should not be refiled. No claim in any
   draft recites a number, per the no-numeric-invention rule.
-  **Open question nobody has answered:** whether `docs/BIORXIV_MANUSCRIPT.md`
-  was ever posted to bioRxiv. The GitHub repo is private, so it is not a public
-  disclosure, but a posted preprint is, and it would set a one year US filing
-  deadline and very likely bar European novelty. Ask the founder before filing.
+  **Resolved 17 October 2026, confirmed by the founder:** nothing has been posted
+  to bioRxiv or anywhere else, so no public disclosure has happened and no filing
+  clock is running. That changes once anything is posted, shared without
+  confidentiality, or launched as a public campaign, so file a provisional first
+  (see `docs/FUNDING_ROUTE.md`, `docs/MICROBIOLOGIST_OUTREACH.md`).
 - **`experiments/BENCH_PROTOCOL_BSUBTILIS.md`** (added September 2026) is the
   bench-level *B. subtilis* protocol derived from the simulations and the
   audit: strain choice, BBB parts, stages B0-B6 in cheapest-first order,
@@ -218,6 +219,15 @@ do not.
   history or reasoning to the reader (no "(original pitch)" labels, no
   "why this document leads with X" sections); write only what the external
   audience needs, keep process/reasoning notes in chat or in this file.
+- **Plain-language rule for explaining results to the founder (set 17 October
+  2026, her own request):** when explaining data, results, questions or
+  concepts to the founder in chat, do not over-explain the science. Lead with
+  the answer in the simplest words possible, as to someone with no science
+  background: did it work, for how long, how many, and what it means. Use
+  everyday comparisons, few numbers, and no jargon unless it is defined in a
+  few words on the spot. Keep the technical detail in the audit and the other
+  docs, not in the chat reply. She learns the science gradually and wants to
+  follow the results first.
 - **Founders:** Dayana Sanchez (Founder & Lead Researcher, originated the
   concept, does the technical work) and Jacqueline Solano (Co-Founder,
   business operations, satisfies a US-citizen-founder requirement for some
@@ -248,6 +258,7 @@ explains how the project connects, what is proven versus assumed versus
 disproven, and where to start reading.
 
 - **`docs/ACHERON_INTERVIEW_GUIDE.md`** (added 8 October 2026) is the founder's study document for interviews and investor calls: pitches, concepts, simulation scoreboard, experiments, hard Q&A, 7-day plan, video search list. Keep it in sync with the audit when headline results change. Video entries are channel plus search phrase on purpose, no URLs were verifiable. `docs/ACHERON_CHEAT_SHEET.docx` is its one-page companion (generated with python-docx, not from the markdown), update both together. `docs/ACHERON_YESDELFT_STUDY_SHEET.docx` (23 October 2026) is a 5-page printable answer sheet for the YES!Delft intake, built from the guide and `docs/pitch/YESDELFT_INTAKE_PREP.md`, generated with python-docx.
+- **`docs/ACHERON_101_part2.md`** (added 17 October 2026, at the founder's request) retells the project in a gossip-style voice because that is how she learns best. It sits beside `docs/ACHERON_101.md`, which stays untouched. Keep its facts in step with the audit and keep the tone; no invented numbers.
 - **`simulations/`** holds every simulation of a scientific claim, named
   `<organism>_<number>_<topic>.py`, in four tracks: `planarian_`, `bsubtilis_`,
   `methylation_`, `crossorganism_`. The number is reading order within that
@@ -374,3 +385,145 @@ disproven, and where to start reading.
    distinguish a well-separated toggle from a collapsed one, cytometry
    still does that). None of the four papers required correcting anything
    already in the audit.
+   **Added October 2026 (audit Part 29)** after an outside AI's hostile
+   review of the project summary (about 70 percent of it restated gaps the
+   audit already lists; three points were wrong, see Part 29). Three new sweep
+   simulations came out of it: `bsubtilis_27_noise_robustness_sweep.py`
+   (fidelity holds only to about 5x the uncited noise placeholder, and the
+   Part 28 bound is 3.3x-16.8x, so whether Experiment 1 passes depends on the
+   unmeasured number; also holds the parameterised regrowth engine),
+   `bsubtilis_28_regrowth_timing_sweep.py` (the electrical readout needs the
+   undisturbed 30 min doubling time, the reporter readout does not) and
+   `bsubtilis_29_stressed_survivors.py` (reporter robust, voltage readout
+   fragile to a sustained shift of about 35 mV or more). All their axes are
+   sweep axes, not measurements. Experiment 1 and Stage B0 now run to 72
+   hours with dilution, a three-consecutive-timepoint stability rule, a
+   washout-and-reread arm and an inducer hysteresis arm; Experiment 3 and
+   Stage B2 gain a locus-stability PCR check; `bsubtilis_18` is relabelled a
+   sensitivity analysis under an assumed coupling. **Still open from that
+   review:** Bonnet et al. 2012's DNA latch also survives damage and
+   regrowth, so "survives division" does not separate Acheron from it; no
+   functional advantage over a DNA latch is established.
+   **Added later in October 2026 (audit Part 30)** after a second outside
+   review: `bsubtilis_30_fitness_cost_selection.py` models circuit-lost cells
+   outgrowing circuit-carrying cells (a gap nobody had covered: selection does
+   not threaten a short damage-and-regrowth test but does threaten a 72 hour
+   culture, and depends on a fitness cost and a loss rate nobody has measured).
+   Experiment 1 and Stage B0 now make the inducer hysteresis arm the primary
+   pass criterion for M1 and M2 (with a specified method), specify the 72 hour
+   serial-dilution culture method, and add a growth-rate comparison, a
+   competition assay and a both-reporters-negative cytometry gate; Experiment 3
+   and Stage B2 get the same gate. The Experiment 1 cost estimate is now a floor,
+   not a quote. `docs/ACHERON_INTERVIEW_GUIDE.md` has not been synced to Parts
+   29 and 30 yet.
+   **A third review round (still Part 30)** produced: the pass bar now reports
+   a product number (all live cells) and a mechanism number (circuit-positive
+   cells) with an interpretation guide; a four-bin cytometry gate (the
+   both-high bin is the key toggle-versus-co-expresser number); a step-response
+   calibration that sets the hysteresis equilibration time (at least 3x the
+   slowest plateau time); a fully specified competition assay; sporulation
+   managed with a threshold the lab and founders must set before the run
+   (deliberately blank, do not fill in a number); a survivor-bias control and
+   `survivor_bias_outcome` in `bsubtilis_30`; and the earlier overconfident
+   "regrowth is not threatened by selection" wording corrected. New file
+   `docs/VOLTAGE_DECISION_MEMO.md` lays out the open choice of whether voltage
+   is the point of Acheron (Paths A, B, C). It does NOT make the decision; the
+   founders must, and before strains are ordered because the paths want
+   different chassis.
+   **A fourth review round (still Part 30)** produced: Experiment 1 split into
+   **1a** (M1 and M3, response-time calibration on its own cultures, hysteresis,
+   24 hour read; the cheap go/no-go gate) and **1b** (M2, the 72 hour run, the
+   competition checklist, sporulation rule; runs only if 1a passes), mirrored as
+   Stage B0a and B0b in the bench protocol; a pre-registered bin-pattern
+   interpretation table and a fixed gating hierarchy; the sporulation threshold
+   as a rule (upper end of the parental W168 spore fraction in a pilot, no
+   invented number) with ranked fallbacks; a Path C recommendation and a blank
+   decision record in `docs/VOLTAGE_DECISION_MEMO.md`; and section G of
+   `bsubtilis_30` (survivor composition in the cell-level engine: recovery just
+   tracks survivor composition, so the "2% survivors recover to 100%" headline is
+   only as good as the assumption that survivors are correct). The remaining
+   unfixed values (spore threshold, neutral integration site, sample counts) can
+   only be set by a lab; a flow-cytometry-literate microbiologist should review
+   the protocol before more outside AI rounds.
+   **A fifth round (still Part 30), and the last outside AI pass:** Experiment 1
+   is now **Pilot P0** (dose-response, response-time calibration on its own
+   cultures, parental W168 spore baseline; a feasibility gate), then **1a** (M1,
+   M2, M3 built together; hysteresis on M1 against the M3 negative control; 24
+   hour read of all three; M2 reported, not required), then **1b**. Compensation
+   is a correction applied to the data, not a gate, in the gating order. The
+   voltage memo states Path C is a sequencing choice that leaves the novelty claim
+   provisional, and the README now carries a Bonnet et al. 2012 section. New file
+   `docs/PROTOCOL_REVIEW_HANDOFF.md` is the packet for a human microbiologist
+   reviewer and lists the values only a lab can set. Do not add more protocol
+   detail on the strength of another AI review; the next input should come from
+   that person.
+   **A sixth, last small pass (still Part 30):** P0 now builds M1 only (M2 and M3
+   after P0 passes, lab can override if batch building is cheaper); spore
+   exclusion is scatter plus a third fluorescence channel validated by heat-shock
+   plating; a never-pulsed control for every strain; the handoff lists exactly where
+   the gating, bin table, pass criteria and open values live. One reviewer claim was
+   refused because it was wrong: Bonnet et al. 2012 is rewritable (set and reset),
+   so "a toggle can be flipped repeatedly and a recombinase latch cannot" must not
+   appear anywhere. The README keeps stating that no advantage over a DNA latch is
+   established.
+   **Audit Part 31 (17 October 2026, partly resolved, found while the founder asked
+   about stress-testing the simulations with other mathematics):** `tx_noise` in
+   `GardnerToggleCell.step` is scaled by dt instead of sqrt(dt), so its strength
+   depends on the step size. `bsubtilis_31_dt_independent_noise_rerun.py` fixes that in
+   a subclass (original untouched) and shows the earlier sweeps survive finer
+   integration. `bsubtilis_32_analytic_and_gillespie_crosscheck.py` then compared the
+   model with different mathematics. **Agreement:** the exact fixed-point analysis
+   gives a bistable promoter-ratio window of 0.247 to 16.25 and matches the noise-free
+   simulation at 16 of 16 ratios, and its margins rank mismatch failure in the same
+   order, so "promoter matching is the make-or-break rule" is independently
+   supported. **Disagreement, the important finding:** an exact molecule-by-molecule
+   (Gillespie) model of the same toggle holds at 90 percent or better down to about
+   5 times the burst size in mean repressor molecules (about 12, 25, 50, 98 for bursts
+   of 1, 5, 10, 20), whereas the Gaussian-noise simulation fails at a much lower noise.
+   The Gaussian models raise the near-zero repressed gene by tens of times. So "holds to
+   about 5x the placeholder, fails by 10x to 20x" (Parts 29 and 30, README) is a
+   property of the Gaussian noise model, not of cells, and the "placeholder is 3x to
+   17x too low" headline of Part 28 is withdrawn (it compared unlike quantities). 
+   `bsubtilis_33_mrna_and_extrinsic_noise_gillespie.py` then added an mRNA stage and
+   cell-wide shared noise to the exact model and its robustness survived (fidelity at 90
+   percent or better down to about 12, 25, 25, 50 mean ON molecules for bursts of 1, 5,
+   10, 20; shared noise cost at most a few points), and it confirmed the Swain formula
+   against a model with an mRNA stage. The exact model still has no cell division or
+   partition noise and fixes the ON level at 50 times the repression threshold, so its
+   robustness is a model result, and whether real molecules per cell and burst size
+   (Experiments 2 and 4) clear the line is the open question. Noise comparisons must be
+   in unit-free CV terms. `bsubtilis_34_division_partition_noise_gillespie.py` then added
+   cell growth and division with binomial splitting of molecules to the exact model:
+   fidelity at 90 percent or better down to about 12, 12, 25, 50 mean ON molecules for
+   bursts of 1, 5, 10, 20, and no measurable penalty against an even split (audit Part
+   31, third follow-up). Still no discrete gene copy number or selection. Still not
+   done: promoter switching, first-passage theory, a lower dynamic range, and an
+   independent reimplementation from a plain-English specification.
+   **Fourth follow-up (audit Part 31, `bsubtilis_35_falsification_window_and_flip_rate.py`),
+   after an outside review:** the bistable window depends on the model (Hill 3: 0.104 to
+   73.7, Hill 4: 0.067 to 9.46, shifted by unequal loss rates), so Experiment 1's M3 at ratio
+   0.1 is only a negative control if the real window resembles the modelled one; the protocols
+   now require measured promoter strengths, ask for 0.01 or lower, and add an operator-deleted
+   arm. The molecular model failed where theory says it must (Hill 1, outside the window).
+   Wilson intervals put the conservative burst-20 threshold at about 100 molecules, not 50.
+   Flip rates measured (about 0.002 per hour at 50 molecules burst 20). The `bsubtilis_25`
+   "3x to 17x" conclusion has a superseded header. The `bsubtilis_15` "5 molecules" figure belongs
+   to the colony model and must not be quoted for the molecular model. The interview
+   guide, cheat sheet and README were updated to this on the same day.
+   **Fifth follow-up (`bsubtilis_36_molecular_colony_regrowth.py`):** the colony-regrowth headline
+   and the damage-sensing boost were rerun in the exact molecular model, additively. Recovery
+   was 98 to 100 percent on average at 25 to 200 molecules and 2 to 100 percent survivors (no worse
+   than undamaged), conditional on correct survivors; the boost gave a suggestive gain (91 to
+   95 to 97 percent) at one marginal setting. Window is 11.4 protein lifetimes, not 24 hours.
+   Monostable is now defined by memory (96 h interval contains 50 percent, or a drop of more
+   than 10 points), at a fixed burst size.
+   **Sixth follow-up (`bsubtilis_37_multibit_word_storage.py`):** first look at N bits in one cell. The
+   shared molecule budget hardly matters up to 8 bits (word 90 to 100 percent at 25 or more
+   molecules per toggle); crosstalk is what breaks it (eps 0.01 gives a 30 percent word at 8 bits,
+   tolerable eps about 1 / (50 (N - 1)) under the model's fixed dynamic range). A sweep axis, not a
+   measurement: orthogonal repressor pairs in B. subtilis are a biology question. No error-correcting
+   code, machinery sharing or burden modelled. `bsubtilis_01` was deliberately left unchanged.
+   **Seventh follow-up (`bsubtilis_38_error_correcting_array.py`):** one bit per cell over many cells with
+   error-correcting codes (4-byte word). Codes stretch word life about 3 to 8 times, repeat x5 longest;
+   refresh (assumed perfect) stretches it far more; common-cause shocks defeat all codes; flip rate is the
+   dominant unmeasured lever. Exact formulas checked by Monte Carlo with real encoders.

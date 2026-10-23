@@ -535,7 +535,7 @@ Swain, Elowitz & Siggia (2002, *PNAS* 99:12795-800, DOI
 measurement), and eta^2 ~ 1/n for gene copy number n. Swept against
 GardnerParams' default alpha=50.0 as the mean-level anchor: implied
 absolute noise std ranged 10.0-50.5 across burst sizes 1-50, versus the
-current tx_noise_std=3.0 placeholder (3.3x-16.8x higher). Audit Part 28.
+current tx_noise_std=3.0 placeholder (3.3x-16.8x higher). Audit Part 28. NOTE (audit Part 31): that comparison put a per-step kick size next to a level spread, and in unit-free CV terms it depends on molecules per cell, so treat "3x to 17x too low" as withdrawn pending measurement.
 Caveat stated in the file: this simplified form omits Swain et al.'s own
 cell-cycle correction, which their Eq. 22 shows can move a naive estimate
 by up to 65%, so treat this as a bound, not a precise prediction; the real
@@ -565,6 +565,223 @@ mutual-repression term) showed no dip, only a near-zero-lag positive peak
 (max R approx 0.73). Audit Part 28. Demonstrates the method is applicable
 to this project's construct; does not measure anything about real cells,
 and does not replace Experiment 1's cytometry-based basin-separation read.
+
+### `bsubtilis_27_noise_robustness_sweep.py`
+**What it tested, plainly:** every "100 percent" result in this project used a
+noise setting that a later check suggested is 3x to 17x too low. This reruns
+the key results with noise turned up to 20 times that setting to see where the
+circuit starts to fail.
+**What it found, plainly:** the circuit holds up to about 5 times the original
+noise, wobbles at 10 times, and is down to coin-flip territory by 20 times.
+Badly mismatched promoters fail much sooner. IMPORTANT (audit Part 31): this
+failure point belongs to the simulation's Gaussian noise model. An exact
+molecule-by-molecule model of the same switch keeps working at much lower copy
+numbers, so read this row as "what Gaussian noise does", not "what cells do".
+Whether the first experiment passes depends on molecules per cell and burst
+size, which nobody has measured.
+**Technically:** single-cell 24 h genetic fidelity and colony recovery at noise
+multipliers 1, 2, 3, 5, 10, 20 times `transcriptional_noise_std=3.0`, across
+promoter ratios 1.0, 2.0, 5.0, 10.0 and 0.1. Matched promoters: 100% to 5x,
+60% at 10x, 53% at 20x. Colony recovery (6 h window, matched): 100% to 5x,
+84-85% at 10x, 55-57% at 20x. Also defines `run_colony_trial_ex`, a
+parameterised regrowth trial that reproduces `bsubtilis_07` at defaults and is
+reused by 28 and 29. Audit Part 29. The multipliers are a sweep axis, not
+measured noise.
+
+### `bsubtilis_28_regrowth_timing_sweep.py`
+**What it tested, plainly:** the recovery after damage depends on cells
+dividing every 30 minutes and being readable the instant the colony is back.
+Neither is measured. What if division is slower, or the colony needs time to
+settle?
+**What it found, plainly:** the colony still regrows and the fluorescent
+reporter still reads correctly in every case. The electrical readout is much
+more fragile: it needs a full three hour reading window, and anything less
+turns it into a coin flip.
+**Technically:** doubling time 30/45/60 min x settling delay 0/30/60 min x
+2/5/20% survivors x 30 and 70 mV native oscillation. Genetic fidelity 100% and
+full regrowth in all 54 cells of the grid. The 180 min averaged voltage read
+gives 50% whenever the window is shortened, including 151 min, and fails at
+2 and 5% survivors from 45 min doubling onward. Audit Part 29. Doubling times
+and delays are sweep axes, not measurements.
+
+### `bsubtilis_29_stressed_survivors.py`
+**What it tested, plainly:** the damage simulations assume survivors are
+perfectly healthy. Real survivors would be stressed. What if they divide
+slowly, get noisier, or have shifted voltage?
+**What it found, plainly:** slower growth did not hurt the fluorescent
+readout. Extra noise hurt it a little. A long-lasting voltage shift of about
+40 millivolts breaks the electrical readout completely, because the two
+voltage levels the model uses sit only 35 millivolts from the decision line,
+and those levels were inherited from the old planarian model.
+**Technically:** a stress window applies a doubling-time multiplier (1-3x), a
+noise multiplier (1-10x) and a steady voltage shift (-40 to +40 mV) to
+survivors, then they return to normal. Growth penalty alone: genetic 100%.
+10x noise for 180 min: 96%. Sustained 2x slower + 10x noise + 40 mV for 360
+min: 85-87% genetic, 50% voltage. 20 mV shifts: no effect. Audit Part 29. Every
+magnitude is a sweep axis, not measured. Narrows, but does not close, Known
+Gap 4; Stage B2 arm 2b still has to measure the real stress.
+
+### `bsubtilis_30_fitness_cost_selection.py`
+**What it tested, plainly:** every earlier simulation assumes the engineered
+circuit is free and that no cell ever loses it. Real circuits cost the cell
+something, and a cell that drops the circuit can outgrow its neighbours. Over
+a long culture those drop-outs take over, and on a chart that looks the same
+as the stored bit fading.
+**What it found, plainly:** this does not matter for a short damage-and-regrowth
+test (about 7 divisions) but matters a lot for a 72 hour culture. Whether it
+matters depends on how much faster lost cells grow and how often cells lose the
+circuit, and neither number has been measured. Counting cells that lost the
+circuit separately from cells that flipped state is what tells the two causes
+apart.
+**Technically:** three cell classes (written-state circuit cells, flipped
+circuit cells, lost cells) with a relative growth advantage s for lost cells and
+a loss rate mu per division, swept over s of 0 to 0.30 and mu of 1e-6 to 1e-2.
+Deterministic expectation plus a Wright-Fisher style stochastic version with a
+finite dilution bottleneck. s of 0.03 with mu of 1e-4 holds 98% at 72
+generations and 81% at 144; s of 0.10 with mu of 1e-5 holds 91% then 1%. At 7
+generations, 98-100% holds everywhere except mu of 1e-2 (84-93%). Ungated versus gated
+reads diverge sharply (9% versus 100% at s of 0.10, mu of 1e-3, 72 generations).
+Audit Part 30. All axes are sweep axes, not measurements; the competition assay
+in Experiment 1 measures s directly. Section F sweeps SURVIVOR BIAS: if the
+cells that survive damage are not a random sample, selection that happened
+before the damage carries into the regrowth result (from a 72-generation-old
+culture at s of 0.10 and mu of 1e-4, only 35% hold the bit after regrowth even
+with random survivors). The direction of real bias is unknown. Section G puts
+the same question in the cell-level regrowth engine: each survivor is wrong-state
+or already lost with probability q, and recovery fidelity just tracks that
+composition (one survivor, q of 0.25: 83% of colonies still clear the 70% bar).
+The "2% survivors recover to 100%" headline is exactly as good as the assumption
+that survivors are all correct.
+
+### `bsubtilis_31_dt_independent_noise_rerun.py`
+**What it tested, plainly:** the noise knob in the toggle simulation changed its strength when the
+computer's time step changed, which a noise setting should never do. This builds a version where it
+does not, and reruns the key results with finer steps to see whether anything breaks.
+**What it found, plainly:** the knob really did depend on the step, but the earlier results
+survive. Run more finely, the same switch still holds to about 5 times the assumed noise and still
+fails after, and the timing and stress findings reproduce. The knob just never had a physical scale.
+**Technically:** `GardnerToggleCellSDE` subclasses `GardnerToggleCell` (unmodified) with
+square-root-of-dt scaling; `transcriptional_noise_std` keeps its old meaning at dt 0.02 so old
+values map exactly, and at `substeps=1` it reproduces the original trajectories to machine
+precision. Level standard deviation at tx 3 against dt 0.02, 0.01, 0.005, 0.0025: original 2.27,
+1.41, 0.87, 0.48; new 2.27, 2.34, 2.50, 2.48. Single-cell fidelity, colony recovery (99-100% to
+5x, 83-85% at 10x, 51-55% at 20x) and headline timing and stress cells match the originals within
+sampling noise. Audit Part 31.
+
+### `bsubtilis_32_analytic_and_gillespie_crosscheck.py`
+**What it tested, plainly:** do other kinds of math give the same answers as our simulation?
+Pen-and-paper algebra for the switch's structure, and a molecule-by-molecule random simulation
+for the noise.
+**What it found, plainly:** the algebra and the simulation agree exactly on when the switch can hold
+two states, including the rule that mismatched promoters kill it. On noise they disagree. Our
+simulation fails at a noise level where the molecule-by-molecule version keeps working, because our
+simulation's random kicks push the nearly-absent repressor up from zero. The molecule version holds
+down to about 5 times the burst size in molecules (roughly 25 to 100 for bursts of 5 to 20).
+**Technically:** (A) fixed points of u = a1/(1+v^2), v = a2/(1+u^2) with Jacobian eigenvalues
+-1 +/- sqrt(d_u d_v): bistable window in a2/a1 of 0.247 to 16.25, matching the noise-free simulation
+at 16 of 16 ratios, and the noise-free stable-to-saddle distance ranks ratios 1, 2, 5, 10 in the
+same order as their simulated failure. (B) Gillespie with geometric bursts of mean b: measured CV
+matches sqrt(b/<P>); fidelity at or above 90% down to about 12, 25, 50, 98 mean ON molecules for
+b = 1, 5, 10, 20, against a Gaussian-model failure at CV about 0.32 (exact model about 0.58 to
+0.60). (C) A chemical Langevin version fails like the additive model. (D) Mean repressed-arm level
+(noise-free 0.020): exact 0.000, Langevin 0.62, additive 0.66 to 1.61. Audit Part 31. The exact
+model has no mRNA stage, extrinsic noise or division, so its robustness is a model result.
+
+### `bsubtilis_33_mrna_and_extrinsic_noise_gillespie.py`
+**What it tested, plainly:** the molecule-by-molecule model that kept the switch working was simple: no
+messenger-RNA step and no noise shared across the cell. Real cells have both. Does the good news
+survive when they are put back?
+**What it found, plainly:** yes. With the messenger-RNA step the switch still holds down to roughly the
+same small molecule counts (about 12 to 50 molecules, depending on burst size), and cell-wide noise that
+raises and lowers both genes together cost at most a few points. The known noise formula also checked out
+against the simulation. This makes the earlier conclusion firmer: our simple noise model fails early
+because of how it treats a nearly absent gene, not because the molecular model leaves something out.
+**Technically:** exact stochastic simulation (transcription, mRNA decay at gamma_m = 20, translation one
+protein per event with k_p = b * gamma_m, protein decay) with an optional Ornstein-Uhlenbeck shared factor
+on transcription of both arms, handled exactly by stopping at each update. Unregulated CV matches
+sqrt((1 + b * gamma_m / (gamma_m + 1)) / <P>); Swain's (1 + b) is within a few percent. Fidelity at or
+above 90% down to about 12, 25, 25, 50 mean ON molecules for b = 1, 5, 10, 20; shared noise (CV 0.2 and
+0.5, correlation 1 and 5 lifetimes) leaves 92 to 100% fidelity down to 50 molecules. Audit Part 31. No
+division or partition noise, no promoter switching, gamma_m and the shared-factor parameters are assumed.
+
+### `bsubtilis_34_division_partition_noise_gillespie.py`
+**What it tested, plainly:** real cells divide, and when they do, the molecules inside are shared out
+unevenly, like cutting a handful of marbles in two by coin flip. Does that extra randomness break the
+molecule-level switch that survived everything else?
+**What it found, plainly:** no. With growth, division and a fair coin flip per molecule, the switch still
+holds at the same small molecule counts (roughly 12 to 50, depending on burst size), and every setting at
+100 molecules or more stays at 98 to 100 percent. Uneven splitting did not measurably do worse than a
+perfectly even split. It is still a model: nobody has counted the real molecules.
+**Technically:** the bsubtilis_33 two-stage Gillespie model plus volume growth (V from 1 to 2, production
+scales with V, repression uses P/(Omega V)), a share f of protein loss from dilution (total loss kept at
+1), and division with Binomial(n, 1/2) or floor-split partitioning of mRNA and protein, one lineage
+followed. 90% fidelity down to about 12, 12, 25, 50 mean ON molecules for b = 1, 5, 10, 20 (binomial,
+f = 1); with confidence intervals (`bsubtilis_35`) the conservative threshold at b = 20 is about 100. Audit Part 31. No discrete gene copy number, no selection, no promoter switching.
+
+### `bsubtilis_35_falsification_window_and_flip_rate.py`
+**What it tested, plainly:** whether our two kinds of math really agree, or only agree because they share
+assumptions. It asks (1) how the safe range of promoter strengths changes if the real switch is more
+cooperative or its proteins decay at different speeds, (2) whether the molecular model also fails where the
+theory says a switch must fail, (3) how precise the earlier numbers are, and (4) how fast the bit actually
+flips.
+**What it found, plainly:** the safe range moves a lot with the model, so the "severe mismatch" control of
+Experiment 1 is only a true negative control if the real switch resembles the modelled one (a mismatch of
+0.1 can be inside the safe range, 0.01 never was). The molecular model failed where it should (no cooperativity,
+strengths outside the range) and the range moved as theory predicted. The thresholds are ranges, not points
+(about 100 molecules is the careful figure at burst 20). Measured flip rates run from about once per 100 hours
+at 12 molecules down to under once per 2,500 hours at 100 molecules, burst 5.
+**Technically:** exact bistable window for Hill 1 to 4 and loss ratios 0.25 to 4 (own fixed-point and
+stability code, search range fixed after a floating-point miss at Hill 4); Gillespie two-stage model with
+Hill exponent and arm ratio as inputs and first-passage tracking; Wilson intervals on the bsubtilis_34 grid;
+exact Poisson intervals on flip rates from 250 hour runs. No Kramers closed form, flip rates assume a
+constant rate, all burst and copy-number values are sweep axes. Monostable is defined by memory at a fixed burst size (96 h interval contains 50%, or a drop of more than 10 points from 24 h). Audit Part 31, fourth follow-up.
+
+### `bsubtilis_36_molecular_colony_regrowth.py`
+**What it tested, plainly:** our headline (a colony cut down to a few percent regrows and still holds the bit)
+and our damage-sensing idea were built on simpler noise models that later turned out to be pessimistic. Does
+the headline still hold in the molecule-by-molecule model?
+**What it found, plainly:** yes. Starting from correct survivors, colonies recovered to 98 to 100 percent on
+average at every survivor level from 2 to 100 percent, no worse than a colony that was never damaged. At the
+shakiest setting tested (about 25 molecules, large bursts) it was 91 percent, and the proposed boost raised it
+to 95 to 97 percent, a suggestive gain at one setting, not an established one. It still assumes the survivors
+are correct and that the molecule counts are what we assume.
+**Technically:** exact two-stage Gillespie lineages with growth, binomial partitioning at every division,
+about 64 cells then single-lineage following, 11.4 protein lifetimes in total (about 9.5 hours); boost
+multiplies transcription of the currently dominant arm during the regrowth phase only. No selection, copy
+number, crowding or shared noise. Audit Part 31, fifth follow-up.
+
+### `bsubtilis_37_multibit_word_storage.py`
+**What it tested, plainly:** everything so far stored one bit. If a cell holds several switches at once (a
+"word"), does the whole word survive a day of growth and division? Two things could hurt: the switches sharing a
+fixed number of molecules, and the switches accidentally muting each other (crosstalk).
+**What it found, plainly:** sharing molecules was not the problem. Up to 8 switches in one cell held the whole
+word 90 to 100 percent of the time, even at 25 molecules each. Crosstalk was the problem: if each switch's
+helper molecules leak onto the others' controls by even 1 percent, an 8-bit word fell to 30 percent intact,
+and by 3 percent it was lost. The usable leak size shrinks as more switches are added (about 1 divided by 50
+times the number of other switches). This follows from the model's assumptions, so it is a rule of thumb, and
+whether enough clean, non-leaking switch parts exist in the real bacterium is a lab question.
+**Technically:** N independent exact two-stage Gillespie toggles in one lineage with growth and binomial
+partitioning, burst 5, 30 words per cell, B = 200, 400, 800 total mean ON molecules shared (B / N each) and a
+crosstalk weight eps added to the opposing repressor concentration at every promoter. Word fidelity matches
+per-bit fidelity ** N. Tolerable eps about 1 / (50 (N - 1)). Audit Part 31, sixth follow-up. No machinery
+sharing beyond the budget, no burden, no copy number, no selection, no error-correcting code.
+
+### `bsubtilis_38_error_correcting_array.py`
+**What it tested, plainly:** if each cell holds one bit and a word is spread over many cells with a
+spell-checker style code, how many cells does it cost and how long does the word last?
+**What it found, plainly:** a 4-byte word costs from about 1.4 to 5 cells per bit depending on the code.
+Codes stretch the life of the word by roughly 3 to 8 times, not by orders of magnitude. The simple 5-copy
+vote lasted longest, the compact codes the shortest. Re-reading and rewriting the word every few hours
+stretches it much further, but needs a reader and writer for every cell. A shock that hits many cells at
+once (contamination, a medium change) defeats all of them. The flip rate itself is unmeasured.
+**Technically:** exact formulas for no code, repetition x3 and x5, Hamming(7,4), (15,11), (31,26) on 32 data
+bits, symmetric two-state flips with P(wrong) = 0.5 (1 - exp(-2 lambda t)), Poisson common-cause shocks with
+flip fraction f, periodic perfect refresh, and a Monte Carlo of real encoders and decoders agreeing within
+about 1 point. lambda swept 0.0001 to 0.01 per hour from `bsubtilis_35`. Audit Part 31, seventh follow-up.
+No readout error, erasure, addressing or reader cost.
+
+Note on `bsubtilis_25`: its "placeholder 3x to 17x too low" conclusion is SUPERSEDED (audit Part 31);
+the file's header says so.
 
 ---
 
@@ -632,7 +849,8 @@ file.
 
 Stated here so nobody has to rediscover them file by file.
 
-1. **Every noise parameter is a placeholder.** Transcriptional noise, channel
+1. **Every noise parameter is a placeholder.** `bsubtilis_27` shows the
+   fidelity results hold only up to about 5x the placeholder. Transcriptional noise, channel
    noise, thermal noise, measurement noise and reporter maturation time are all
    unmeasured. Stage B1 in `experiments/BENCH_PROTOCOL_BSUBTILIS.md` exists to
    measure them.
@@ -641,9 +859,12 @@ Stated here so nobody has to rediscover them file by file.
 3. **The circuit-to-voltage link has never been built by anyone.** Every file
    downstream of `bsubtilis_01` that reports a voltage is tracking the genetic
    state through a first-order filter, not a measured biophysical relationship.
-4. **Damage is modelled as removing cells and nothing else.** No file models
-   damage stressing the survivors, changing their growth rate or triggering
-   stress responses. Arm 2b of Stage B2 in the bench protocol is designed to
-   measure the size of that blind spot.
-5. **The planarian coupling constant is borrowed, not measured.** It is the
+4. **Damage is modelled as removing cells and nothing else** in files 01-26.
+   `bsubtilis_29_stressed_survivors.py` now sweeps survivor stress (slower
+   growth, higher noise, voltage shift) but every magnitude there is a sweep
+   axis, not a measurement. Arm 2b of Stage B2 in the bench protocol is
+   designed to measure the real size of that blind spot.
+5. **No fitness cost is measured.** `bsubtilis_30` sweeps it, but every
+   earlier file treats the circuit as free and uses no loss-of-circuit class.
+6. **The planarian coupling constant is borrowed, not measured.** It is the
    single weakest assumption in the project.

@@ -54,16 +54,44 @@ project has been tested at a bench.
 
 - **The genetic state survives damage and regrowth.** A colony knocked down
   to as little as 2% surviving cells regrows to full fidelity, because cell
-  division copies the circuit's existing proteins into daughters. This is the
-  project's actual differentiator.
-- **Stochastic partition noise does not break it.** Modeling real, uneven
-  splitting of molecules between daughter cells (binomial partitioning) leaves
-  recovery at 99-100% down to about five molecules per cell. Only at an
+  division copies the circuit's existing proteins into daughters. This holds
+  only if the surviving cells all hold the bit, and it held again in the exact
+  molecular model (audit Part 31, `bsubtilis_36`, a 6 hour window). This is the
+  project's actual differentiator, and Bonnet et al. (2012) also survives division.
+- **Those recovery numbers depend on how noise is modelled, and on two numbers
+  nobody has measured.** With the project's Gaussian noise, recovery holds up to
+  about 5 times the placeholder and fails by 10 to 20 times, with mismatched
+  promoters failing sooner. An exact molecule-by-molecule model of the same switch
+  is much more forgiving: it holds down to about 5 times the burst size in mean
+  repressor molecules (about 25 to 100 for bursts of 5 to 20). The Gaussian models
+  overstate the noise of the repressed gene, which sits near zero copies. Pen-and-paper
+  algebra agrees with the simulation on the structure (promoter matching is the
+  make-or-break rule, with an exact window). The molecular model's robustness
+  survives adding an mRNA stage, cell-wide shared noise, and cell division with
+  uneven splitting of molecules. For the burst sizes swept (1 to 20). Real burst size for these promoters is unmeasured. If it is higher than 20 the molecule threshold moves up; the tables do not bracket reality. Whether the first experiment passes therefore
+  depends on molecules per cell and burst size, which only the lab can supply.
+  See audit Part 31.
+- **Stochastic partition noise does not break it, in the colony model.** In
+  the deterministic-inheritance colony model (`bsubtilis_15`, no bursts, no mRNA
+  stage), binomial splitting of molecules between daughter cells leaves
+  recovery at 99-100% down to about five molecules per cell. That number does
+  not carry over to the molecular model with bursts, which needs about 12 to
+  100 mean repressor molecules depending on burst size (burst size is
+  unmeasured), and is a different question (holding 24 hours, not recovery). Only at an
   extreme and probably unrealistic single-molecule level does recovery degrade,
   and even then it does not fall to chance.
 - **A fluorescent reporter readout tracks the genetic state exactly**, through
   damage and regrowth, with no added fragility of its own. This is why the
   first funded experiment uses a reporter assay and not an electrode.
+- **More than one bit.** A first model of several switches in one cell
+  (`bsubtilis_37`) says the shared molecule budget is not the limit up to about
+  8 bits, but leakage between switches is: if each switch's repressors leak onto
+  the others' controls at a weight of 1% an 8-bit word is only 30% intact, and
+  the tolerable leak shrinks as bits are added. Whether enough clean repressor
+  pairs exist in *B. subtilis* is unmeasured (audit Part 31). Spreading a word
+  over many cells, one bit each, with an error-correcting code (`bsubtilis_38`)
+  avoids the leakage but stretches how long the word lasts only by a few times;
+  periodic rewriting stretches it much further and needs a reader and writer.
 - **Reading the bit as a voltage level is the hard part.** *B. subtilis*
   biofilms run their own native potassium-wave signaling, real and published
   and unrelated to anything this project builds. A single voltage snapshot
@@ -120,6 +148,27 @@ that dilutes out as cells divide, and their own discussion notes their biofilm
 cells are predominantly non-replicating. **Surviving division and regrowth is
 this project's differentiator, and it is the one thing their mechanism cannot
 do.**
+
+---
+
+## A second prior art, and what it does to the claim above
+
+Bonnet, Subsoontorn & Endy (2012), "Rewritable digital data storage in live cells
+via engineered control of recombination directionality," *PNAS* 109(23):8884-8889,
+built an addressable, rewritable, digital memory in live bacterial cells, held by
+the orientation of a stretch of DNA, heritable over more than a hundred cell
+divisions, and read non-destructively by fluorescence.
+
+That narrows the claim in the previous section. A DNA-orientation latch is
+inherited at division for the same reason a protein toggle is, so "the state
+survives division and regrowth" does not by itself separate this project from that
+work. What has not been shown is a functional advantage over a DNA latch. What
+might separate them is the damage-detecting, self-reinforcing part of the
+hypothesis (a circuit that senses damage and strengthens the stored state during
+regrowth), which is simulated and unbuilt. Whether the stored state should be
+voltage at all is an open decision, laid out in `docs/VOLTAGE_DECISION_MEMO.md`.
+Until that decision is recorded, the novelty claim is provisional and no material
+should claim voltage novelty or an advantage over a DNA latch.
 
 ---
 

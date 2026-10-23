@@ -1678,7 +1678,9 @@ has no citation for that conversion; real bacterial transcription factor
 copy numbers span single digits to thousands depending on the protein).
 
 **Result: the circuit's own bistability makes it robust to this noise
-down to a strikingly low copy number.** At ~5 molecules per cell and
+down to a strikingly low copy number.** (Deterministic-inheritance colony model, no bursts, no mRNA stage; the molecular
+model of Part 31 asks a different question and needs about 12 to 100 mean molecules
+depending on burst size.) At ~5 molecules per cell and
 above, recovery stayed at 99-100%, matching the noise-free result,
 across every damage level tested (2% to 100% surviving). Manually
 verified the noise itself is real and large at this scale (single
@@ -2319,6 +2321,744 @@ and one real upgrade to the comK track's grounding (Suel 2007's actual
 equations, plus a second citable lock mechanism). None of the four papers
 required correcting anything already in the audit; they extend Part 27
 rather than revise it.
+
+---
+
+## Part 29: Hostile External Review, and Three Robustness Sweeps That Came Out of It (October 2026)
+
+**What triggered it.** The founder pasted the project summary into an outside
+AI model and asked for a hostile review. Most of what came back restated gaps
+this audit already lists (the unbuilt circuit-to-voltage link, the W168 versus
+NCIB 3610 strain mismatch, damage modelled as removing cells only, the zero
+margin regrowth budget, the assumed phase coupling). Four points were new or
+sharper than the audit, and one of those, that the placeholder noise makes
+every fidelity number optimistic, had never been tested. Three points were
+wrong: the SOS response in `bsubtilis_16` is the damage SENSOR, not a
+duplicate of something the cell already does; the stored state is a
+protein-level toggle, not a voltage (voltage is only the planned readout);
+and the two-colour reporter assay is cheaper than the toggle but not free.
+Experiment 1 needs neither the voltage link nor the strain match.
+
+**What was built.** Three new simulations, all sweeps, none measured:
+`bsubtilis_27_noise_robustness_sweep.py` (also holds the parameterised
+regrowth engine, which at defaults reproduces `bsubtilis_07` and `_14`),
+`bsubtilis_28_regrowth_timing_sweep.py`, `bsubtilis_29_stressed_survivors.py`.
+Every axis in them is a sweep axis, not a prediction.
+
+**Result 1, noise (Part 28 found the placeholder 3.3x to 16.8x too low; this reading is superseded in part by Part 31, which shows the failure point belongs to the Gaussian noise model and that the 3.3x to 16.8x comparison used unlike quantities).**
+Single-cell genetic fidelity at 24 h, passing bar 70 percent:
+
+| promoter ratio | 1x | 2x | 3x | 5x | 10x | 20x |
+|---|---|---|---|---|---|---|
+| 1.0 (matched) | 100% | 100% | 100% | 100% | 60% | 53% |
+| 2.0 | 100% | 100% | 100% | 87% | 53% | 52% |
+| 5.0 | 100% | 100% | 83% | 70% | 50% | 55% |
+| 10.0 | 100% | 77% | 65% | 52% | 50% | 52% |
+| 0.1 | 50% | 50% | 50% | 50% | 47% | 47% |
+
+Colony recovery after damage and regrowth (matched promoters, 6 h window, so
+not directly comparable to the 24 h table): 100 percent at 1x through 5x for
+2, 5 and 20 percent survivors, 84 to 85 percent at 10x, 55 to 57 percent at
+20x. **Reading it honestly:** the earlier 100 percent figures hold only if
+real noise is under roughly 5x the placeholder. At the lower end of the
+Part 28 bound (3.3x) matched and moderately mismatched promoters still pass
+and a 5x mismatch is marginal. At the upper end (16.8x) nothing in the
+single-cell table passes. So the answer to "does Experiment 1 pass" now
+depends on a number nobody has measured, which is exactly what the
+two-colour reporter assay in Stage B0 measures. Promoter MATCHING matters
+more at higher noise, because mismatch fails earlier (ratio 10 fails at 2x).
+
+**Result 2, the regrowth budget (doubling time 30/45/60 min, settling delay
+0/30/60 min).** Reporter (genetic) fidelity stayed at 100 percent and the
+colony regrew in all 54 grid cells, including 60 minute doubling from a
+single cell, where it finishes with essentially zero minutes to spare. The
+electrical readout is a different story: the 180 minute averaged read works
+only when the budget leaves the full window. Any shortfall, even to 151
+minutes, dropped it to a coin flip (50 percent) at the worst damage level,
+and a 45 minute doubling time alone is enough to break it at 2 and 5 percent
+survivors. At 20 percent survivors it survived delays up to 60 minutes at
+45 minute doubling at 30 mV, but failed at 70 mV with 166 minutes of window,
+so it is fragile near the edge. **The zero-margin finding stands and is
+stronger than stated in Part 21: the electrical readout needs the
+undisturbed 30 minute doubling time, and the reporter readout does not.**
+This is a second, independent reason (after the interference problem in
+Parts 12 and 13) why the reporter readout is the recommended first readout.
+
+**Result 3, stressed survivors (slower division, higher noise, voltage
+shift, applied to survivors for a stress window after damage).**
+- A growth penalty up to 3x slower did not change genetic fidelity (100
+  percent) at any survival level.
+- A 10x noise rise during a 180 minute stress window cost about four points
+  (96 percent) for both readouts. If the stress lasts the whole 6 hour window,
+  with 2x slower growth and 10x noise, genetic fidelity fell to 85 to 87
+  percent, still above the 70 percent bar.
+- A voltage shift of 20 mV in either direction changed nothing. A shift of
+  40 mV in either direction, lasting through the read, took the long-window
+  voltage read to 50 percent. The reason is inherited, not new:
+  `V_HIGH=-10 mV` and `V_LOW=-80 mV` sit 35 mV on either side of the decision
+  midpoint, and both numbers came from the planarian model with no B.
+  subtilis measurement behind them. A transient shift that ends before the
+  read has no effect.
+- **Reading it honestly:** the reporter readout is robust to everything
+  swept here except combined sustained high noise. The voltage readout is
+  fragile to any sustained shift of about 35 mV or more, which nobody knows
+  is or is not what damaged B. subtilis cells do. This does not replace
+  Stage B2 arm 2b, which measures it.
+
+**Protocol changes made in response (not results).** Experiment 1 and Stage B0
+now run to 72 hours with dilution, require the bimodal distribution to hold
+across three consecutive timepoints spanning at least 48 hours, and add a
+washout-and-reread arm and an inducer hysteresis arm (a slow monostable
+circuit can pass a 24 hour snapshot, it cannot fake a toggle's
+history-dependent curve), plus optional single-cell tracking. Experiment 3 and
+Stage B2 gain a locus-stability check (colony PCR of both integrated arms
+after each regrowth round) so a lost or rearranged construct is not mistaken
+for a memory failure. `bsubtilis_18_phase_encoded_readout.py` is relabelled a
+sensitivity analysis under an assumed coupling, per Part 26.
+
+**Not done, and still open:** the review's strongest strategic point.
+Bonnet, Subsoontorn & Endy (2012) already showed a heritable, rewritable DNA
+recombinase latch with non-destructive fluorescent readout, and a DNA latch
+also survives damage and regrowth for the same reason a protein toggle
+does. "Survives division" therefore does not separate this project from that
+work. What would is a stated functional advantage of a protein toggle with
+damage-sensing reinforcement (`bsubtilis_16`) over a DNA latch, and none is
+established. Until one is, the honest framing is that the project's value is
+in testing self-detecting, self-reinforcing memory through damage, not in
+beating existing DNA memory on stability.
+
+---
+
+## Part 30: Fitness Cost and Selection, the Gap Neither the Audit Nor the Protocol Covered (October 2026)
+
+**What triggered it.** A second round of outside review, this time of the Part
+29 fixes. It conceded two earlier points and raised one genuinely new one,
+which a search confirmed: no file in the audit, bench protocol, experiments or
+simulation map mentioned fitness cost, burden, selection or a competition
+assay. Every simulation assumes the circuit is free and that no cell ever
+loses it. In a real culture, a cell that mutates a promoter, silences the
+reporters or loses the integrant can outgrow cells that carry the bit, and in a
+cytometry histogram that looks exactly like state loss. A 72 hour pass or fail
+could therefore be uninterpretable in both directions. The review's other
+points were either already done (relabelling `bsubtilis_18`, sweep-axis
+labelling of `bsubtilis_29`) or repeated the earlier SOS misreading (SOS is the
+damage sensor in `bsubtilis_16`, not a duplicate of a natural response).
+Its claim that the two-colour assay belongs in a "same cost class as the
+toggle" is a guess, nothing has been quoted.
+
+**What was built.** `bsubtilis_30_fitness_cost_selection.py`, a population
+model with written-state circuit cells, flipped circuit cells and circuit-lost
+cells. Lost cells grow (1 + s) times as fast; circuit cells become lost at
+rate mu per division. Reports the ungated read (all cells, what a naive
+cytometry read gives) against the gated read (reporter-positive only). **Both
+s and mu are sweep axes. Neither is measured.** The result is a map, not a
+prediction.
+
+**Results (deterministic expectation unless stated).**
+- Selection only bites over long cultures. After 7 generations, which is what
+  a damage and regrowth run involves, 98 to 100 percent still hold the bit
+  across the whole grid except at mu of 1e-2 (84 to 93 percent), so at
+  plausible fitness costs and loss rates **selection during the regrowth window
+  itself does not dominate the result**. That is a narrower claim than "the
+  regrowth test is not threatened" (the first wording of this part, corrected
+  after review), because it says nothing about who survives the damage. The 72
+  hour run in Experiment 1 is threatened directly, because it is 36 to 144
+  generations depending on doubling time.
+- **Survivor bias (section F) is the larger risk for Experiment 3, and it is
+  not modelled in direction.** If the survivors of damage are not a random
+  sample, selection that happened BEFORE the damage carries through. Starting
+  from a culture that has already run 72 generations, random survivors
+  (bias 1) at s of 0.10 and mu of 1e-4 leave 49 percent lost among survivors and
+  35 percent holding the bit after 7 generations of regrowth; at s of 0.10 and
+  mu of 1e-5 it is 9 percent lost and 84 percent holding; at s of 0.03 and mu of
+  1e-4 it is 2 percent lost and 97 percent holding. Over-representation of lost
+  cells among survivors makes it worse (bias 10 at s of 0.10, mu of 1e-5: 49
+  percent lost, 35 percent holding) and under-representation makes it better
+  (bias 0.5: 5 percent lost, 91 percent holding). The practical consequence is
+  procedural: run damage on freshly written cultures with few generations
+  between write and insult, and measure the lost share before damage and among
+  survivors. The size and direction of real bias is unknown; both directions are
+  swept.
+- With no growth advantage for lost cells (s of 0), the bit survives 72
+  generations at 99 percent or better for mu up to 1e-4, and 93 percent at
+  mu of 1e-3.
+- A 3 percent advantage with mu of 1e-4 holds 98 percent at 72 generations and
+  81 percent at 144. A 10 percent advantage with mu of 1e-5 holds 91 percent
+  at 72 generations and 1 percent at 144. A 10 percent advantage with mu of
+  1e-3 leaves 9 percent at 72 generations.
+- Generations until the ungated read drops below the 70 percent bar range from
+  about 10 (s of 0.30, mu of 1e-2) to more than 2,000 (s of 0, mu of 1e-4 or
+  lower). With s of 0.03 and mu of 1e-4 it is 165 generations; with s of 0.10
+  and mu of 1e-5 it is 88.
+- With a finite dilution bottleneck of 10,000 cells the time to the bar is
+  noisy (for example median 110 generations with a 5th to 95th percentile of
+  76 to 324 at s of 0.10, mu of 1e-5), and at s of 0.30, mu of 1e-6 nine of 30
+  replicates never reached it. At a bottleneck of 1,000,000 the spread nearly
+  vanishes (89, range 85 to 93). **The manual serial dilution regime in
+  Experiment 1 sets how noisy this is, and that noise is a handling artifact.**
+- Gating decides the interpretation: at s of 0.10, mu of 1e-3, 72 generations,
+  the ungated read is 9 percent while the gated read is 100 percent with no
+  flipping and 62 percent at a flip rate of 1e-2 per generation. A low
+  ungated read with a high gated read means the circuit was lost, not the bit.
+
+**Reading it honestly.** Whether a 72 hour result means anything depends on two
+numbers nobody has measured, the fitness cost and the loss rate. The new
+competition assay and growth-rate comparison in Experiment 1 measure the first
+directly; the second needs the gated cytometry counts and, if loss is seen,
+sequencing of reporter-negative isolates. It also matters for any later claim
+about long-term storage, not just this experiment: a stored bit in a growing
+culture has a half-life set by selection, independent of how stable the toggle
+itself is.
+
+**Protocol changes made in response (first round).** Experiment 1 and Stage B0 now make the
+inducer hysteresis arm the primary pass criterion for M1 and M2, with a
+specified method (pilot dose-response, ON-history and OFF-history populations,
+equilibration confirmed by two successive reads); state the 72 hour culture
+method (manual serial dilution at fixed intervals, OD and generations
+recorded, spore check; microfluidic chemostat noted as cleaner but not needed
+first); add growth-rate comparison against parental W168, a competition assay
+against an isogenic differently marked reference, and a cytometry gate that
+counts cells negative for both reporters separately from flipped cells; and
+make the 70 percent bar apply to both reporter-positive and all cells, with
+results met only after excluding lost cells reported as uninterpretable.
+Experiment 3 and Stage B2 gain the same gate. The Experiment 1 cost estimate is
+now marked a floor that predates these additions.
+
+**Protocol changes made in a third review round.** A further review found six
+problems with those changes, all accepted: (1) the pass bar now reports two
+numbers at every timepoint, the product number (all live cells in the written
+state, gates pass or fail) and the mechanism number (circuit-positive cells in
+the written state), with an interpretation guide, because the same fail can
+mean a working toggle with unstable expression or a broken toggle; (2) the
+cytometry gate is now four bins (A high B low, A low B high, both low, both
+high or intermediate), because the both-high bin is the clearest sign that
+mutual repression is failing and the circuit is a co-expresser, and a
+viability or nucleic-acid stain plus scatter now excludes dead cells, debris
+and spores that would otherwise inflate the both-low bin; (3) hysteresis now
+requires a step-response calibration of the circuit's settling time first, with
+every level held at least three times the slowest plateau time, and single-cell
+cytometry at every level (a washout cannot calibrate a toggle, because a toggle
+never forgets); (4) the "selection does not threaten regrowth" wording above is
+corrected and a survivor-bias control added to Experiment 3 and Stage B2; (5)
+the competition assay is now specified (reference strain, label swap and
+reference-versus-reference noise floor, sequencing for isogenicity, DNase I and
+no competence conditions, same regime as Experiment 1); (6) sporulation is now
+managed, not just checked: measured at every passage by heat-shock plating
+against untreated plating, with a maximum acceptable fraction set by the lab
+and founders before the run (deliberately left blank, since any number would be
+invented) and a rule for changing the design if it is exceeded. The Experiment 1
+cost floor now also covers the calibration, spore monitoring and strain
+sequencing. The review also pressed the voltage question; see
+`docs/VOLTAGE_DECISION_MEMO.md`, which lays out the choice and does not make it.
+
+**A fourth review round.** The reviewer said each earlier round produced a sketch
+that needed a second pass to become a specification. Roughly half of the new
+points were right, two were already in the files, and one (that the
+survivor-bias sweep was only optional) was out of date, because it had already
+been built. Accepted, and written into Experiment 1 and Stage B0:
+- a **pre-registered interpretation table** that maps each bin pattern to a
+  conclusion (working toggle, asymmetric, monostable, co-expresser, graded,
+  slow relaxation, expression loss, construct failure, culture problem), fixed
+  before data. One correction to the reviewer: [dark] means lost or silent
+  circuit, not "graded"; graded is the intermediate pattern;
+- the **gating hierarchy** (all events, singlets, live cells, scatter exclusion of
+  debris and spores, compensation, four bins), with thresholds from parental,
+  fully induced and single-color controls;
+- the **calibration is independent of the hysteresis run**, uses its own cultures,
+  fixes the equilibration time in advance, and has a sample-count formula (a
+  count, not a price, since nothing has been quoted);
+- the **sporulation threshold is now a rule, not a blank**: the upper end of the
+  parental W168 spore fraction measured in a pilot in the same regime, with ranked
+  fallbacks (tighten dilution, shorten the run and limit the claim, change medium
+  and redo the baseline, move to continuous culture) and a statement of what each
+  costs;
+- the **competition assay is a checklist** where every row must be "yes" before it
+  runs, now including the reference fluorophore's own cost against unlabelled
+  parental W168;
+- a **recommendation in the voltage memo** (Path C, reporter first), not adopted
+  until the founders record a decision;
+- **Experiment 1 is split**: 1a (M1 and M3, calibration, hysteresis, 24 hour read)
+  is the cheap go/no-go gate; 1b (M2, the 72 hour run, fitness, competition and
+  sporulation) runs only if 1a passes.
+
+**Survivor composition in the cell-level engine (`bsubtilis_30`, section G).**
+The earlier sweep (section F) tracked population fractions only. Section G puts
+the question into the regrowth engine: each survivor is independently
+wrong-state, or already lost, with probability q. Mean fidelity and the share of
+colonies clearing the 70 percent bar:
+
+| survivors | q=0 | q=0.05 | q=0.10 | q=0.25 | q=0.50 |
+|---|---|---|---|---|---|
+| 1 (2%) | 100 / 100 | 93 / 93 | 90 / 90 | 83 / 83 | 38 / 38 |
+| 3 (5%) | 100 / 100 | 96 / 88 | 92 / 77 | 78 / 50 | 48 / 13 |
+| 13 (20%) | 100 / 100 | 96 / 100 | 91 / 100 | 75 / 65 | 46 / 5 |
+
+Recovery tracks survivor composition, because division copies whatever the
+survivors hold. The project's central number, "2 percent survivors recover to 100
+percent", is therefore exactly as good as the assumption that those survivors are
+all correct. With one survivor the outcome is all or nothing; with more survivors
+the mean is the same and the spread narrows, which helps when survivors are mostly
+right and hurts when they are not. Wrong-state and lost survivors give identical
+numbers on this ungated read (both fail to hold the bit) and differ only in the
+gated mechanism number. The survivor probabilities are sweep axes, not
+measurements; the plated-survivor comparison in Experiment 3 and Stage B2 is what
+measures them.
+
+**Not accepted as stated.** The suggestion that stopping to write more protocol
+detail is the next step. The remaining unfixed items (the spore threshold number,
+the neutral integration site, the sample counts) are values only the lab can set,
+and a flow-cytometry-literate microbiologist reviewing the protocol is worth more
+than another pass by an outside AI.
+
+**A fifth review round, and the last outside AI pass this protocol should get.**
+The reviewer found two real errors and one real README gap, and pushed on a third
+point where only part of its argument holds. Accepted:
+- **Compensation is not a gate.** It is a matrix computed from single-color
+  controls and applied to the fluorescence data before any fluorescence gate. The
+  gating order is now: compensation applied to the data, then events, singlets,
+  live cells, spore and debris exclusion, then the fluorescence bins. The spore
+  exclusion method is named (a scatter gate drawn with a purified spore control),
+  and the trigger channel for bacteria is left to the lab.
+- **The calibration is a gate, not a component.** Experiment 1 is now Pilot P0
+  (dose-response, response-time calibration on its own cultures, parental W168
+  spore baseline), then 1a, then 1b. If the settling time is longer than a
+  vegetative culture can be sustained, hysteresis cannot be run in batch and the
+  design changes before anything else is spent. The calibration is of the same
+  order of size as the hysteresis test it sets up, so staging protects the budget
+  for 1b and not for 1a. No cost figure is attached, because none has been quoted.
+- **M2 earns a place in 1a, M3 stays.** M2 is the realistic case and answers how
+  much promoter mismatch the circuit tolerates (the noise sweeps in Part 29 make
+  that matter more, since mismatch fails earlier as noise rises). All three
+  variants are built together and read at 24 hours in 1a. M3 is kept in 1a because
+  it is the negative control for the hysteresis assay: a loop on M1 alone cannot
+  show the assay returns one curve for a circuit known to be monostable. M2's
+  hysteresis is deferred to 1b, and M2 is now reported rather than required
+  to proceed, since the gate question is M1 against M3. That downgrade of M2 from a
+  required pass to a reported result is a design choice a practitioner should check.
+- **Path C is a funding and sequencing choice, not a resolution of the novelty
+  question.** The voltage memo now says so: the novelty claim is provisional until
+  a decision is recorded, no investor-facing material may claim voltage novelty or
+  an advantage over a DNA latch, and the "founder's description never mentions
+  voltage" argument is withdrawn as evidence (it is silent on mechanism by design
+  and supports neither path).
+- **The README never mentioned Bonnet et al. 2012.** It argued the differentiator
+  only against Yang et al. 2020, so its headline claim was stated without
+  addressing the closest overlap. A short section now does.
+- **A reviewer handoff note** (`docs/PROTOCOL_REVIEW_HANDOFF.md`) lists the values
+  only a lab can set and the specific questions to ask a practitioner.
+
+The reviewer also agreed that further AI review rounds have stopped paying and that
+the protocol has grown past the original experiment. The next review should be by a
+person who has run a toggle in *B. subtilis* and used cytometry on bacteria.
+
+**Final small corrections before the human review (sixth outside pass).** The
+reviewer called itself done, and a search of what it said against the repo and the
+literature kept four changes and refused two things:
+- **Kept: P0 builds M1 only.** The earlier "build all three together" contradicted
+  P0 being a spend gate, and the P0 calibration formula had quietly required M3.
+  M2 and M3 are built after P0 passes. A lab saying a batch build is cheaper
+  overrides this default, and the handoff asks them.
+- **Kept: spore exclusion is scatter plus a third fluorescence channel, validated
+  by heat-shock plating.** Scatter alone cannot separate spores from
+  stationary-phase cells, and plating is destructive so it can only validate the
+  gate. A spore reporter built on GFP would collide with the toggle's own sfGFP
+  reporter, so any reporter must be a third color.
+- **Kept: a never-pulsed control** for every strain (and in P0), to set the floor
+  for apparent bimodality and show the default state. The no-circuit false-positive
+  rate for the both-high bin comes from parental W168 and single-color controls.
+- **Kept: the handoff names exactly where the gating, bin table, pass criteria and
+  open values live,** so the reviewer sees the same experiment.
+- **Refused: the proposed Bonnet differentiator.** The reviewer said a recombinase
+  latch is irreversible per site and needs new registers for new bits, while a
+  toggle can be flipped repeatedly. That is wrong. Bonnet et al. 2012 is a
+  rewritable memory built with a recombination directionality factor, with
+  separate set and reset steps (PMC3384180), and a toggle also needs one circuit
+  per bit. Putting it in the README would have been a false claim. The README
+  keeps saying that no advantage over a DNA latch is established.
+- **Not pending:** the reviewer listed the survivor sweep as open. It is done
+  (section G of `bsubtilis_30`).
+
+**Still open.** The review also noted that the locus PCR in Part 29 does not
+catch point mutations or silencing. The loss-of-circuit gate and
+sequencing of reporter-negative isolates cover that, but only if loss
+actually occurs at a detectable rate. And the question raised in Part 29 still
+stands: whether the final product needs voltage at all, or a
+reporter-read genetic state is enough, which decides how much of the
+Bonnet et al. (2012) overlap matters.
+
+---
+
+## Part 31: The Noise Setting's Scale, Found While Planning Model Cross-Checks (October 2026)
+
+**Status: PARTLY RESOLVED the same day (see "Follow-up" at the end of this part). The step-size
+dependence is understood and the old sweeps survive it. A cross-check with different mathematics
+then found something bigger: the noise-tolerance conclusions are specific to the Gaussian noise
+model. No earlier simulation file has been edited.**
+
+**How it was found.** The founder asked whether the simulations could be stress-tested
+with different mathematics. While preparing the answer, the noise term in
+`GardnerToggleCell.step` (`bsubtilis_01`) was checked against the standard way to
+discretize a noisy equation, and two problems appeared.
+
+**Problem 1: the noise depends on the step size.** The random kick is added to the
+derivative and then multiplied by dt (`u += (drift + noise) * dt`). A correctly
+discretized stochastic equation scales the noise by the square root of dt, so that
+the noise intensity per unit time does not change when the step changes. Here it
+does. Measured (single seed, same total simulated time, standard deviation of the
+repressor level in the written state): at `tx_noise` 3.0 it was 1.43 at dt 0.02, 1.19
+at 0.01 and 0.69 at 0.005; at `tx_noise` 30 it was 9.39, 8.56 and 6.80. Every
+simulation uses dt 0.02, so comparisons between runs stay internally consistent and
+the sweeps in `bsubtilis_27` to `_30` remain valid as statements about this model.
+But `tx_noise` is not a physical quantity. It cannot be compared with a measured
+noise without recalibrating at that step size.
+
+**Problem 2: `bsubtilis_25` compares unlike quantities.** It computed the
+protein-level standard deviation implied by Swain et al.'s formula (10.0 to 50.5,
+from CV squared = (1 + b) / <P>, with the model's level of 50 treated as a molecule
+count) and divided it by `tx_noise` (3.0), which is the size of a random kick per
+step, not a level standard deviation. Measured over a 24 hour equivalent (40 runs
+each), the in-state standard deviation of the repressor level was 2.58 at
+`tx_noise` 3, 5.55 at 6, 7.26 at 9, 8.38 at 15, 8.16 at 21 and 7.43 at 30. In level
+terms the implied range is therefore about 4x to 20x of the placeholder (10 / 2.58
+and 50.5 / 2.58), or roughly 7x to 35x if the placeholder's level noise is taken
+from the shorter run (1.43). The stated 3.3x to 16.8x is close at the low end by
+luck but is the wrong quantity.
+
+**Why it matters more than the ratio (SUPERSEDED, read the follow-up).** This paragraph reads the
+additive-noise model's failure point as if it applied to cells. The follow-up shows an exact
+molecular model of the same toggle does not fail there. The level standard deviation stops growing
+near 8 because the circuit starts to flip. Share of runs that flipped in a 24 hour
+equivalent (40 runs each): 0% at `tx_noise` 3, 6 and 9; 12% at 15; 55% at 21; 90% at
+30; 100% at 45 and above. So the modelled toggle is lost at a level standard
+deviation of about 8, and the whole implied range from Swain (10 to 50) sits beyond
+that. If the model's level of 50 really were a molecule count, the modelled toggle
+would not hold.
+
+**What this does and does not say.** The level of 50 is a model unit, not a molecule
+count. Real repressor numbers per cell are unmeasured (Experiment 4) and may be far
+higher, and the formula's CV falls as the molecule count rises, so the implied noise
+could be much smaller. The comparison therefore cannot say how far real noise is
+from the model's. It says the outcome depends on two unmeasured numbers, molecules
+per cell and burst size, and that "holds to about 5x the placeholder" is a statement
+about this model's `tx_noise` at dt 0.02, not about cells.
+
+**What needed doing (done in the follow-up below, except where marked).**
+1. Reformulate the noise so it does not depend on dt: a stochastic differential
+   equation with square-root-of-dt scaling, or an exact stochastic simulation in
+   molecule counts using published burst parameters.
+2. Redo the noise comparison in level terms.
+3. Rerun the `bsubtilis_27` to `_30` sweeps on the corrected noise and compare.
+4. Add the wider model cross-checks: analytic bistability conditions, an exact
+   stochastic (Gillespie) simulation, first-passage theory for the flip rate, an
+   alternative circuit form with mRNA, and an independent reimplementation from a
+   plain-English specification. Agreement between those would show the math and the
+   code are consistent. It would not show the biology is right.
+
+**Follow-up (same day): what the cross-checks found.** Two new files:
+`bsubtilis_31_dt_independent_noise_rerun.py` and
+`bsubtilis_32_analytic_and_gillespie_crosscheck.py`. All numbers below are simulation results,
+with the sampling noise that comes from 40 to 60 runs per cell.
+
+*1. The step-size problem is real but does not damage the earlier sweeps.* A dt-independent
+version of the noise (square-root-of-dt scaling, subclassing the original class, which is
+unmodified) reproduces the original trajectories to machine precision at the reference step
+(checked on two seeds). Integrated 4x more finely, the same equation gives the same picture:
+single-cell fidelity still holds to about 5x the placeholder for matched promoters and collapses
+by 10x, mismatched promoters still fail sooner (individual cells move by up to about 16 points,
+which is the sampling noise of 40 runs), colony recovery is 99 to 100 percent to 5x, 83 to 85
+percent at 10x and 51 to 55 percent at 20x (original 84 to 85, 55 to 57), and the headline cells
+of the timing and stress sweeps reproduce (colour read 100 percent throughout, voltage read 50
+percent when the window is short or voltage is shifted 40 mV, 100 percent otherwise; the one
+difference is the 10x-noise-for-180-minutes cell, 100 percent against an original 96, which is
+inside sampling noise at 12 runs). The measured demonstration of the problem: the original class's
+repressor-level standard deviation at tx 3 was 2.27, 1.41, 0.87, 0.48 as dt halved from 0.02, while
+the dt-independent class gave 2.27, 2.34, 2.50, 2.48. So the sweeps are valid for the Gaussian
+model; the issue was that `tx_noise` had no physical scale.
+
+*2. Pen-and-paper math agrees with the simulation on the toggle's structure.* Solving for the
+fixed points (u = a1/(1+v^2), v = a2/(1+u^2), a1 = 50) gives an exact bistable window in the
+promoter strength ratio of 0.247 to 16.25. The noise-free simulation matched it at all 16 ratios
+tried, including two it had never been run at (0.20 gives one state and 0.25 gives two, 15
+gives two and 18 gives one). Ratio 0.1, the "dead switch" of Part 9, is analytically monostable.
+The noise-free distance from each stable state to the saddle (46.5, 44.0, 37.8, 27.4 for ratios
+1, 2, 5, 10) ranks the mismatched variants in the same order as their failure under noise in the
+simulation (10x, 5x, 3x, 2x). This is real agreement between independent methods, on the
+structural claim that promoter matching is the make-or-break design rule.
+
+*3. On noise, the methods do NOT agree.* An exact stochastic simulation (Gillespie) of the same
+toggle in molecule counts, with protein bursts of mean size b, measured CVs that match the
+exact protein-only result CV^2 = b/<P> (for example CV 0.139 against 0.141 at 50 molecules and
+b = 1). Swain, Elowitz & Siggia's (1+b)/<P> is the same result with an extra Poisson mRNA
+stage, so the two agree only for large b; `bsubtilis_25` used the mRNA form without an mRNA stage
+in the model. Final-state fidelity after a 24 hour equivalent, by mean ON-repressor molecules:
+
+| burst b | holds at 90 percent or better down to about |
+|---|---|
+| 1 | 12 molecules |
+| 5 | 25 molecules |
+| 10 | 50 molecules |
+| 20 | 98 molecules |
+
+That is roughly 5 times the burst size, in a model where the repression threshold is 1/50 of the
+ON level. The Gaussian simulation fails at a level CV of about 0.32; the exact model at about 0.58 to
+0.60 (burst 5 to 20), and never in the grid at burst 1. A chemical-Langevin version (Gaussian but
+with noise proportional to the reaction fluxes) fails like the additive simulation, not like
+the exact model, so it is the Gaussian approximation itself, not the additive form, that matters.
+Mean level of the repressed repressor (noise-free value 0.020): exact model 0.000, chemical
+Langevin 0.62, additive simulation 0.66 at tx 9 and 1.61 at tx 21. A Gaussian kick with a floor at
+zero cannot represent a species that is almost always absent, so it raises the repressed arm by
+tens of times, which suppresses the active arm and makes flips far likelier. That is the likely
+reason (inferred from these numbers, not isolated by a further experiment).
+
+*What this changes.*
+- **The "holds to about 5x, fails by 10x to 20x" result (Parts 29 and 30) is a property of the
+  Gaussian noise model, not of cells.** In an exact molecular model of the same toggle, noise at
+  realistic molecule counts does not break it. That weakens Part 29's Result 1 and Part 28's
+  "optimistic placeholder" worry, and it withdraws the "3x to 17x too low" headline: it compared
+  a kick size with a level spread, and in CV terms it depends entirely on molecules per cell.
+- **It does not make the toggle safe.** The first exact model had no mRNA stage and no extrinsic
+  (shared) noise (both added and tested in the second follow-up below; `bsubtilis_23` had found a
+  real but second-order effect in the Gaussian model), and it still has no division and partition
+  noise, and it fixes the ON level at 50 times the repression threshold. The molecule counts above are model results. Whether
+  real repressor numbers (Experiment 4) and burst sizes (Experiment 2) are above them is the open
+  question, and the fix for the failing part is now sharper: measure those two numbers.
+- **The structural conclusions stand and are supported by a second method within this
+  parameterization:** promoter matching is the make-or-break rule, with a computable window
+  (0.247 to 16.25 for Hill 2 and equal loss rates; it moves with both, see the fourth
+  follow-up below and `bsubtilis_35`).
+- **Which noise model to trust is itself a result:** the exact molecular model is the more faithful
+  description of the reactions it represents, and the Gaussian ones are known to fail near zero
+  copies. Unit-free CV is the right yardstick for comparing any of them with a measurement.
+
+*Still open (updated in the second follow-up below).* Division with partition noise in the
+molecular model, promoter switching, and cell-to-cell differences. The cross-checks that were
+proposed and not run: first-passage theory for the flip rate, and an independent
+reimplementation from a plain-English specification. The earlier sweeps (`bsubtilis_27` to `_30`)
+were not changed; their noise axis should be read as "Gaussian noise" until a molecular version
+of the colony engine exists.
+
+**Second follow-up (same day): does the exact model's robustness survive an mRNA stage and shared
+noise?** New file `bsubtilis_33_mrna_and_extrinsic_noise_gillespie.py`, an exact stochastic
+simulation with transcription, mRNA decay (gamma_m = 20, so an mRNA lives 1/20 of a protein
+lifetime, an assumption), translation (one protein per event, k_p = b * gamma_m) and protein
+decay, plus an optional shared factor that scales transcription of both repressors (an
+Ornstein-Uhlenbeck process with mean 1). Results are simulation results; cells with 40 runs carry
+roughly plus or minus 5 to 8 points of sampling noise.
+
+*Formula check.* For an unregulated gene the measured CV follows the exact two-stage result
+CV^2 = (1 + b * gamma_m / (gamma_m + gamma_p)) / <P>, for example 0.138 against 0.139 at about 100
+molecules with b = 1, and 0.436 against 0.440 with b = 20. Swain, Elowitz & Siggia's (1 + b) / <P>
+is within a few percent of it, so the formula used in `bsubtilis_25` is right for a model with an
+mRNA stage (the earlier problem was the comparison, not the formula). The protein-only model of
+`bsubtilis_32` follows b / <P> and underestimates noise when b is small (0.099 against 0.138 at 100
+molecules, b = 1).
+
+*Toggle with an mRNA stage.* Fidelity at 90 percent or better holds down to about 12, 25, 25 and 50
+mean ON repressor molecules for bursts of 1, 5, 10 and 20 (protein-only model: 12, 25, 50, 98).
+Everything at 100 molecules or more is 98 to 100 percent. Within sampling noise the mRNA stage does
+not reduce the robustness found in `bsubtilis_32`.
+
+*Shared noise.* Letting both repressors' transcription rise and fall together (shared factor CV 0.2
+or 0.5, correlation time 1 or 5 protein lifetimes) left fidelity at 92 to 100 percent in all six
+molecule-count and burst-size cells tested, down to 50 molecules. The worst cells were 92 percent
+(50 molecules, burst 5, CV 0.5, one lifetime) and 92 percent (200 molecules, burst 5, CV 0.5, five
+lifetimes), so shared noise cost up to about 8 points, comparable to the few points it cost in the
+Gaussian model (Part 27) and well inside what would break the toggle.
+
+*Reading.* The exact model's robustness survives an mRNA stage and shared noise at the parameter
+values tried. That makes the Part 31 conclusion firmer: the Gaussian model's early failure comes
+from the Gaussian approximation near zero copies, not from anything the exact model leaves out
+that these two additions put back. It still does not show cells behave this way. Not yet tested:
+division and partition noise at the molecule level, promoter switching (telegraph) noise,
+plasmid copy number, cell-to-cell differences, and a different dynamic range (the model fixes the
+maximum output at 50 times the repression threshold, and the analytic window of Part 31 narrows as
+that ratio falls). The mRNA decay rate and the shared-factor parameters are assumptions.
+
+### Part 31, third follow-up: division with uneven splitting of molecules
+
+`bsubtilis_34_division_partition_noise_gillespie.py` adds the first item on that list to the exact
+model. Cell volume grows from 1 to 2 and the cell divides; mRNA and protein are split between
+daughters, one lineage is followed. Production scales with volume, repression uses concentration.
+Growth supplies a share f of the protein loss (f = 1 is a 35 minute doubling at the repo's time
+mapping; protein degradation is 1 - f so total loss stays 1). Four conditions, 40 runs per cell:
+no division, even split (same dilution, no partition noise), binomial split at f = 0.5 and f = 1.
+
+*Result.* Fidelity at 90 percent or better down to about (mean ON molecules, bursts 1, 5, 10, 20):
+no division 12, 50, 50, 50; even split 12, 12, 25, 25; binomial f = 0.5 12, 25, 25, 50; binomial
+f = 1 12, 12, 25, 50. At 100 molecules or more every condition is 98 to 100 percent. Binomial
+splitting did not do measurably worse than even splitting (differences of up to about 10 points
+in single cells at 12 to 25 molecules, in both directions, are within the sampling noise of 40 runs).
+Mean ON concentration stayed within about 8 percent of nominal.
+
+*Reading.* Partition noise does not break the exact model at the values tried, which fits
+`bsubtilis_15` and Huh and Paulsson's result that binomial splitting is the mild case. Division
+did not make the model worse than having none; the no-division rows look slightly weaker at
+bursts of 5 to 10, which this run does not explain and which should not be read as growth helping
+the circuit (the cause was not isolated; faster loss through dilution plus the fixed total rate
+is one candidate). Not tested: discrete gene copy number across the cell cycle, a population with
+selection (see `bsubtilis_30`), promoter switching, a lower dynamic range, and any real value for
+molecules per cell or burst size, which only Experiments 2 and 4 can supply.
+
+### Part 31, fourth follow-up: falsification controls, window dependence, intervals, flip rate
+
+An outside review of the molecular results made four fair points; `bsubtilis_35_falsification_window_and_flip_rate.py`
+answers them. Also logged here: the "3x to 17x too low" noise headline of Part 28 (`bsubtilis_25`) is withdrawn
+(Part 31), and `bsubtilis_25` now carries a superseded header. The "about 5 molecules per cell" result of
+`bsubtilis_15` and Part 22 belongs to the colony model without bursts and does not carry over to the molecular
+model; the two answer different questions (recovery after damage versus holding 24 hours) and the molecular
+range of 12 to 100 mean molecules, depending on burst size, is the more demanding. Burst size for
+*B. subtilis* is unmeasured, so the demanding end (burst 20) is not proven to be the realistic one either way.
+The damage-sensing boost of `bsubtilis_16` was tested only against the colony model; whether it helps in the
+molecular model is untested.
+
+*Window depends on the model.* The exact bistable window (ratio of promoter strengths, equal loss rates) is
+none for Hill 1, 0.533 to 2.54 for Hill 1.5, 0.247 to 16.2 for Hill 2, 0.104 to 73.7 for Hill 3 and 0.067 to
+9.46 for Hill 4. With Hill 2, making the weak arm's repressor lost 4 times faster gives 0.121 to 1.03; 4 times
+slower gives 0.496 to 260. A ratio of 0.1 (the nominal M3 of Experiment 1) is inside the window at Hill 4 and at
+Hill 3 with a 4-fold loss-rate difference, and a ratio of 0.01 was outside in all thirteen cases. So the
+severe-mismatch control is only a negative control if the real window resembles the modelled one. Experiment 1
+and Stage B0 now say so, require measuring each arm's promoter strength, ask for a ratio of 0.01 or lower if
+the parts allow, and add an operator-deleted arm as a window-independent negative control. "Independently
+supported" in Part 31 has been narrowed to "within this parameterization".
+
+*Falsification control.* The molecular model was run where theory says the toggle must fail. Hill 1 at ratio
+1: 72 percent at 24 hours (95 percent interval 57 to 84), 48 percent at four times the horizon; the
+antisymmetric mode relaxes at only about 0.14 per protein lifetime, so a 24 hour read still carries memory,
+which is slow forgetting and not bistability. Ratios outside the window (0.01, 0.1, 0.2 and 30 at Hill 2,
+0.01 and 0.05 at Hill 3, ratio 2 at Hill 1): 50 to 52 percent in every cell. Inside: 98 percent at 0.5 and 80
+percent at 0.3 (Hill 2, just inside the 0.247 edge), and at Hill 3 52 percent at 0.15, 80 at 0.2 and 100 at
+0.5. Hill 3 moves the molecular window down as the analytic part predicts (0.2 fails at Hill 2, works at Hill
+3), and near an edge the molecular model fails slightly before the analytic one, as noise would narrow the
+window. The two models therefore fail together where they should, which is a real test but still not a test
+of biology. A caution found on the way: the root finder in the first draft missed the ON fixed point at Hill 4
+(floating-point rounding put F exactly at zero); fixed by extending the search range.
+
+*Intervals.* The `bsubtilis_34` binomial grid with 100 runs per cell and Wilson 95 percent intervals: the
+whole interval sits at or above 90 percent from 25 molecules at burst 1 (93 to 99), 50 molecules at burst 5
+(95 to 100), 50 at burst 10 (93 to 99) and 100 at burst 20 (93 to 99). At burst 20 and 50 molecules the
+estimate is 91 percent (84 to 95), so the earlier "about 50" for burst 20 is the optimistic reading and 100 is
+the conservative one. Thresholds should be read as ranges.
+
+*Flip rate.* Long runs (300 time units, about 250 hours, 40 runs per cell, binomial split) with the first
+committed flip as the event give rates per hour with exact Poisson intervals: 12 molecules burst 5: 0.0062
+(0.0042 to 0.0088) per hour; 25 molecules burst 5: 0.0009 (0.0004 to 0.0018); 50 molecules burst 5: 0.0003
+(0.0001 to 0.0009); 100 molecules burst 5: no flips in 10,000 hours, upper bound 0.0004 per hour; 25 molecules
+burst 20: 0.011 (0.0078 to 0.015); 50 molecules burst 20: 0.0021 (0.0012 to 0.0034); 100 molecules burst 20:
+0.0006 (0.0002 to 0.0014); 200 molecules burst 20: one flip, 0.0001 per hour. Implied 24 hour retention agrees
+with measured fidelity to within about 10 points in both directions (a flip can reverse, and fidelity reads the
+state at one moment, so they are not the same quantity). Retention beyond 24 hours is an extrapolation that
+assumes a constant rate; a zero-flip cell gives only a bound. A closed-form (Kramers-type) rate is still not
+derived.
+
+*Further review round (closing points).* (a) Whether the weak arm "does any work" at a severe mismatch: halving
+its production at ratios 0.01, 0.1 and 0.2 changes the strong arm's steady state by a relative 3e-8, 3e-6 and
+1.2e-5, and at 0.3 (inside the window) by 2.7e-5. A steady-state sensitivity check is therefore not an
+indicator of bistability in this circuit: it is tiny on both sides of the window edge, because the strong arm
+sits near its ceiling and the weak arm near zero either way. What distinguishes the two sides is whether a
+pulse of the weak arm can hold the switched state, which is what Experiment 1 tests. The check does not show
+that the weak arm is irrelevant to the design, and it says nothing about real parts. (b) Monostable is now
+defined by memory, at a fixed burst size of 10 (Omega 4, no division, 40 runs per cell, horizons 24, 48, 96 and
+192 h): monostable if the 96 h fidelity interval contains 50 percent or fidelity fell by more than 10 points
+between 24 h and 96 h; bistable only if it is clearly above chance and the drop is 10 points or less. The
+first version of this rule, a drop of more than 10 points, was wrong and failed on its first data: Hill 1 was
+already at chance at 24 h (50, 52, 42, 50 percent), showed no drop, and would have been called bistable. Hill 2
+stayed at 100, 98, 98, 95 percent (drop 3 points at 96 h). The earlier 72 percent for Hill 1 was at burst 5,
+where relaxation is slower; fixing the burst size is what makes the comparison readable. (c) Flip-rate runs are right-censored at 250 h; zero flips in
+10,000 cell-hours gives a 95 percent upper bound of about 3e-4 per hour (one-sided), and lower rates are
+bounds, not estimates. (d) Equal protein loss assumes equal growth dilution and identical repressor
+degradation; with two different repressors (for example LacI and TetR) the degradation rates must be measured,
+and unequal degradation is also a design lever that can move the window. (e) A bistable M3 at a measured ratio
+of 0.01 or lower falsifies the simulation's window claim, a model correction, not a retraction of the project.
+
+### Part 31, fifth follow-up: colony regrowth and the damage-sensing boost in the molecular model
+
+`bsubtilis_36_molecular_colony_regrowth.py` reruns the project's headline (a small fraction of survivors regrows
+into a colony that holds the bit) and the proposed damage-sensing boost (`bsubtilis_16`) in the exact molecular
+model, additively: no earlier file was changed and the earlier numbers stand as results of those models.
+Survivors (all assumed correct) found lineages that divide with binomial partitioning to about 64 cells, then
+follow one daughter each over 6 hours of settling (11.4 protein lifetimes in all, about 9.5 hours, shorter than
+the 24 hours of `bsubtilis_34`). Recovery is the fraction of final cells holding the bit; the 100 percent
+survivor row is the no-damage baseline over the same time.
+
+*Result.* In the five cells of the main table (25 to 200 mean molecules; burst 5 at 25 and 50, burst 20 at 50,
+100 and 200), mean recovery was 98 to 100 percent at every survivor level tested (2, 5, 20 and 100 percent), with
+worst single colonies at 89 to 100 percent in 12 colonies per cell. Recovery after damage was no worse than the undamaged baseline, which is the point of
+`bsubtilis_30` section G: with correct survivors, regrowth adds little loss beyond the single-lineage hold. At
+the most marginal cell tested (25 molecules, burst 20, 2 percent survivors) mean recovery was 91 percent
+(worst colony 75), and the boost raised it to 95, 97 and 97 percent at multipliers 2, 5 and 10 (worst colony 89,
+94 and 89) in 20 colonies per setting. That is a suggestive gain at one marginal cell, not an established
+one; at the other cells there was little to rescue (97 to 100 percent without it).
+
+*Reading.* The Gaussian-model figures for the headline (`bsubtilis_07`, `27`) were more pessimistic than the
+molecular model near zero copies, and the colony conclusion holds there too. This is still conditional on
+survivors being correct, no selection, no crowding, no gene copy number, and molecule counts and burst sizes
+that nobody has measured (swept, not bracketing reality). The boost remains a proposal; its gain here says
+nothing about whether an SOS-type promoter can be wired to a toggle arm, and any wrong-state cell would be
+reinforced toward the wrong state.
+
+### Part 31, sixth follow-up: more than one bit in a cell
+
+Until here every result was for one toggle. `bsubtilis_37_multibit_word_storage.py` gives a first, rough idea of
+what N bits in one cell implies, in the exact molecular model (burst 5, 24 hour equivalent, growth and
+binomial division, 30 random words per setting). Two questions.
+
+*Shared budget.* With a fixed total of B mean ON repressor molecules shared by N toggles (B / N each), the
+whole word stayed right in 100 percent of words for N up to 4 at every B tested (200, 400, 800), and at N = 8
+in 100 percent at B = 800, 93 percent at B = 400 (50 molecules per toggle) and 90 percent at B = 200 (25
+molecules per toggle); per-bit fidelity was 99 to 100 percent throughout. The word result matched the
+independent-bits prediction (per-bit fidelity to the power N) in every cell, so no interference appeared when
+the toggles are independent. Intervals at 30 words are wide (89 to 100 percent at the 100 percent cells).
+
+*Crosstalk.* This is where it breaks. If a foreign toggle's repressors count with weight eps at another toggle's
+promoters, 8 bits at 100 molecules each held 100 percent of words at eps = 0, 90 percent at eps = 0.003, 30
+percent at 0.01 (per-bit 89 percent), and 0 percent at 0.03 and 0.1 (per-bit 54 to 55 percent, near chance).
+The cause is simple arithmetic and should be read as a rule of thumb, not a discovery: each toggle's ON
+repressor sits at about 50 times the repression threshold (the model's fixed dynamic range), so the foreign
+repressors from the other N - 1 toggles add up to roughly (N - 1) x 50 x eps threshold units of repression at
+EVERY promoter; once that approaches 1 the toggle loses its two states. That gives a tolerable eps of about 1 /
+(50 (N - 1)), about 0.003 for 8 bits, and shrinking as N grows. It depends on the assumed dynamic range of 50.
+
+*Reading.* Under this model, the molecule budget is not what limits a multi-bit word at these sizes; repressor
+orthogonality is. Whether enough well-separated repressor pairs exist in *B. subtilis* is a biology question the
+model cannot answer: its pairs are free, and eps is a sweep axis, not a measurement. Not modelled: shared
+transcription and translation machinery beyond the molecule budget, growth burden from extra circuits, gene
+copy number, selection against the heavier cell, readout, and error-correcting codes (which would let a word
+survive a few wrong bits at the price of more toggles). Experiment 4 (molecules per cell) and a crosstalk
+measurement between candidate repressor pairs would turn these axes into numbers.
+
+### Part 31, seventh follow-up: one bit per cell, many cells, and an error-correcting code
+
+`bsubtilis_38_error_correcting_array.py` takes the other route to a word: one toggle per cell or spot, many
+cells, no leakage between toggles, and redundancy so a few wrong bits do not ruin the word. Inputs are the
+per-bit flip rates of `bsubtilis_35` (about 0.0001 to 0.01 per hour, simulation results at assumed molecule
+counts), used as a sweep axis. Each bit is a symmetric two-state switch, so P(wrong) = 0.5 (1 - exp(-2 lambda
+t)). Exact formulas for a 32-bit (4 byte) word, checked against a Monte Carlo that runs real encoders and
+decoders (agreement within about 1 point; the decoders fix every single error).
+
+*Cost.* No code 32 cells; Hamming(15,11) 45; Hamming(7,4) 56; Hamming(31,26) 62; repeat x3 96; repeat x5 160.
+
+*Life.* At 0.0003 per hour, time until the word has a 50 percent chance of being intact: no code 3 days; repeat
+x5 23 days; repeat x3 13 days; Hamming(7,4) 11 days; Hamming(15,11) 8 days; Hamming(31,26) 5 days. At 0.001 per
+hour: 22 hours uncoded, 7 days for repeat x5. At 0.0001 per hour: 9 days uncoded, 68 days for repeat x5. So a
+code buys roughly 3 to 8 times the lifetime at this word size, not orders of magnitude, because the word fails
+as soon as any one block is overwhelmed. Single-error Hamming codes are cheap but give the shortest life;
+repetition x5 gives the longest at about five cells per bit.
+
+*Common-cause shocks.* Shocks that flip a fraction f of all cells at once (rate h per hour) defeat the codes.
+At 0.0003 per hour, after one week: repeat x5 97 percent with no shocks, 94 percent at h = 0.001 and f = 0.05,
+82 percent at h = 0.001 and f = 0.3, and 18 percent at h = 0.01 and f = 0.3. Contamination, a medium change,
+loss of the circuit or a sporulation wave would act this way; redundancy only helps against independent flips.
+
+*Refresh.* Reading, decoding and rewriting the word on a schedule (assumed perfect, so an upper bound) turns a
+short life into a long one. At 0.001 per hour after one month: no refresh 0 percent for every scheme; refresh
+every 6 hours 99 percent for repeat x5 and 50 percent for Hamming(7,4); every 2 hours 99.9 and 79 percent. This
+uses Acheron's rewritable property and moves the limit from the cells to the reader and writer hardware.
+
+*Reading.* The per-bit flip rate, not the code, is the dominant lever, and it is unmeasured. Coding stretches
+retention by a small factor; refresh stretches it by far more but needs hardware for every cell; common-cause
+shocks, which this model can only sweep, are the failure that neither addresses. Not modelled: readout error,
+cell loss, spot addressing, correlated flips within the same culture beyond the shock model, and the cost of
+the reader. Hamming codes are the simplest choice, not the best one.
 
 ---
 

@@ -2,19 +2,21 @@
 
 **Tests:** the unmeasured noise parameters used throughout `simulations/bsubtilis_*`.
 **Bench protocol this is drawn from:** `experiments/BENCH_PROTOCOL_BSUBTILIS.md`, Stage B1.
-**Prerequisite:** run on the same cultures as Experiment 1, extended. Do not
-run standalone.
+**Prerequisite:** run on the same cultures as Experiment 1b (the long-run stage
+of Experiment 1, which only runs if Experiment 1a passes), extended. Do not run
+standalone.
 
 ## The goal, plainly
 
-Watch Experiment 1's cultures for longer, 48 hours instead of 24, and while
+Watch Experiment 1's cultures for longer, out to 72 hours, and while
 watching, measure the real amount of natural static ("noise") in these actual
 cells, instead of the guessed numbers every simulation so far has used.
 
 ## Procedure
 
-1. **Extend timepoints to 48 hours**, with periodic dilution into fresh
-   inducer-free medium to keep cells growing.
+1. **Use Experiment 1b's timepoints (out to 72 hours, with periodic
+   dilution into fresh inducer-free medium to keep cells growing)** and take
+   the measurements below at each one.
 2. **Measure and record, at each timepoint:**
    - Fraction of cells in the correct state (real-world version of the
      simulations' `genetic_correct`).

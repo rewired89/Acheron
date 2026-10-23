@@ -622,7 +622,7 @@ they depend on each other.
 - name: `intrinsic_noise_cv`, `cv_to_absolute_std`, `sweep_burst_size_vs_placeholder`, `copy_number_scaling`
   type: function
   file: simulations/bsubtilis_25_transcription_translation_noise_scaling.py
-  purpose: checks bsubtilis_01_gardner_toggle_circuit.py's uncited `transcriptional_noise_std=3.0` placeholder against the real noise-scaling formula from Swain, Elowitz & Siggia (2002, PNAS 99:12795-800, DOI 10.1073/pnas.162041399), eta_int^2 ~= (1+b)/<P> (b = burst size, that paper's own cited E. coli literature range, "order tens," used only to bound plausible scenarios), plus eta^2 ~ 1/n for gene copy number n. Found (session run): implied absolute noise std of 10.0-50.5 across burst sizes 1-50 (using GardnerParams' default alpha=50.0 as the mean-level anchor), 3.3x-16.8x higher than the current placeholder at every burst size tested, not just the high end; and confirms chromosomal (n=1) integration is a real, quantifiable noisier choice than a multi-copy plasmid. Explicitly caveated in the file: omits Swain et al.'s own cell-cycle correction (up to 65% overestimate per their Eq. 22), a bound not a precise prediction. Audit Part 28
+  purpose: checks bsubtilis_01_gardner_toggle_circuit.py's uncited `transcriptional_noise_std=3.0` placeholder against the real noise-scaling formula from Swain, Elowitz & Siggia (2002, PNAS 99:12795-800, DOI 10.1073/pnas.162041399), eta_int^2 ~= (1+b)/<P> (b = burst size, that paper's own cited E. coli literature range, "order tens," used only to bound plausible scenarios), plus eta^2 ~ 1/n for gene copy number n. NOTE (audit Part 31): that comparison put a per-step kick size next to a level spread, and in unit-free terms it depends on molecules per cell, so the "3x-17x too low" headline is withdrawn pending measurement. Found (session run): implied absolute noise std of 10.0-50.5 across burst sizes 1-50 (using GardnerParams' default alpha=50.0 as the mean-level anchor), 3.3x-16.8x higher than the current placeholder at every burst size tested, not just the high end; and confirms chromosomal (n=1) integration is a real, quantifiable noisier choice than a multi-copy plasmid. Explicitly caveated in the file: omits Swain et al.'s own cell-cycle correction (up to 65% overestimate per their Eq. 22), a bound not a precise prediction. Audit Part 28
   inputs: `burst_sizes: List[float]`, `mean_protein_levels: List[float]`, `copy_numbers: List[int]`
   outputs: per-(burst size, mean level) noise/ratio-to-placeholder rows; per-copy-number relative noise dict
   dependencies: `simulations.bsubtilis_01_gardner_toggle_circuit.GardnerParams` (imported for its default alpha1 value only)
@@ -636,6 +636,126 @@ they depend on each other.
   inputs: `ratio: float`, `tx_noise: float`, `hours: float`, `seed: int`, `max_lag: int`
   outputs: per-configuration min/max cross-correlation value and lag dict
   dependencies: `simulations.bsubtilis_01_gardner_toggle_circuit.GardnerParams/GardnerToggleCell` (imported, not modified)
+  used_by: `main` (in the same file)
+  side_effects: none
+
+- name: `run_colony_trial_ex`, `single_cell_fidelity`, `colony_recovery`
+  type: function
+  file: simulations/bsubtilis_27_noise_robustness_sweep.py
+  purpose: re-runs the fidelity results across transcriptional-noise multipliers 1x-20x of the uncited placeholder (3.0), because bsubtilis_25 found it may be 3.3x-16.8x too low. `run_colony_trial_ex` is a parameterised version of the bsubtilis_07/_14 regrowth trial (tx_noise, doubling_min, settle_hours, equil_delay_min, long_window_min, oscillation amplitude/period, and a stress window with doubling/noise/voltage-shift terms) that reproduces bsubtilis_07 at defaults and is imported by bsubtilis_28 and bsubtilis_29. Found (session run): matched promoters hold 100% to 5x and fall to 60% at 10x; mismatched ratios fail earlier; colony recovery 100% to 5x, 84-85% at 10x, 55-57% at 20x. Audit Part 29
+  inputs: `surviving_fraction`, `target_bit`, `seed`, plus the keyword parameters above and `survivor_wrong_prob` / `survivor_lost_prob` (each survivor independently written to the wrong state or already circuit-lost; draws happen only when set, so default runs are unchanged)
+  outputs: dict of `genetic`, `voltage_snapshot`, `voltage_window`, `regrown`, `window_used_min`
+  dependencies: `bsubtilis_01_gardner_toggle_circuit.GardnerParams/GardnerToggleCell/run_persistence` (imported, not modified), `bsubtilis_08_native_oscillation_interference.ambient_oscillation_offset`, `bsubtilis_09_eis_readout_interference.eis_style_read`, `multiprocessing.Pool`
+  used_by: `main` (same file), `simulations/bsubtilis_28_regrowth_timing_sweep.py`, `simulations/bsubtilis_29_stressed_survivors.py`
+  side_effects: none
+
+- name: `main` (grid sweep)
+  type: function
+  file: simulations/bsubtilis_28_regrowth_timing_sweep.py
+  purpose: sweeps doubling time (30/45/60 min) and a settling delay (0/30/60 min) at 2/5/20% survivors under 30 and 70 mV native oscillation. Found (session run): reporter (genetic) fidelity stays 100% and the colony regrows in every cell of the grid; the 180 min averaged electrical read drops to a coin flip (50%) whenever the budget leaves less than the full window, including 151 min, so the electrical readout needs the undisturbed 30 min doubling time. Audit Part 29
+  inputs: none (module constants `DOUBLING_TIMES`, `DELAYS`, `FRACTIONS`, `AMPLITUDES`)
+  outputs: printed table
+  dependencies: `bsubtilis_27_noise_robustness_sweep.run_colony_trial_ex`
+  used_by: none (terminal analysis)
+  side_effects: none
+
+- name: `main` (three sweeps A/B/C)
+  type: function
+  file: simulations/bsubtilis_29_stressed_survivors.py
+  purpose: tests the known gap that damage is modelled as cell removal only, by giving survivors a stress window with slower division, higher noise and a steady voltage shift. Found (session run): growth penalty alone did not move genetic fidelity; 10x noise for 180 min cost ~4 points; sustained 2x slower + 10x noise + 40 mV for the whole window gave 85-87% genetic and 50% voltage read; voltage shifts of 20 mV changed nothing and 40 mV sustained through the read flipped one bit (inherited V_HIGH/V_LOW sit 35 mV from the midpoint). Every magnitude is a sweep axis, not measured. Audit Part 29
+  inputs: none (module constants `GROWTH`, `SHIFTS`, `NOISE`, `STRESS_MIN`)
+  outputs: printed tables
+  dependencies: `bsubtilis_27_noise_robustness_sweep.run_colony_trial_ex`
+  used_by: none (terminal analysis)
+  side_effects: none
+
+- name: `trajectory`, `generations_to_bar`, `stochastic_gens_to_bar`, `survivor_bias_outcome`, `survivor_composition_sweep`
+  type: function
+  file: simulations/bsubtilis_30_fitness_cost_selection.py
+  purpose: population-level model of circuit-lost cells outgrowing circuit-carrying cells. Lost cells grow (1+s) times faster, circuit cells become lost at rate mu per division, written-state circuit cells can flip at a swept rate. Reports ungated (all cells) versus gated (reporter-positive) written-state fractions, expected time to the 70% bar, a finite-bottleneck stochastic version, and the same grid at 7 generations (damage and regrowth). Found (session run): selection does not threaten a 7-generation regrowth test but does threaten a 72 h culture (36-144 generations); s=0.03, mu=1e-4 holds 98% at 72 generations and 81% at 144; s=0.10, mu=1e-5 holds 91% then 1%; a 10,000-cell bottleneck makes time-to-bar noisy while 1,000,000 does not; gating separates lost from flipped. `survivor_bias_outcome` adds a survivor-bias sweep (lost cells `bias` times as likely to survive damage as circuit cells, after a pre-damage culture history): at s=0.10, mu=1e-4 and 72 pre-damage generations only 35% still hold the bit after 7 regrowth generations even with random survivors. `survivor_composition_sweep` runs the same question in `bsubtilis_27`'s cell-level engine: recovery fidelity tracks survivor composition (one survivor wrong with probability 0.25 passes 83% of colonies; 13 survivors pass 65%), so the "2% survivors recover to 100%" claim is only as good as the assumption that survivors are correct. Audit Part 30. s, mu, the flip rate and survivor probabilities are sweep axes, not measurements
+  inputs: `s: float`, `mu: float`, `generations: int`, `flip: float`, `bottleneck: int`
+  outputs: ungated/gated fraction arrays per generation; generations to the bar
+  dependencies: numpy only (no import of the Gardner classes, by design: it models populations, not single cells)
+  used_by: `main` (in the same file)
+  side_effects: none
+
+- name: `GardnerToggleCellSDE`, `level_std`, `fidelity_table`, `colony_with`, `section4`
+  type: class and functions
+  file: simulations/bsubtilis_31_dt_independent_noise_rerun.py
+  purpose: `GardnerToggleCellSDE` subclasses `GardnerToggleCell` (imported, not modified) with square-root-of-dt noise scaling so noise intensity does not depend on the step size; `transcriptional_noise_std` keeps its old meaning at dt 0.02 (sigma = tx * sqrt(0.02)) and at `substeps=1` it reproduces the original trajectories to machine precision. Found (session run): the original class's repressor-level std at tx 3 fell 2.27, 1.41, 0.87, 0.48 as dt halved, the new class stayed 2.27, 2.34, 2.50, 2.48; single-cell fidelity, colony recovery and the headline timing and stress cells from bsubtilis_27 to 29 reproduce within sampling noise at 4x finer integration. `colony_with` swaps the new class into `bsubtilis_27`'s engine at run time without editing it. Audit Part 31
+  inputs: `substeps`, noise multipliers, promoter ratios, surviving fractions
+  outputs: printed tables comparing the original and finer-integration results
+  dependencies: `bsubtilis_01_gardner_toggle_circuit.GardnerParams/GardnerToggleCell`, `bsubtilis_27_noise_robustness_sweep` (engine, patched at run time), `multiprocessing.Pool`
+  used_by: `simulations/bsubtilis_32_analytic_and_gillespie_crosscheck.py` (imports `GardnerToggleCellSDE`)
+  side_effects: none
+
+- name: `fixed_points`, `window_edge`, `margin`, `gillespie_run`, `cle_run`, `off_arm_section`
+  type: function
+  file: simulations/bsubtilis_32_analytic_and_gillespie_crosscheck.py
+  purpose: two independent cross-checks of the Gardner toggle. (A) Analytic: roots of u = a1/(1+v^2), v = a2/(1+u^2) by bracketed root finding, stability from Jacobian eigenvalues -1 +/- sqrt(d_u d_v); exact bistable window in a2/a1 of 0.247 to 16.25, matching the noise-free simulation at 16 of 16 ratios and ranking the noise-free stable-to-saddle margin in the same order as simulated failure. (B) Exact stochastic (Gillespie) simulation in molecule counts with geometric protein bursts of mean b: CV matches sqrt(b/<P>); fidelity stays at or above 90% down to about 12, 25, 50, 98 mean ON molecules for b = 1, 5, 10, 20, whereas the additive-noise simulation fails at level CV about 0.32 (exact model about 0.58 to 0.60). (C) `cle_run`: a chemical Langevin version fails like the additive model, so it is the Gaussian approximation that matters. (D) `off_arm_section`: mean repressed-arm level (noise-free 0.020) is 0.000 exact, 0.62 Langevin, 0.66 to 1.61 additive, the likely reason. Audit Part 31. The exact model has no mRNA stage, extrinsic noise or division
+  inputs: promoter ratio, Omega (molecule scale), burst size b, seeds
+  outputs: printed tables (window, margins, CV and fidelity grids)
+  dependencies: numpy, scipy.optimize.brentq, `bsubtilis_01_gardner_toggle_circuit`, `bsubtilis_31_dt_independent_noise_rerun.GardnerToggleCellSDE`, `multiprocessing.Pool`
+  used_by: `main` (in the same file)
+  side_effects: none
+
+- name: `run`, `unregulated`, `formula_section`, `fidelity_section`, `extrinsic_section`
+  type: function
+  file: simulations/bsubtilis_33_mrna_and_extrinsic_noise_gillespie.py
+  purpose: exact stochastic (Gillespie) simulation of the toggle with an mRNA stage (transcription, mRNA decay at gamma_m = 20, translation one protein per event, protein decay) and an optional shared Ornstein-Uhlenbeck factor on transcription of both arms (handled exactly by stopping at each update). `unregulated` checks the noise formula: measured CV follows sqrt((1 + b * gamma_m / (gamma_m + gamma_p)) / <P>) and Swain's (1 + b) is within a few percent. Found (session run): fidelity at or above 90% down to about 12, 25, 25, 50 mean ON molecules for b = 1, 5, 10, 20, and shared noise (CV 0.2 and 0.5, correlation 1 and 5 protein lifetimes) leaves 92 to 100% down to 50 molecules, so the exact model's robustness (bsubtilis_32) survives both additions. Audit Part 31. No division or partition noise or promoter switching
+  inputs: Omega (molecule scale), burst size b, eta and tau (shared factor CV and correlation time), bit, seed
+  outputs: tuple of (Omega, b, eta, tau, final-state correct, in-state CV, mean ON protein); printed tables
+  dependencies: numpy, `multiprocessing.Pool` (no dependence on the Gardner classes)
+  used_by: `main` (in the same file)
+  side_effects: none
+
+- name: `run`, `_split`, `fidelity_section`
+  type: function
+  file: simulations/bsubtilis_34_division_partition_noise_gillespie.py
+  purpose: bsubtilis_33's two-stage Gillespie toggle plus cell division: volume grows 1 to 2 (advanced in fixed steps, propensities piecewise constant), production scales with volume, repression uses concentration, a share f of protein loss is dilution, and at division mRNA and protein are split by Binomial(n, 1/2) ('binom') or as evenly as possible ('even'); one lineage followed. Found (session run): 90% fidelity down to about 12, 12, 25, 50 mean ON molecules for b = 1, 5, 10, 20 (binomial, f = 1), no measurable penalty versus even splitting. Audit Part 31. No discrete gene copy number, selection or promoter switching
+  inputs: Omega, burst size b, f (dilution share), split mode, bit, seed
+  outputs: tuple of (Omega, b, f, mode, final-state correct, divisions, mean ON concentration); printed tables
+  dependencies: numpy, `multiprocessing.Pool`
+  used_by: `main` (in the same file)
+  side_effects: none
+
+- name: `stable_count`, `window`, `sim`, `wilson`, `analytic_section`, `falsification_section`, `decay_section`, `intervals_section`, `flip_section`
+  type: function
+  file: simulations/bsubtilis_35_falsification_window_and_flip_rate.py
+  purpose: answers an outside review of the molecular results. `window` gives the exact bistable window of promoter strength ratios for any Hill exponents and u-loss rate (fixed points plus Jacobian stability). `sim` is the two-stage Gillespie toggle with Hill exponent, arm ratio, optional growth/division and first-passage tracking. Found (session run): the window moves with the model (Hill 3: 0.104 to 73.7, Hill 4: 0.067 to 9.46), ratio 0.1 can lie inside it but 0.01 never did in 13 cases; the molecular model fails where theory says (Hill 1, outside the window) and shifts as predicted; Wilson intervals make the burst-20 threshold about 100 molecules; flip rates measured with Poisson intervals. Audit Part 31 fourth follow-up. No Kramers closed form
+  inputs: Omega, burst b, Hill beta, ratio, dilution share f, split mode, bit, seed, horizon, track flag
+  outputs: tuple of (final correct, first-flip time or None, elapsed); printed tables
+  dependencies: numpy, scipy (`brentq`, `chi2`), `multiprocessing.Pool`
+  used_by: `main` (in the same file)
+  side_effects: none
+
+- name: `evolve`, `trial`, `sweep`, `wilson`, `main`
+  type: function
+  file: simulations/bsubtilis_36_molecular_colony_regrowth.py
+  purpose: colony regrowth and the damage-sensing boost in the exact molecular model. `evolve` runs one two-stage Gillespie cell until it divides or the window ends (optional boost multiplier on the dominant arm's transcription); `trial` founds lineages from correct survivors, divides with binomial partitioning to about 64 cells, then follows one daughter, and returns the fraction of final cells holding the bit. Found (session run): 98 to 100 percent mean recovery at 25 to 200 molecules, bursts 5 and 20, survivors 2 to 100 percent; at 25 molecules burst 20 and 2 percent survivors 91 percent, boost 95 to 97 percent (suggestive). Audit Part 31 fifth follow-up. No selection, copy number or crowding
+  inputs: Omega, burst b, survivor fraction, boost multiplier, bit, seed
+  outputs: (fraction correct, final cell count); printed tables
+  dependencies: numpy, `multiprocessing.Pool`
+  used_by: `main` (in the same file)
+  side_effects: none
+
+- name: `run_word`, `run_grid`, `budget_section`, `crosstalk_section`, `wilson`
+  type: function
+  file: simulations/bsubtilis_37_multibit_word_storage.py
+  purpose: N independent exact two-stage Gillespie toggles in one lineage (growth, binomial partitioning), with a total molecule budget B shared as B / N per toggle and a crosstalk weight eps adding foreign repressor concentration to every promoter's repression. Found (session run): budget alone barely matters up to 8 bits at 25 or more molecules per toggle (word 90 to 100 percent, matches per-bit ** N); crosstalk eps of 0.01 drops an 8-bit word to 30 percent and 0.03 destroys it; tolerable eps about 1 / (50 (N - 1)) under the fixed dynamic range of 50. Audit Part 31 sixth follow-up
+  inputs: N bits, Omega per toggle, burst b, eps, seed
+  outputs: list of per-bit correct flags; printed tables
+  dependencies: numpy, `multiprocessing.Pool`
+  used_by: `main` (in the same file)
+  side_effects: none
+
+- name: `hamming_encode`, `hamming_decode`, `rep_encode`, `rep_decode`, `success_given_p`, `word_success`, `time_to`, `self_check`
+  type: function
+  file: simulations/bsubtilis_38_error_correcting_array.py
+  purpose: one-bit-per-cell array with error-correcting codes (none, repetition x3/x5, Hamming(7,4)/(15,11)/(31,26)) on a 32-bit word. Exact word-success formulas (symmetric two-state bit flips, Poisson common-cause shocks, periodic refresh), checked by `self_check` against real encoders and decoders. Found (session run): codes stretch word life roughly 3 to 8 times (repeat x5 longest, Hamming shortest), refresh stretches it far more, shocks defeat all codes. lambda swept 0.0001 to 0.01 per hour from bsubtilis_35. Audit Part 31 seventh follow-up
+  inputs: scheme, lambda per hour, time, shock rate h and size f
+  outputs: word-success probability, time to a success level; printed tables
+  dependencies: numpy, math
   used_by: `main` (in the same file)
   side_effects: none
 
